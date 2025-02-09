@@ -30,5 +30,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: cloverage-report
-          path: coverage
+          path: target/coverage
 	  overwrite: true
