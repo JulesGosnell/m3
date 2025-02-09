@@ -23,5 +23,11 @@ jobs:
           chmod +x lein
           sudo mv lein /usr/local/bin/
 
-      - name: Run tests
-        run: lein test
+      - name: Run tests and generate coverage
+        run: lein cloverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: cloverage-report
+          path: target/coverage
