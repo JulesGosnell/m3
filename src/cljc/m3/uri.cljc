@@ -1,0 +1,72 @@
+(ns m3.uri
+  (:require
+   [clojure.string :refer [join split starts-with?]]))
+
+(defn assoc-when [c k v]
+  (if (not-empty v) (assoc c k v) c))
+
+;; not sure I like how paths and fragments fall out on the url side, but ... life is too short...
+;; I don't think we are dealling with the possibility of an :type=:nss...
+(defn parse-uri [s]
+  (if-let [[_ scheme nid nss _query fragment]
+           (re-matches #"(?i)^(urn):([^:]+):([^?#]*)(?:\?([^#]*))?(?:#(.*))?" s)]
+    ;; regexp insists on schema and nid
+    (let [origin (str scheme ":" nid)
+          nss (when-not (empty? nss) nss)]
+      (-> {}
+          (assoc      :type      (or (and origin :urn) (and nss :nss) :fragment))
+          (assoc-when :origin    origin)
+          (assoc-when :nss       nss)
+          (assoc-when :fragment  fragment)))
+    (if-let [[_ scheme authority path _query fragment]
+             (re-matches #"(?i)^(?:(?:([a-z][a-z0-9+.-]*):)?(?://([^/?#]*))?([^?#]*))(?:\?([^#]*))?(?:#(.*))?" s)]
+      ;; regexp does not insist on both schema and authority but... we'll pretend it does
+      (let [origin (and scheme authority (str scheme "://" authority))
+            path (when-not (empty? path) path)]
+        (-> {}
+            (assoc      :type     (or (and origin :url) (and path :path) :fragment))
+            (assoc-when :origin   origin)
+            (assoc-when :path     path)
+            (assoc-when :fragment fragment)))
+      ;; should never happen as id uris should have been validated against meta-schema
+      (throw (ex-info "parse-uri failed:" {:uri s})))))
+
+(defn strip-path [p]
+  (let [s (join "/" (drop-last (split p #"/" -1)))]
+    (when-not (empty? s) s)))
+
+(defn inherit-path [parent child]
+  (if (starts-with? child "/")
+    child
+    (str (and parent (strip-path parent)) "/" child)))
+
+(defn inherit-uri [parent child]
+  (if (nil? parent)
+    child
+    (let [{pt :type} parent
+          {ct :type} child]
+      (case [pt ct]
+        [:urn      :urn]      child
+        [:urn      :url]      child
+        [:urn      :path]     child
+        [:urn      :fragment] (assoc-when parent :fragment (:fragment child))
+        [:url      :urn]      child
+        [:url      :url]      child
+        [:url      :path]     (let [{cp :path cf :fragment} child] (assoc-when (assoc parent :path (inherit-path (:path parent) cp)) :fragment cf))
+        [:url      :fragment] (assoc-when parent :fragment (:fragment child))
+        [:path     :urn]      child
+        [:path     :url]      child
+        [:path     :path]     (let [{cp :path cf :fragment} child] (assoc-when (assoc parent :path (inherit-path (:path parent) cp)) :fragment cf))
+        [:path     :fragment] (assoc-when parent :fragment (:fragment child))
+        [:fragment :urn]      child
+        [:fragment :url]      child
+        [:fragment :path]     child
+        [:fragment :fragment] child))))
+
+(defn uri-base [{t :type :as uri}]
+  (dissoc uri :fragment))
+
+(defn uri-fragment [{t :type :as uri}]
+  (if (= :fragment t)
+    uri
+    (assoc-when {:type :fragment} :fragment (:fragment uri))))
