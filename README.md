@@ -1,5 +1,7 @@
 # m3
 
+[![CI](https://github.com/JulesGosnell/m3/actions/workflows/ci.yml/badge.svg)](https://github.com/JulesGosnell/m3/actions/workflows/ci.yml)
+
 This is the m3 project.
 
 It is based upon a validator for a subset of JSON which I wrote for Agora Digital Capital Markets (https://agoradcm.com/), and which they have kindly donated to the project - my thanks to them for allowing me to share this code.
