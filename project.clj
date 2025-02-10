@@ -21,14 +21,12 @@
 
   :jvm-opts ["-Xmx4G"]
 
-  :test2junit-run-ant true
-
   :plugins [[lein-environ "1.2.0"]                                          ;; https://github.com/weavejester/environ
             [lein-cloverage "1.2.4"]                                        ;; https://github.com/cloverage/cloverage
             [lein-cljsbuild "1.1.8"]                                        ;; https://github.com/emezeske/lein-cljsbuild
             [lein-asset-minifier "0.4.7" :exclusions [org.clojure/clojure]] ;; https://github.com/yogthos/lein-asset-minifier
             [com.jakemccrary/lein-test-refresh "0.25.0"]                    ;; https://github.com/jakemcc/test-refresh
-            [test2junit "1.4.4"]]                                           ;; https://github.com/ruedigergad/test2junit
+            ]
 
   :min-lein-version "2.5.0"
   :uberjar-name "m3.jar"
