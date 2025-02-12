@@ -17,5 +17,5 @@ I hope to get a release up to Clojars soon.
 If you find this useful or interesting and would like to get involved, please give me a shout.
 
 
-Jules (09/02/2025)
+Jules
 
