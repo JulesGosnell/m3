@@ -23,7 +23,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-core.html#ref">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-core.html#ref">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-core.html#ref">✔️</a></td>
-        <td>✔️</td>
+        <td>✔️ (breaking tests)</td>
       </tr>
       <tr>
         <td>$schema</td>
@@ -43,7 +43,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-core.html#id">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-core.html#id">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-core.html#id">✔️</a></td>
-        <td>✔️</td>
+        <td>✔️ (breaking tests)</td>
       </tr>
       <tr>
         <td>$anchor</td>
@@ -53,6 +53,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-core.html#anchor">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-core.html#anchor">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-core.html#anchor">✔️</a></td>
+        <td>✔️ (breaking tests)</td>
       </tr>
       <tr>
         <td>$recursiveRef</td>
@@ -60,8 +61,9 @@
         <td>❌</td>
         <td>❌</td>
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-core.html#recursiveRef">✔️</a></td>
-        <td><a href="https://json-schema.org/draft/2020-12/json-schema-core.html#recursiveRef">✔️</a></td>
-        <td><a href="https://json-schema.org/draft/2021-12/json-schema-core.html#recursiveRef">✔️</a></td>
+        <td>❌</td>
+        <td>❌</td>
+        <td>✔️ (breaking tests)</td>
       </tr>
       <tr>
         <td>$recursiveAnchor</td>
@@ -69,8 +71,29 @@
         <td>❌</td>
         <td>❌</td>
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-core.html#recursiveAnchor">✔️</a></td>
+        <td>❌️</td>
+        <td>❌</td>
+        <td>✔️ (breaking tests)</td>
+      </tr>
+      <tr>
+        <td>$dynamicRef</td>
+        <td>❌</td>
+        <td>❌</td>
+        <td>❌</td>
+        <td>❌</td>
+        <td><a href="https://json-schema.org/draft/2020-12/json-schema-core.html#recursiveRef">✔️</a></td>
+        <td><a href="https://json-schema.org/draft/2021-12/json-schema-core.html#recursiveRef">✔️</a></td>
+        <td>✔️ (breaking tests)</td>
+      </tr>
+      <tr>
+        <td>$dynamicAnchor</td>
+        <td>❌</td>
+        <td>❌</td>
+        <td>❌</td>
+        <td>❌</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-core.html#recursiveAnchor">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-core.html#recursiveAnchor">✔️</a></td>
+        <td>✔️ (breaking tests)</td>
       </tr>
       <tr>
         <td>$vocabulary</td>
@@ -80,6 +103,7 @@
         <td>❌</td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-core.html#vocabulary">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-core.html#vocabulary">✔️</a></td>
+        <td>❌ (NYI)</td>
       </tr>
       <tr>
         <td>$defs</td>
@@ -89,7 +113,7 @@
         <td>❌</td>
         <td>❌</td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-core.html#defs">✔️</a></td>
-        <td>✔️</td>
+        <td>✔️ (breaking test)</td>
       </tr>
       <tr>
         <th colspan="7">Data Types and Validation</th>
@@ -327,7 +351,7 @@
         <td>❌</td>
         <td>❌</td>
         <td>❌</td>
-        <td>✔️</td>
+        <td>✔️ (breaking test)</td>
       </tr>
 
       <tr>
@@ -341,7 +365,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.7.3.1">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-validation.html#rfc.section.7.3.1">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-validation.html#rfc.section.7.3.1">✔️</a></td>
-        <td>✔️</td>
+        <td>✔️ (breaking tests)</td>
       </tr>
       <tr>
         <td>format: date</td>
@@ -361,7 +385,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.7.3.1">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-validation.html#rfc.section.7.3.1">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-validation.html#rfc.section.7.3.1">✔️</a></td>
-        <td>✔️</td>
+        <td>✔️ (breaking tests)</td>
       </tr>
       <tr>
         <td>format: email</td>
@@ -421,7 +445,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.7.3.7">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-validation.html#rfc.section.7.3.7">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-validation.html#rfc.section.7.3.7">✔️</a></td>
-        <td>❌</td>
+        <td>✔️</td>
       </tr>
       <tr>
         <td>format: iri</td>
@@ -431,7 +455,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.7.3.8">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-validation.html#rfc.section.7.3.8">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-validation.html#rfc.section.7.3.8">✔️</a></td>
-        <td>❌</td>
+        <td>✔️</td>
       </tr>
       <tr>
         <td>format: iri-reference</td>
@@ -441,7 +465,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.7.3.9">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-validation.html#rfc.section.7.3.9">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-validation.html#rfc.section.7.3.9">✔️</a></td>
-        <td>❌</td>
+	<td>✔️</td>
       </tr>
       <tr>
         <td>format: uri-template</td>
@@ -451,7 +475,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.7.3.10">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-validation.html#rfc.section.7.3.10">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-validation.html#rfc.section.7.3.10">✔️</a></td>
-        <td>❌</td>
+	<td>✔️</td>
       </tr>
       <tr>
         <td>format: json-pointer</td>
@@ -491,7 +515,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.7.3.13">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-validation.html#rfc.section.7.3.13">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-validation.html#rfc.section.7.3.13">✔️</a></td>
-        <td>❌</td>
+        <td>✔️</td>
       </tr>
       <tr>
         <td>format: idn-hostname</td>
@@ -501,7 +525,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.7.3.14">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-validation.html#rfc.section.7.3.14">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-validation.html#rfc.section.7.3.14">✔️</a></td>
-        <td>❌</td>
+        <td>❌ (NYI)</td>
       </tr>
       <tr>
         <td>format: uuid</td>
@@ -521,7 +545,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.7.3.16">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-validation.html#rfc.section.7.3.16">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-validation.html#rfc.section.7.3.16">✔️</a></td>
-        <td>❌</td>
+        <td>✔️</td>
       </tr>
       <tr>
         <td>pattern</td>
@@ -561,7 +585,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.8.3">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-validation.html#rfc.section.8.3">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-validation.html#rfc.section.8.3">✔️</a></td>
-        <td>❌</td>
+	<td>✔️</td>
       </tr>
       <tr>
         <td>contentEncoding</td>
@@ -571,7 +595,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.8.3">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-validation.html#rfc.section.8.3">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-validation.html#rfc.section.8.3">✔️</a></td>
-        <td>❌</td>
+        <td>✔️</td>
       </tr>
       <tr>
         <td>contentSchema</td>
@@ -581,7 +605,7 @@
         <td>❌</td>
         <td>❌</td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-validation.html#rfc.section.8.4">✔️</a></td>
-        <td>❌</td>
+        <td>✔️</td>
       </tr>
       <tr>
         <th colspan="7">Object Keywords</th>
@@ -644,6 +668,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.6.5.8">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-validation.html#rfc.section.6.5.8">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-validation.html#rfc.section.6.5.8">✔️</a></td>
+        <td>❌ (NYI)</td>
       </tr>
       <tr>
         <td>minProperties</td>
@@ -768,7 +793,7 @@
         <td><a href="https://json-schema.org/draft/2019-09/json-schema-validation.html#rfc.section.6.4.6">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2020-12/json-schema-validation.html#rfc.section.6.4.6">✔️</a></td>
         <td><a href="https://json-schema.org/draft/2021-12/json-schema-validation.html#rfc.section.6.4.6">✔️</a></td>
-        <td>✔️</td>
+        <td>❌ (NYI)️</td>
       </tr>
       <tr>
         <td>prefixItems</td>
