@@ -12,7 +12,7 @@ It is tested (lein test) against https://github.com/json-schema-org/JSON-Schema-
 
 Here is a table of M3's current [features](https://julesgosnell.github.io/m3/features.html) - it needs updating but it will give you an idea of how much is implemented.
 
-I hope to get a relese up to Clojars soon.
+I hope to get a release up to Clojars soon.
 
 If you find this useful or interesting and would like to get involved, please give me a shout.
 
