@@ -10,7 +10,7 @@ I aspire to it becoming a complete and fully featured JSON validator which can b
 
 It is tested (lein test) against [JSON-Schema-Test-Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite). There are still holes in fn-ality - I hope to plug these soon.
 
-Here is a table of M3's current [features](https://julesgosnell.github.io/m3/features.html) - it needs updating but it will give you an idea of how much is implemented.
+Here is a table of M3's current [features](https://julesgosnell.github.io/m3/features.html) which should allow you to see whether we support the functionality that your project requires.
 
 I hope to get a release up to [Clojars](https://clojars.org/) soon.
 
