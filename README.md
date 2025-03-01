@@ -19,3 +19,94 @@ If you find this useful or interesting and would like to get involved, please gi
 
 Jules
 
+Here are some simple usage examples:
+
+```
+;; (validate schema-context schema document-context document)
+```
+
+```
+m3.validate> (validate {} {"type" "string"} {} "hello")
+{:valid? true, :errors nil}
+```
+
+```
+m3.validate> (validate {} {"type" "string"} {} 0)
+{:valid? false,
+ :errors
+ [{:schema-path [],
+   :message "schema: document did not conform - 0",
+   :document-path [],
+   :document 0,
+   :schema {"type" "string"},
+   :errors
+   [{:schema-path ["type"],
+     :message "type: not a string - 0",
+     :document-path [],
+     :document 0,
+     :schema {"type" "string"}}]}]}
+```
+
+```
+m3.validate> (validate {} {"type" "array" "items" {"type" "string"}} {} ["hello" "goodbye"])
+{:valid? true, :errors nil}
+```
+
+```
+m3.validate> (validate {} {"type" "array" "items" {"type" "string"}} {} ["hello" 0])
+{:valid? false,
+ :errors
+ [{:schema-path [],
+   :message "schema: document did not conform - [\"hello\" 0]",
+   :document-path [],
+   :document ["hello" 0],
+   :schema {"type" "array", "items" {"type" "string"}},
+   :errors
+   [{:schema-path ["items"],
+     :message
+     "items: at least one item did not conform to schema - [\"hello\" 0]",
+     :document-path [],
+     :document ["hello" 0],
+     :schema {"type" "array", "items" {"type" "string"}},
+     :errors
+     [{:schema-path ["items"],
+       :message "schema: document did not conform - 0",
+       :document-path [1],
+       :document 0,
+       :schema {"type" "string"},
+       :errors
+       [{:schema-path ["items" "type"],
+         :message "type: not a string - 0",
+         :document-path [1],
+         :document 0,
+         :schema {"type" "string"}}]}]}]}]}
+```
+
+```
+m3.validate> (validate {} {"type" "string" "format" "date"} {} "2025/01/01")
+{:valid? false,
+ :errors
+ [{:schema-path [],
+   :message "schema: document did not conform - \"2025/01/01\"",
+   :document-path [],
+   :document "2025/01/01",
+   :schema {"type" "string", "format" "date"},
+   :errors
+   [{:schema-path ["format"],
+     :message
+     "format: not a valid date: \"2025/01/01\" - Text '2025/01/01' could not be parsed at index 4 - \"2025/01/01\"",
+     :document-path [],
+     :document "2025/01/01",
+     :schema {"type" "string", "format" "date"}}]}]}
+```
+
+```
+m3.validate> (validate {:strict-format? false} {"type" "string" "format" "date"} {} "2025/01/01")
+[nREPL-session-2ae0106f-f0da-4741-ac30-6dc3a1fe61e1] WARN m3.validate - format: not a valid date: "2025/01/01" - Text '2025/01/01' could not be parsed at index 4 - "2025/01/01"
+{:valid? true, :errors nil}
+```
+
+```
+m3.validate> (validate {} {"type" "string" "format" "date"} {} "2025-01-01")
+{:valid? true, :errors nil}
+```
