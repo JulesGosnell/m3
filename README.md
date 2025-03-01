@@ -6,7 +6,7 @@ This is the m3 project - a pure Clojure JSON validator.
 
 It is based upon a validator for a subset of JSON which I wrote for [Agora Digital Capital Markets](https://agoradcm.com/), and which they have kindly donated to the project - my thanks to them for allowing me to share this code.
 
-I aspire to it becoming a complete and fully featured JSON validator which can be run and produce identical results in both the backend and frontend of any Clojure[Script] application.
+I aspire to it becoming a complete and fully featured JSON validator which can be run and produce identical results in both the backend and frontend of any Clojure[Script] application including errors expressed as native types for easy integration.
 
 It is tested (lein test) against [JSON-Schema-Test-Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite). There are still holes in fn-ality - I hope to plug these soon.
 
@@ -55,7 +55,7 @@ m3.validate> (validate {} {"type" "string"} {} 0)
 m3.validate> 
 ```
 
-A successful vlidation - array
+A successful validation - array
 
 ```
 m3.validate> (validate {} {"type" "array" "items" {"type" "string"}} {} ["hello" "goodbye"])
@@ -96,7 +96,7 @@ m3.validate> (validate {} {"type" "array" "items" {"type" "string"}} {} ["hello"
 m3.validate> 
 ```
 
-A failed vaidation - format
+A failed validation - format
 
 ```
 m3.validate> (validate {} {"type" "string" "format" "date"} {} "2025/01/01")
