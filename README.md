@@ -21,14 +21,21 @@ Jules
 
 Here are some simple usage examples:
 
+Usage
+
 ```
 ;; (validate schema-context schema document-context document)
 ```
 
+A successful validation - string
+
 ```
 m3.validate> (validate {} {"type" "string"} {} "hello")
 {:valid? true, :errors nil}
+m3.validate> 
 ```
+
+A failed validation
 
 ```
 m3.validate> (validate {} {"type" "string"} {} 0)
@@ -45,12 +52,18 @@ m3.validate> (validate {} {"type" "string"} {} 0)
      :document-path [],
      :document 0,
      :schema {"type" "string"}}]}]}
+m3.validate> 
 ```
+
+A successful vlidation - array
 
 ```
 m3.validate> (validate {} {"type" "array" "items" {"type" "string"}} {} ["hello" "goodbye"])
 {:valid? true, :errors nil}
+m3.validate> 
 ```
+
+A failed validation - array
 
 ```
 m3.validate> (validate {} {"type" "array" "items" {"type" "string"}} {} ["hello" 0])
@@ -80,7 +93,10 @@ m3.validate> (validate {} {"type" "array" "items" {"type" "string"}} {} ["hello"
          :document-path [1],
          :document 0,
          :schema {"type" "string"}}]}]}]}]}
+m3.validate> 
 ```
+
+A failed vaidation - format
 
 ```
 m3.validate> (validate {} {"type" "string" "format" "date"} {} "2025/01/01")
@@ -98,15 +114,35 @@ m3.validate> (validate {} {"type" "string" "format" "date"} {} "2025/01/01")
      :document-path [],
      :document "2025/01/01",
      :schema {"type" "string", "format" "date"}}]}]}
+m3.validate> 
 ```
+
+A successful validation - suppression of format checking
 
 ```
 m3.validate> (validate {:strict-format? false} {"type" "string" "format" "date"} {} "2025/01/01")
 [nREPL-session-2ae0106f-f0da-4741-ac30-6dc3a1fe61e1] WARN m3.validate - format: not a valid date: "2025/01/01" - Text '2025/01/01' could not be parsed at index 4 - "2025/01/01"
 {:valid? true, :errors nil}
+m3.validate> 
 ```
+
+A successful validation - format
 
 ```
 m3.validate> (validate {} {"type" "string" "format" "date"} {} "2025-01-01")
 {:valid? true, :errors nil}
+m3.validate> 
+```
+
+A successful validation - oneOf - with tracing enabled
+
+```
+m3.validate> (validate {:trace? true} {"oneOf" [{"type" "string" "format" "date"} {"type" "integer"} {"type" "array"} {"type" "boolean"}]} {} false)
+["oneOf" 0 "type"] [] [❌ type: not a string - false]
+["oneOf" 1 "type"] [] [❌ type: not an integer - false]
+["oneOf" 2 "type"] [] [❌ type: not an array - false]
+["oneOf" 3 "type"] [] ✅
+["oneOf"] [] ✅
+{:valid? true, :errors nil}
+m3.validate> 
 ```
