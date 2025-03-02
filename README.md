@@ -12,7 +12,7 @@ It is tested (`lein test`) against [JSON-Schema-Test-Suite](https://github.com/j
 
 Here is a table of M3's current [features](https://julesgosnell.github.io/m3/features.html) which should allow you to see whether we support the functionality that your project requires.
 
-I hope to get a release up to [Clojars](https://clojars.org/) soon.
+I have pushed a snapshot up to [Clojars](https://clojars.org/) - [here](https://clojars.org/org.clojars.jules_gosnell/m3).
 
 If you find this useful or interesting and would like to get involved, please give me a shout.
 

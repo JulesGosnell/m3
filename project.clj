@@ -1,4 +1,4 @@
-(defproject m3 "0.1.0-SNAPSHOT"
+(defproject org.clojars.jules_gosnell/m3 "0.1.0-SNAPSHOT"
   :description "A pure Clojure/ClojureScript JSON validator"
   :url "https://github.com/JulesGosnell/m3"
   :license {:name "Apache License, Version 2.0"
