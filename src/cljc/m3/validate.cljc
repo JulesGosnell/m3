@@ -14,7 +14,7 @@
 
 (ns m3.validate
   (:require
-   #?@(:cljs [[goog.string :refer [format]]])
+   #?(:cljs [goog.string :refer [format]])
    #?(:clj  [cheshire.core :as cheshire]
       :cljs [cljs.core :as cljs])
    [cljc.java-time.local-date :as ld]
@@ -33,6 +33,24 @@
 
 #?(:cljs
    (def Exception js/Error))
+
+#?(:cljs
+   (def Big (js/require "big.js")))
+
+#?(:cljs
+   (defn bigdec [x]
+     (Big. (str x)))) ;; Big constructor takes a string or number
+
+(def long-max-value
+  #?(:clj Long/MAX_VALUE
+     :cljs js/Number.MAX_SAFE_INTEGER))
+
+#?(:cljs (def pmap map))
+
+#?(:cljs (def fs (js/require "fs")))
+#?(:cljs (def node-path (js/require "path")))
+
+#?(:cljs (defn slurp [path] (.readFileSync fs path "utf8")))
 
 ;;------------------------------------------------------------------------------
 
@@ -517,7 +535,7 @@
      (when (string? m1-doc)
        (match
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-        #"^[A-Za-z][A-Za-z0-9+.\-]*:\/\/(?:[^\\s/?#@\\\\]+@)?(?:\[[0-9A-Fa-f:]+\]|[^\\s/?#@\\\\:]+)(?::\d+)?(?:\/[^\s?#\\\\]*)?(?:\?[^\s#\\\\]*)?(?:#[^\s\\\\]*)?$"
+        #"^[A-Za-z][A-Za-z0-9+.\-]*://(?:[^\s/?#@\\]+@)?(?:\[[0-9A-Fa-f:]+\]|[^\s/?#@:]+)(?::\d+)?(?:/[^\s?#\\]*)?(?:\?[^\s#\\]*)?(?:#[^\s\\]*)?$"
         m2-ctx m2-path m2-doc m1-path m1-doc)))))
 
 (defmethod check-format-2 "iri-reference" [_format m2-ctx m2-path m2-doc]
@@ -1250,7 +1268,7 @@
 (defmethod check-property-2 :contains [_property m2-ctx m2-path m2-doc [m2-val mn? mx?]]
   (if-let [checker (and (present? m2-val) (make-checker m2-ctx m2-path m2-val))]
     (let [lower-bound (if (present? mn?) mn? 1)
-          upper-bound (if (present? mx?) mx? Long/MAX_VALUE)]
+          upper-bound (if (present? mx?) mx? long-max-value)]
       (memo
        (fn [m1-ctx m1-path m1-doc]
          (when (json-array? m1-doc)

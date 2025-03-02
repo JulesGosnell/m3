@@ -14,12 +14,52 @@
 
 (ns m3.testsuite-test
   [:require
-   [clojure.java.io :refer [file]]
+   #?(:clj  [clojure.test :refer [deftest testing is]]
+      :cljs [cljs.test :refer-macros [deftest testing is]])
+   #?(:clj  [clojure.java.io :refer [file]])
+   #?(:cljs [goog.string :refer [format]])
    [clojure.pprint :refer [pprint]]
-   [clojure.test :refer [deftest testing is]]
-   ;; #?(:clj  [clojure.test :refer [deftest testing is]]
-   ;;    :cljs [cljs.test :refer-macros [deftest testing is]])
-   [m3.validate :refer [validate draft->$schema uri->continuation json-decode]]])
+   [m3.validate :refer [validate draft->$schema uri->continuation json-decode]]]
+  [:import
+   #?(:clj  [java.io File])])
+
+;;------------------------------------------------------------------------------
+;; file stuff
+
+#?(:cljs (def fs (js/require "fs")))
+
+#?(:cljs (def node-path (js/require "path")))
+
+#?(:cljs (defn file [^String s] s))
+
+(defn file-name [f]
+  #?(:clj (.getName ^File f)
+     :cljs (.basename node-path f)))   
+
+(defn directory? [f]
+  #?(:clj (.isDirectory ^File f)
+     :cljs (-> (.statSync fs f) .isDirectory)))
+
+#?(:cljs (defn slurp [path] (.readFileSync fs path "utf8")))
+
+#?(:cljs (def Throwable js/Error))
+
+#?(:cljs
+   (defn file-seq [d]
+     (letfn [(node-file-seq [dir]
+               ;; Each directory yields itself plus its children
+               (lazy-seq
+                (cons dir
+                      (mapcat
+                       (fn [entry]
+                         (let [full-path (.resolve node-path dir entry)
+                               stats (.statSync fs full-path)]
+                           (if (.isDirectory stats)
+                             (node-file-seq full-path)
+                             (list full-path))))
+                       (.readdirSync fs dir)))))]
+       (node-file-seq d))))
+
 
 ;;------------------------------------------------------------------------------
 ;; run our validator against: https://github.com/json-schema-org/JSON-Schema-Test-Suite.git JSON-Schema-Test-Suite
@@ -155,16 +195,16 @@
     (is v? (json->string es))))
 
 (defn test-file [dname f draft]
-  (let [feature (.getName f)]
+  (let [feature (file-name f)]
     (testing (str "\"" feature "\"")
-      (if (not (exclude-module? (.getName f)))
+      (if (not (exclude-module? (file-name f)))
         (doseq [{d1 "description" m2 "schema" ts "tests"} (json-decode (slurp f))]
           (let [c2 {:draft draft :uri->schema (uri->continuation uri-base->dir)}
                 c1 {:draft draft}]
             (testing (str "\"" d1 "\"")
               (doseq [{d2 "description" m1 "data" v? "valid"} ts]
                 (testing (str "\"" d2 "\"" ":")
-                  (if (not (exclude-test? [(.getName f) d1 d2]))
+                  (if (not (exclude-test? [(file-name f) d1 d2]))
                     (do
                       (let [c2 (-> c2
                                    (assoc
@@ -176,18 +216,18 @@
                                     :strict-integer?
                                     (and (= "zeroTerminatedFloats.json" feature)
                                          (= "a float is not an integer even without fractional part" d2))))]
-                        ;;(prn "testing: " dname (.getName f) d1 d2)
+                        ;;(prn "testing: " dname (file-name f) d1 d2)
                         (when (map? m2)
                           (testing "m3/m2" (is-validated2 (assoc m2 "$schema" (str (draft->$schema draft) "#")))))
-                        (try (testing "m2/m1" (is-validated c2 m2 c1 m1 v?)) (catch Throwable e (prn [(.getName f) d1 d2] e)))))
+                        (try (testing "m2/m1" (is-validated c2 m2 c1 m1 v?)) (catch Throwable e (prn [(file-name f) d1 d2] e)))))
                     ;;(println "skipping:" d2)
                     ))))))))))
   
 (defn test-directory [d draft]
-  (let [dname (.getName d)]
+  (let [dname (file-name d)]
     (testing (str dname ":")
       (doseq [f (drop 1 (file-seq d))]
-        (if (.isDirectory f)
+        (if (directory? f)
           (test-directory f draft)
           (test-file dname f draft))))))
 
