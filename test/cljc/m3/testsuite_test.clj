@@ -16,8 +16,9 @@
   [:require
    [clojure.java.io :refer [file]]
    [clojure.pprint :refer [pprint]]
-   #?(:clj  [clojure.test :refer [deftest testing is]]
-      :cljs [cljs.test :refer-macros [deftest testing is]])
+   [clojure.test :refer [deftest testing is]]
+   ;; #?(:clj  [clojure.test :refer [deftest testing is]]
+   ;;    :cljs [cljs.test :refer-macros [deftest testing is]])
    [m3.validate :refer [validate draft->$schema uri->continuation json-decode]]])
 
 ;;------------------------------------------------------------------------------
