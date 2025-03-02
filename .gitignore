@@ -15,4 +15,9 @@ pom.xml.asc
 .clj-kondo/
 .lsp/
 .github/
-
+.shadow-cljs/
+node_modules/
+shadow-cljs.edn
+.lein-env
+package.json
+package-lock.json

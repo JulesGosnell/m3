@@ -13,10 +13,10 @@
 ;; limitations under the License.
 
 (ns m3.uri-test
-  (:require
-   [m3.uri :refer [parse-uri inherit-uri parse-uri]] 
-   #?(:clj [clojure.test :refer [deftest testing is]]
-      :cljs [cljs.test :as t :include-macros true])))
+  (:require 
+   #?(:clj  [clojure.test :refer [deftest testing is]]
+      :cljs [cljs.test :refer-macros [deftest testing is]])
+   [m3.uri :refer [parse-uri inherit-uri parse-uri]]))
 
 ;;------------------------------------------------------------------------------
 
