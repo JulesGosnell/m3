@@ -167,23 +167,17 @@
 
     ;; issues with cljs
     #?@(:cljs
-       [["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]
+        [
+         ;; javascript treats numbers differently - grrr
+         ["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]
 
-        ["properties.json" "properties whose names are Javascript object property names" "ignores arrays"]
-        ["properties.json" "properties whose names are Javascript object property names" "ignores other non-objects"]
-        ["properties.json" "properties whose names are Javascript object property names" "none of the properties mentioned"]
-        ["properties.json" "properties whose names are Javascript object property names" "__proto__ not valid"]
-        ["properties.json" "properties whose names are Javascript object property names" "toString not valid"]
-        ["properties.json" "properties whose names are Javascript object property names" "constructor not valid"]
-        ["properties.json" "properties whose names are Javascript object property names" "all present and valid"]
-        ["required.json" "required properties whose names are Javascript object property names" "constructor present"]
+         ;; ??
+         ["required.json" "required properties whose names are Javascript object property names" "constructor present"]
 
-        ["content.json" "validation of binary string-encoding" "a valid base64 string"]
-        ["content.json" "validation of binary-encoded media type documents" "a valid base64-encoded JSON document"]
-
-        ["idn-email.json" "validation of an internationalized e-mail addresses" "a valid e-mail address"]])
-
-    
+         ;; base64 decoding NYI
+         ["content.json" "validation of binary string-encoding" "a valid base64 string"]
+         ["content.json" "validation of binary-encoded media type documents" "a valid base64-encoded JSON document"]
+         ])
     })
 
 (defn load-schema [s]
