@@ -43,14 +43,14 @@
                                 :autorun true}}}  
 
   :profiles {:dev {:repl-options {:init-ns m3.repl}
-                   :dependencies [[cider/piggieback "0.5.3"]
+                   :dependencies [[cider/piggieback "0.6.0"]
                                   [binaryage/devtools "1.0.7"]
                                   [prone "2021-04-23"]
-                                  [nrepl "1.1.1"]
+                                  [nrepl "1.3.1"]
                                   [pjstadig/humane-test-output "0.11.0"]]
 
                    :source-paths ["env/dev/clj"]
-                   :plugins [[cider/cider-nrepl "0.47.1"]
+                   :plugins [[cider/cider-nrepl "0.52.1"]
                              [org.clojure/tools.namespace "1.5.0"
                               :exclusions [org.clojure/tools.reader]]
                              [refactor-nrepl "3.10.0"
