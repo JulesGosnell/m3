@@ -14,7 +14,10 @@ Here is a table of M3's current [features](https://julesgosnell.github.io/m3/fea
 
 I have pushed a snapshot up to [Clojars](https://clojars.org/) - [here](https://clojars.org/org.clojars.jules_gosnell/m3).
 
+I have a couple more tests to fix, then I will figure out what needs to be done to publish a CLJS version.
+
 If you find this useful or interesting and would like to get involved, please give me a shout.
+
 
 To checkout:
 
