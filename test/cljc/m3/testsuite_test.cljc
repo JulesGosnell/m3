@@ -17,7 +17,8 @@
    #?(:clj  [clojure.test :refer [deftest testing is]]
       :cljs [cljs.test :refer-macros [deftest testing is]])
    #?(:clj  [clojure.java.io :refer [file]])
-   #?(:cljs [goog.string :refer [format]])
+   #?(:cljs [goog.string :as gstring])
+   #?(:cljs [goog.string.format])
    [clojure.pprint :refer [pprint]]
    [m3.validate :refer [validate draft->$schema uri->continuation json-decode]]]
   [:import
@@ -60,6 +61,7 @@
                        (.readdirSync fs dir)))))]
        (node-file-seq d))))
 
+#?(:cljs (defn format [fmt & args] (apply gstring/format fmt args)))
 
 ;;------------------------------------------------------------------------------
 ;; run our validator against: https://github.com/json-schema-org/JSON-Schema-Test-Suite.git JSON-Schema-Test-Suite
@@ -162,6 +164,10 @@
 
     ;; needs $vocabulary support
     ["vocabulary.json" "schema that uses custom metaschema with with no validation vocabulary" "no validation: invalid number, but it still validates"]
+
+    ;; issues with cljs
+
+    
     })
 
 (defn load-schema [s]

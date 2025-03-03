@@ -14,7 +14,8 @@
 
 (ns m3.validate
   (:require
-   #?(:cljs [goog.string :refer [format]])
+   #?(:cljs [goog.string :as gstring])
+   #?(:cljs [goog.string.format])
    #?(:clj  [cheshire.core :as cheshire]
       :cljs [cljs.core :as cljs])
    [cljc.java-time.local-date :as ld]
@@ -41,6 +42,16 @@
    (defn bigdec [x]
      (Big. (str x)))) ;; Big constructor takes a string or number
 
+#?(:cljs
+   (defn big-mod [^js/Big l ^js/Big r] (.mod l r))
+   :clj
+   (def big-mod mod))
+
+#?(:cljs
+   (defn big-zero? [^js/Big b] (.eq b 0))
+   :clj
+   (def big-zero? zero?))
+
 (def long-max-value
   #?(:clj Long/MAX_VALUE
      :cljs js/Number.MAX_SAFE_INTEGER))
@@ -51,6 +62,8 @@
 #?(:cljs (def node-path (js/require "path")))
 
 #?(:cljs (defn slurp [path] (.readFileSync fs path "utf8")))
+
+#?(:cljs (defn format [fmt & args] (apply gstring/format fmt args)))
 
 ;;------------------------------------------------------------------------------
 
@@ -819,7 +832,7 @@
      (fn [_m1-ctx m1-path m1-doc]
        (when (and
               (json-number? m1-doc)
-              (not (zero? (mod (bigdec m1-doc) m2-val-bd))))
+              (not (big-zero? (big-mod (bigdec m1-doc) m2-val-bd))))
          [(make-error (format "%s is not a multiple of %s" m1-doc m2-val) m2-path m2-doc m1-path m1-doc)])))))
 
 ;; standard string properties
