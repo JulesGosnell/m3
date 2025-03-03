@@ -1169,7 +1169,7 @@
   (let [bail (if x? conj (fn [_acc r] (reduced [r])))]
     (memo
      (fn [_m1-ctx m1-path m1-doc]
-       (keys m1-doc) ;; seems to have side-effect of fixing a cljs test !!??
+       #?(:cljs (keys m1-doc)) ;; seems to have side-effect of fixing a cljs test !!??
        (when (json-object? m1-doc)
          (when-let [missing (seq (reduce (fn [acc k] (if (contains? m1-doc k) acc (bail acc k))) [] m2-val))]
            [(make-error ["required: missing properties (at least):" missing] m2-path m2-doc m1-path m1-doc)]))))))
