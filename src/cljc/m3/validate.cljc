@@ -895,9 +895,9 @@
 #?(:clj
    (let [^java.util.Base64 decoder (java.util.Base64/getDecoder)]
      (defn base64-decode [^String s] (String. (.decode decoder (.getBytes s "UTF-8")) "UTF-8")))
-
+   
    :cljs
-   (defn base64-decode [s] "NYI"))
+   (defn base64-decode [s] (.toString (js/Buffer.from s "base64") "utf8")))
 
 (def ce->decoder
   {absent identity
@@ -912,11 +912,6 @@
    absent             json-decode
    "application/json" json-decode
    })
-
-;; TODO:
-;; - should it also round-trip to test stuff ?
-;; - I've only implemented base64 and yet it passes all tests
-;; - no unmarshall json solution in clojurescript yet...
 
 (defmethod check-property-2 :content [_property {d :draft :as m2-ctx} m2-path m2-doc [ce cmt cs]]
   (let [ce-decoder (ce->decoder ce)

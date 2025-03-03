@@ -173,10 +173,6 @@
 
          ;; ??
          ["required.json" "required properties whose names are Javascript object property names" "constructor present"]
-
-         ;; base64 decoding NYI
-         ["content.json" "validation of binary string-encoding" "a valid base64 string"]
-         ["content.json" "validation of binary-encoded media type documents" "a valid base64-encoded JSON document"]
          ])
     })
 
