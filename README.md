@@ -17,7 +17,23 @@ I have pushed a snapshot up to [Clojars](https://clojars.org/) - [here](https://
 If you find this useful or interesting and would like to get involved, please give me a shout.
 
 
-Jules
+```
+git clone git@github.com:JulesGosnell/m3.git
+cd m3
+``
+
+for clj:
+```
+lein test
+```
+
+for cljs:
+```
+npm install source-map-support --save-dev
+npm install big.js
+lein test-cljs
+```
+
 
 Here are some simple usage examples:
 
