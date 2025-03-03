@@ -16,18 +16,19 @@ I have pushed a snapshot up to [Clojars](https://clojars.org/) - [here](https://
 
 If you find this useful or interesting and would like to get involved, please give me a shout.
 
+To checkout:
 
 ```
 git clone git@github.com:JulesGosnell/m3.git
 cd m3
-``
+```
 
-for clj:
+To test on clj:
 ```
 lein test
 ```
 
-for cljs:
+To test on cljs:
 ```
 npm install source-map-support --save-dev
 npm install big.js
