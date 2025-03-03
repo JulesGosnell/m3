@@ -170,9 +170,6 @@
         [
          ;; javascript treats numbers differently - grrr
          ["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]
-
-         ;; ??
-         ["required.json" "required properties whose names are Javascript object property names" "constructor present"]
          ])
     })
 
