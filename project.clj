@@ -35,12 +35,19 @@
   :resource-paths ["resources" "target/cljsbuild"]
 
 
-  :shadow-cljs {:builds {:test {:target :node-test
-                                :output-dir "target/shadow"
-                                :output-to "target/shadow/test.js"
-                                :runner-ns "m3.runner"
-                                :ns-regexp "-test$"
-                                :autorun true}}}  
+  :shadow-cljs {:builds {:test
+                         {:target :node-test
+                          :output-dir "target/shadow"
+                          :output-to "target/shadow/test.js"
+                          :runner-ns "m3.runner"
+                          :ns-regexp "-test$"
+                          :autorun true}
+                         :dev
+                         {:target :node-script
+                          :output-dir "target/node"
+                          :output-to "target/node/repl.js"
+                          :main m3.repl/-main
+                          :devtools {:autoload true}}}}  
 
   :profiles {:dev {:repl-options {:init-ns m3.repl}
                    :dependencies [[cider/piggieback "0.6.0"]

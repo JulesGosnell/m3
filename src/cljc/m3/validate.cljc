@@ -27,9 +27,6 @@
   #?(:clj
      (:import
       [org.graalvm.polyglot Context Value]))
-  ;; temporary
-  ;; (:import [java.net URL]
-  ;;          [java.io BufferedReader InputStreamReader])
   )
 
 #?(:cljs
@@ -42,15 +39,13 @@
    (defn bigdec [x]
      (Big. (str x)))) ;; Big constructor takes a string or number
 
-#?(:cljs
-   (defn big-mod [^js/Big l ^js/Big r] (.mod l r))
-   :clj
-   (def big-mod mod))
+(def big-mod
+  #?(:cljs (fn [^js/Big l ^js/Big r] (.mod l r))
+     :clj  mod))
 
-#?(:cljs
-   (defn big-zero? [^js/Big b] (.eq b 0))
-   :clj
-   (def big-zero? zero?))
+(def big-zero?
+  #?(:cljs (fn [^js/Big b] (.eq b 0))
+     :clj  zero?))
 
 (def long-max-value
   #?(:clj Long/MAX_VALUE
@@ -78,11 +73,17 @@
 
 ;;------------------------------------------------------------------------------
 
+#?(:cljs
+   (defn deep-js->clj [x]
+     (cond
+       (.isArray js/Array x) (into [] (map deep-js->clj) x)
+       (= (goog.typeOf x) "object") (into {} (map #(vector (aget % 0) (deep-js->clj (aget % 1))))
+                                              (.entries js/Object x))
+       :else x)))
+
 (defn json-decode [s]
-  #?(:clj
-     (cheshire/decode s)
-     :cljs
-     (cljs/js->clj (js/JSON.parse s) :keywordize-keys false)))
+  #?(:clj (cheshire/decode s)
+     :cljs (deep-js->clj (js/JSON.parse s))))
 
 ;;------------------------------------------------------------------------------
 
@@ -1169,7 +1170,6 @@
   (let [bail (if x? conj (fn [_acc r] (reduced [r])))]
     (memo
      (fn [_m1-ctx m1-path m1-doc]
-       #?(:cljs (keys m1-doc)) ;; seems to have side-effect of fixing a cljs test !!??
        (when (json-object? m1-doc)
          (when-let [missing (seq (reduce (fn [acc k] (if (contains? m1-doc k) acc (bail acc k))) [] m2-val))]
            [(make-error ["required: missing properties (at least):" missing] m2-path m2-doc m1-path m1-doc)]))))))
