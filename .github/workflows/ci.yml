@@ -25,14 +25,13 @@ jobs:
           chmod +x lein
           sudo mv lein /usr/local/bin/
 
-      - name: Run tests
+      - name: Run CLJ tests
         run: lein test
 
       - name: Install NPM deps
         run: |
           npm install source-map-support --save-dev
           npm install big.js
-
 
       - name: Run CLJS tests
         run: lein test-cljs
