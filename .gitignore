@@ -21,3 +21,5 @@ shadow-cljs.edn
 .lein-env
 package.json
 package-lock.json
+test2junit/xml/m3.testsuite-test.xml
+test2junit/xml/m3.uri-test.xml
