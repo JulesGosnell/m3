@@ -28,5 +28,11 @@ jobs:
       - name: Run tests
         run: lein test
 
+      - name: Install NPM deps
+        run: |
+          npm install source-map-support --save-dev
+          npm install big.js
+
+
       - name: Run CLJS tests
         run: lein test-cljs
