@@ -237,6 +237,23 @@ m3.validate> (validate {:trace? true} {"oneOf" [{"type" "string" "format" "date"
 m3.validate> 
 ```
 
+Limitations:
 
+Java and JavaScript treat numbers very differently and this behaviour is inherited by other languages built upon those platforms.
 
+```
+clj.user> (= 1 1.0)
+false
+clj.user> 
+```
 
+vs
+
+```
+cljs.user> (= 1 1.0)
+true
+cljs.user> 
+```
+
+This means that there will be edge cases which will validate in CLJS but not CLJ and vice-versa.
+I could add a layer of my own number types on top of CLJS to try to get it to behave like CLJ but I think this would intrude too heavily on the user's JSON docs and violate the principle of least surprise. So, unless anyone can suggest a better solution, I am going to live with the JS number stack and the inconsistency between platforms for the present.
