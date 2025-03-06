@@ -59,7 +59,7 @@ shadow-cljs - watching build :dev
 [:dev] Build completed. (87 files, 86 compiled, 0 warnings, 4.40s)
 ```
 
-install websocket library
+install websocket library (1st time)
 
 ```
 jules@fedora:~/src/m3$ npm install ws
