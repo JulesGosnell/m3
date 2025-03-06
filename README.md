@@ -173,9 +173,9 @@ Starting a ClojureScript REPL:
 start shadow server
 
 ```
-jules@fedora:~/src/m3.new$ lein with-profile dev shadow watch :dev
+jules@fedora:~/src/m3$ lein with-profile dev shadow watch :dev
 lein-shadow - running: npm --version
-lein-shadow - found existing package.json file at /home/jules/src/m3.new/package.json
+lein-shadow - found existing package.json file at /home/jules/src/m3/package.json
 lein-shadow - reading node dependencies from project.clj
 lein-shadow - running: npm ci
 lein-shadow - node packages not managed, skipping node package manager installs
@@ -191,7 +191,7 @@ shadow-cljs - watching build :dev
 install websocket library
 
 ```
-jules@fedora:~/src/m3.new$ npm install ws
+jules@fedora:~/src/m3$ npm install ws
 
 added 1 package, and audited 7 packages in 1s
 
@@ -199,13 +199,13 @@ added 1 package, and audited 7 packages in 1s
   run `npm fund` for details
 
 found 0 vulnerabilities
-jules@fedora:~/src/m3.new$ 
+jules@fedora:~/src/m3$ 
 ```
 
 run up node repl backend
 
 ```
-jules@fedora:~/src/m3.new$ node ./target/node/repl.js 
+jules@fedora:~/src/m3$ node ./target/node/repl.js 
 Hello from ClojureScript Node REPL with shadow-cljs!
 shadow-cljs - #3 ready!
 ```
@@ -229,7 +229,7 @@ To quit, type: :cljs/quit
 cljs.user>
 ```
 
-congratulations, you a ready to repl...
+congratulations, you are ready to repl...
 
 (it must be easier than this, surely ?)
 
