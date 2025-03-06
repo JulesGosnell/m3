@@ -1,20 +1,19 @@
 # m3
 
 [![CI](https://github.com/JulesGosnell/m3/actions/workflows/ci.yml/badge.svg)](https://github.com/JulesGosnell/m3/actions/workflows/ci.yml)
+[![Clojars Project](https://img.shields.io/clojars/v/org.clojars.jules_gosnell/m3.svg)](https://clojars.org/org.clojars.jules_gosnell/m3)
 
-This is the m3 project - a pure Clojure JSON validator.
+This is the m3 project - a pure Clojure (CLJ/CLJS) JSON validator.
 
 It is based upon a validator for a subset of JSON which I wrote for [Agora Digital Capital Markets](https://agoradcm.com/), and which they have kindly donated to the project - my thanks to them for allowing me to share this code.
 
-I aspire to it becoming a complete and fully featured JSON validator which can be run and produce identical results in both the backend and frontend of any Clojure[Script] application including errors expressed as native types for easy integration.
+I aspire to it becoming a complete and fully featured JSON validator which can be run and produce identical[^1] results in both the backend and frontend of any Clojure[Script] application including errors expressed as native types for easy integration.
 
 It is tested against [JSON-Schema-Test-Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite). There are still holes in fn-ality - I hope to plug these soon.
 
 Here is a table of M3's current [features](https://julesgosnell.github.io/m3/features.html) which should allow you to see whether we support the functionality that your project requires.
 
-I have pushed a snapshot up to [Clojars](https://clojars.org/) - [here](https://clojars.org/org.clojars.jules_gosnell/m3).
-
-I have a couple more tests to fix, then I will figure out what needs to be done to publish a CLJS version.
+I'll cut an initial release once I have a few more tests nailed down.
 
 If you find this useful or interesting and would like to get involved, please give me a shout.
 
@@ -237,7 +236,7 @@ m3.validate> (validate {:trace? true} {"oneOf" [{"type" "string" "format" "date"
 m3.validate> 
 ```
 
-Limitations:
+[^1]Limitations:
 
 Java and JavaScript treat numbers very differently and this behaviour is inherited by other languages built upon those platforms.
 
