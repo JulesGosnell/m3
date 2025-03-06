@@ -8,7 +8,7 @@ It is based upon a validator for a subset of JSON which I wrote for [Agora Digit
 
 I aspire to it becoming a complete and fully featured JSON validator which can be run and produce identical results in both the backend and frontend of any Clojure[Script] application including errors expressed as native types for easy integration.
 
-It is tested (`lein test`) against [JSON-Schema-Test-Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite). There are still holes in fn-ality - I hope to plug these soon.
+It is tested against [JSON-Schema-Test-Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite). There are still holes in fn-ality - I hope to plug these soon.
 
 Here is a table of M3's current [features](https://julesgosnell.github.io/m3/features.html) which should allow you to see whether we support the functionality that your project requires.
 
@@ -38,13 +38,83 @@ npm install big.js
 lein test-cljs
 ```
 
+Starting a ClojureScript REPL:
+
+
+start shadow server (note server port number)
+
+```
+jules@fedora:~/src/m3$ lein with-profile dev shadow watch :dev
+lein-shadow - running: npm --version
+lein-shadow - found existing package.json file at /home/jules/src/m3/package.json
+lein-shadow - reading node dependencies from project.clj
+lein-shadow - running: npm ci
+lein-shadow - node packages not managed, skipping node package manager installs
+lein-shadow - running shadow-cljs...
+shadow-cljs - server version: 2.28.21 running at http://localhost:9630
+shadow-cljs - nREPL server started on port 36997
+shadow-cljs - watching build :dev
+[:dev] Configuring build.
+[:dev] Compiling ...
+[:dev] Build completed. (87 files, 86 compiled, 0 warnings, 4.40s)
+```
+
+install websocket library
+
+```
+jules@fedora:~/src/m3$ npm install ws
+
+added 1 package, and audited 7 packages in 1s
+
+1 package is looking for funding
+  run `npm fund` for details
+
+found 0 vulnerabilities
+jules@fedora:~/src/m3$ 
+```
+
+run up node repl backend
+
+```
+jules@fedora:~/src/m3$ node ./target/node/repl.js 
+Hello from ClojureScript Node REPL with shadow-cljs!
+shadow-cljs - #3 ready!
+```
+
+in emacs (port number is taken from shadow server output above)
+
+```
+M-x cider-connect-cljs
+Host: localhost
+Port for localhost: 36997
+Select ClojureScript REPL type: shadow
+Select shadow-cljs build: dev
+```
+you then should see this in the repl buffer:
+
+```
+;; ClojureScript REPL type: shadow
+;; ClojureScript REPL init form: (do (require '[shadow.cljs.devtools.api :as shadow]) (shadow/watch :dev) (shadow/nrepl-select :dev))
+;;
+To quit, type: :cljs/quit
+[:selected :dev]shadow.user> 
+cljs.user>
+```
+
+congratulations, you are ready to repl...
+
+(it must be easier than this, surely ?)
+
+
 
 Here are some simple usage examples:
 
 Usage
 
 ```
-;; (validate schema-context schema document-context document)
+m3.validate> (ns m3.validate)
+nil
+m3.validate> ;; (validate schema-context schema document-context document)
 ```
 
 A successful validation - string
@@ -167,71 +237,6 @@ m3.validate> (validate {:trace? true} {"oneOf" [{"type" "string" "format" "date"
 m3.validate> 
 ```
 
-Starting a ClojureScript REPL:
-
-
-start shadow server
-
-```
-jules@fedora:~/src/m3$ lein with-profile dev shadow watch :dev
-lein-shadow - running: npm --version
-lein-shadow - found existing package.json file at /home/jules/src/m3/package.json
-lein-shadow - reading node dependencies from project.clj
-lein-shadow - running: npm ci
-lein-shadow - node packages not managed, skipping node package manager installs
-lein-shadow - running shadow-cljs...
-shadow-cljs - server version: 2.28.21 running at http://localhost:9630
-shadow-cljs - nREPL server started on port 36997
-shadow-cljs - watching build :dev
-[:dev] Configuring build.
-[:dev] Compiling ...
-[:dev] Build completed. (87 files, 86 compiled, 0 warnings, 4.40s)
-```
-
-install websocket library
-
-```
-jules@fedora:~/src/m3$ npm install ws
-
-added 1 package, and audited 7 packages in 1s
-
-1 package is looking for funding
-  run `npm fund` for details
-
-found 0 vulnerabilities
-jules@fedora:~/src/m3$ 
-```
-
-run up node repl backend
-
-```
-jules@fedora:~/src/m3$ node ./target/node/repl.js 
-Hello from ClojureScript Node REPL with shadow-cljs!
-shadow-cljs - #3 ready!
-```
-
-in emacs
-```
-M-x cider-connect-cljs
-Host: localhost
-Port for localhost: 36997
-Select ClojureScript REPL type: shadow
-Select shadow-cljs build: dev
-```
-you then should see this in the repl buffer:
-
-```
-;; ClojureScript REPL type: shadow
-;; ClojureScript REPL init form: (do (require '[shadow.cljs.devtools.api :as shadow]) (shadow/watch :dev) (shadow/nrepl-select :dev))
-;;
-To quit, type: :cljs/quit
-[:selected :dev]shadow.user> 
-cljs.user>
-```
-
-congratulations, you are ready to repl...
-
-(it must be easier than this, surely ?)
 
 
 
