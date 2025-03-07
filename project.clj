@@ -17,11 +17,9 @@
    [com.widdindustries/cljc.java-time "0.1.21"]                             ;; https://github.com/henryw374/cljc.java-time
    ]
 
-  :jvm-opts ["-Xmx4G"]
-
   :plugins [[lein-environ "1.2.0"]                                          ;; https://github.com/weavejester/environ
             [lein-cloverage "1.2.4"]                                        ;; https://github.com/cloverage/cloverage
-            [lein-shadow "0.4.1"]
+            [lein-shadow "0.4.1"]                                           ;; https://gitlab.com/nikperic/lein-shadow
             [lein-asset-minifier "0.4.7" :exclusions [org.clojure/clojure]] ;; https://github.com/yogthos/lein-asset-minifier
             [com.jakemccrary/lein-test-refresh "0.26.0"]                    ;; https://github.com/jakemcc/test-refresh
             ]
@@ -33,7 +31,6 @@
   :source-paths ["src/clj" "src/cljc" "src/cljs"]
   :test-paths ["test/clj" "test/cljc" "test/cljs"]
   :resource-paths ["resources" "target/cljsbuild"]
-
 
   :shadow-cljs {:builds {:test
                          {:target :node-test
@@ -58,10 +55,8 @@
 
                    :source-paths ["env/dev/clj"]
                    :plugins [[cider/cider-nrepl "0.52.1"]
-                             [org.clojure/tools.namespace "1.5.0"
-                              :exclusions [org.clojure/tools.reader]]
-                             [refactor-nrepl "3.10.0"
-                              :exclusions [org.clojure/clojure]]]
+                             [org.clojure/tools.namespace "1.5.0" :exclusions [org.clojure/tools.reader]]
+                             [refactor-nrepl "3.10.0" :exclusions [org.clojure/clojure]]]
 
                    :injections [(require 'pjstadig.humane-test-output)
                                 (pjstadig.humane-test-output/activate!)]
@@ -76,10 +71,7 @@
                        :omit-source true}
              :cloverage
              {:plugins [[lein-cloverage "1.2.4"]] ;; https://github.com/cloverage/cloverage
-              :cloverage {;; https://stackoverflow.com/questions/406230/regular-expression-to-match-a-line-that-doesnt-contain-a-word
-                          :test-ns-regex [#"^((?!m3\.integration-test).)*$"]
-                          ;; output is written to ./target/coverage/index.html
-                          :fail-threshold 65}}}
+              :cloverage {:fail-threshold 65}}};; output is written to ./target/coverage/index.html
 
   :aliases {"test-cljs" ["shadow" "compile" "test"]}
 
