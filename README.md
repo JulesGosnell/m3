@@ -21,7 +21,7 @@ If you find this useful or interesting and would like to get involved, please gi
 To checkout:
 
 ```
-git clone git@github.com:JulesGosnell/m3.git
+git clone  --recursive git@github.com:JulesGosnell/m3.git
 cd m3
 ```
 
