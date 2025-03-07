@@ -104,7 +104,6 @@
     ["cross-draft.json" "refs to historic drafts are processed as historic drafts" "first item not a string is valid"]
 
     ["defs.json" "validate definition against metaschema" "invalid definition schema"]
-
     ["definitions.json" "validate definition against metaschema" "invalid definition schema"] ;; new
 
     ["dynamicRef.json" "A $dynamicRef resolves to the first $dynamicAnchor still in scope that is encountered when the schema is evaluated" "An array containing non-strings is invalid"]
@@ -144,9 +143,6 @@
     ["ref.json" "$ref with $recursiveAnchor" "extra items allowed for inner arrays"] ;; needs unevaluatedItems
     
     ["ref.json" "refs with relative uris and defs" "invalid on inner field"]
-
-    ["ref.json" "remote ref, containing refs itself" "remote ref invalid"] ;; new
-    ["ref.json" "URN base URI with f-component" "is invalid"] ;; new
 
     ["refRemote.json" "Location-independent identifier in remote ref" "string is invalid"]
     ["refRemote.json" "retrieved nested refs resolve relative to their URI not $id" "number is invalid"]
