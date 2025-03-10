@@ -115,17 +115,29 @@
 ;; should we be resolving this at m1-time ? are we ?
 (defmulti meld (fn [{m :melder d :draft} parent reffed] (or m d)))
 
+;; adapted from merge-with to pass k as well as vals to f
+(defn meld-with
+  [f & maps]
+  (when (some identity maps)
+    (let [merge-entry (fn [m e]
+			(let [k (key e) v (val e)]
+			  (if (contains? m k)
+			    (assoc m k (f k (get m k) v))
+			    (assoc m k v))))
+          merge2 (fn [m1 m2]
+		   (reduce merge-entry (or m1 {}) (seq m2)))]
+      (reduce merge2 maps))))
 
 (defn deep-meld [& maps]
-  (letfn [(reconcile-keys [val-in-result val-in-latter]
-            (if (and (map? val-in-result)
-                     (map? val-in-latter))
-              (merge-with reconcile-keys val-in-result val-in-latter)
-              val-in-latter))
-          (reconcile-maps [result latter]
-            (merge-with reconcile-keys result latter))]
-    (reduce reconcile-maps maps)))
-
+  (reduce
+   (fn [acc m]
+     (meld-with
+      (fn choose-val [k val-in-result val-in-latter]
+        (if (and (map? val-in-result) (map? val-in-latter))
+          (meld-with choose-val val-in-result val-in-latter)
+          (if (= "$id" k) val-in-result val-in-latter)))
+      acc m))
+   maps))
 
 (defn meld-deep-under [ctx parent reffed] (if (and (map? reffed)(map? parent)) (deep-meld reffed parent) reffed))
 (defn meld-deep-over  [ctx parent reffed] (if (and (map? reffed)(map? parent)) (deep-meld parent reffed) reffed))

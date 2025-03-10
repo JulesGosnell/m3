@@ -142,8 +142,13 @@
     ["ref.json" "ref creates new scope when adjacent to keywords" "referenced subschema doesn't see annotations from properties"]  ;; needs unevaluatedProperties
     ["ref.json" "$ref with $recursiveAnchor" "extra items allowed for inner arrays"] ;; needs unevaluatedItems
     
-    ["ref.json" "refs with relative uris and defs" "invalid on inner field"]
-
+    ;; new - after I decided to choose first rather than last $id in a meld
+    ["dynamicRef.json" "An $anchor with the same name as a $dynamicAnchor is not used for dynamic scope resolution" "Any array is valid"]
+    ["dynamicRef.json" "A $dynamicRef without a matching $dynamicAnchor in the same schema resource behaves like a normal $ref to $anchor" "Any array is valid"]
+    ["dynamicRef.json" "A $dynamicRef with a non-matching $dynamicAnchor in the same schema resource behaves like a normal $ref to $anchor" "Any array is valid"]
+    ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected strings - additional property as not string is invalid"]
+    ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected integers - additional property as not integer is invalid"]
+    
     ["refRemote.json" "Location-independent identifier in remote ref" "string is invalid"]
     ["refRemote.json" "retrieved nested refs resolve relative to their URI not $id" "number is invalid"]
     
