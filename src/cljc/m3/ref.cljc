@@ -113,10 +113,10 @@
 ;; expanding $refs
 
 ;; should we be resolving this at m1-time ? are we ?
-(defmulti merge-$ref (fn [{m :$ref-merger d :draft} parent reffed] (or m d)))
+(defmulti meld (fn [{m :melder d :draft} parent reffed] (or m d)))
 
 
-(defn deep-merge [& maps]
+(defn deep-meld [& maps]
   (letfn [(reconcile-keys [val-in-result val-in-latter]
             (if (and (map? val-in-result)
                      (map? val-in-latter))
@@ -127,33 +127,33 @@
     (reduce reconcile-maps maps)))
 
 
-(defn merge-$ref-deep-under [ctx parent reffed] (if (and (map? reffed)(map? parent)) (deep-merge reffed parent) reffed))
-(defn merge-$ref-deep-over  [ctx parent reffed] (if (and (map? reffed)(map? parent)) (deep-merge parent reffed) reffed))
-(defn merge-$ref-under      [ctx parent reffed] (if (and (map? reffed)(map? parent)) (merge reffed parent) reffed))
-(defn merge-$ref-over       [ctx parent reffed] (if (and (map? reffed)(map? parent)) (merge parent reffed) reffed))
-(defn merge-$ref-replace    [ctx parent reffed] (if reffed reffed false))
+(defn meld-deep-under [ctx parent reffed] (if (and (map? reffed)(map? parent)) (deep-meld reffed parent) reffed))
+(defn meld-deep-over  [ctx parent reffed] (if (and (map? reffed)(map? parent)) (deep-meld parent reffed) reffed))
+(defn meld-under      [ctx parent reffed] (if (and (map? reffed)(map? parent)) (merge reffed parent) reffed))
+(defn meld-over       [ctx parent reffed] (if (and (map? reffed)(map? parent)) (merge parent reffed) reffed))
+(defn meld-replace    [ctx parent reffed] (if reffed reffed false))
 ;; these two should be equivalent
-(defn merge-$ref-all-of     [ctx parent reffed] {"allOf" [parent reffed]})
+(defn meld-all-of     [ctx parent reffed] {"allOf" [parent reffed]})
 
-(defmethod merge-$ref "draft3"         [ctx parent reffed] (merge-$ref-replace   ctx parent reffed))
-(defmethod merge-$ref "draft4"         [ctx parent reffed] (merge-$ref-replace   ctx parent reffed))
-(defmethod merge-$ref "draft6"         [ctx parent reffed] (merge-$ref-replace   ctx parent reffed))
-(defmethod merge-$ref "draft7"         [ctx parent reffed] (merge-$ref-replace   ctx parent reffed))
+(defmethod meld "draft3"         [ctx parent reffed] (meld-replace   ctx parent reffed))
+(defmethod meld "draft4"         [ctx parent reffed] (meld-replace   ctx parent reffed))
+(defmethod meld "draft6"         [ctx parent reffed] (meld-replace   ctx parent reffed))
+(defmethod meld "draft7"         [ctx parent reffed] (meld-replace   ctx parent reffed))
 ;; both deep-over and under seem to work here
-(defmethod merge-$ref "draft2019-09"   [ctx parent reffed] (merge-$ref-deep-over ctx parent reffed))
-(defmethod merge-$ref "draft2020-12"   [ctx parent reffed] (merge-$ref-deep-over ctx parent reffed))
-(defmethod merge-$ref "draft2021-12"   [ctx parent reffed] (merge-$ref-deep-over ctx parent reffed))
-(defmethod merge-$ref "draft-next"     [ctx parent reffed] (merge-$ref-deep-over ctx parent reffed))
-(defmethod merge-$ref "latest"         [ctx parent reffed] (merge-$ref-deep-over ctx parent reffed))
+(defmethod meld "draft2019-09"   [ctx parent reffed] (meld-deep-over ctx parent reffed))
+(defmethod meld "draft2020-12"   [ctx parent reffed] (meld-deep-over ctx parent reffed))
+(defmethod meld "draft2021-12"   [ctx parent reffed] (meld-deep-over ctx parent reffed))
+(defmethod meld "draft-next"     [ctx parent reffed] (meld-deep-over ctx parent reffed))
+(defmethod meld "latest"         [ctx parent reffed] (meld-deep-over ctx parent reffed))
 
-(defmethod merge-$ref :deep-merge-over  [ctx parent reffed] (merge-$ref-deep-over  ctx parent reffed))
-(defmethod merge-$ref :deep-merge-under [ctx parent reffed] (merge-$ref-deep-under ctx parent reffed))
-(defmethod merge-$ref :merge-under      [ctx parent reffed] (merge-$ref-under      ctx parent reffed))
-(defmethod merge-$ref :merge-over       [ctx parent reffed] (merge-$ref-over       ctx parent reffed))
-(defmethod merge-$ref :replace          [ctx parent reffed] (merge-$ref-replace    ctx parent reffed))
-(defmethod merge-$ref :all-of           [ctx parent reffed] (merge-$ref-all-of     ctx parent reffed))
+(defmethod meld :deep-meld-over  [ctx parent reffed] (meld-deep-over  ctx parent reffed))
+(defmethod meld :deep-meld-under [ctx parent reffed] (meld-deep-under ctx parent reffed))
+(defmethod meld :meld-under      [ctx parent reffed] (meld-under      ctx parent reffed))
+(defmethod meld :meld-over       [ctx parent reffed] (meld-over       ctx parent reffed))
+(defmethod meld :replace         [ctx parent reffed] (meld-replace    ctx parent reffed))
+(defmethod meld :all-of          [ctx parent reffed] (meld-all-of     ctx parent reffed))
 
-;;(defmethod merge-$ref :default         [ctx parent reffed] (merge-$ref-evaluate ctx parent reffed))
+;;(defmethod meld :default         [ctx parent reffed] (meld-evaluate ctx parent reffed))
 
 ;;------------------------------------------------------------------------------
 

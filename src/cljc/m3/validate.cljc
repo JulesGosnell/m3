@@ -25,7 +25,7 @@
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.util :refer [absent present?]]
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
-   [m3.ref :refer [merge-$ref resolve-uri try-path]]
+   [m3.ref :refer [meld resolve-uri try-path]]
    )
   #?(:clj
      (:import
@@ -174,7 +174,7 @@
 
 (defn merge-helper [old-c parent [c p child :as x]]
   (when x
-    [c p (merge-$ref old-c parent child)]))
+    [c p (meld old-c parent child)]))
   
 ;;------------------------------------------------------------------------------
 ;; d/$id/$anchor/$ref
@@ -1493,7 +1493,7 @@
                       :recursive-anchor []
                       :root document
                       :draft draft
-                      :$ref-merger (:$ref-merger m2-ctx))
+                      :melder (:melder m2-ctx))
               es (cs m1-ctx [] document)]
           {:valid? (empty? es) :errors es})))))
   ([m2-ctx schema m1-ctx document]
