@@ -78,7 +78,7 @@
                        :aot :all
                        :omit-source true}
              :cloverage
-             {:cloverage {:fail-threshold 88}}};; output is written to ./target/coverage/index.html
+             {:cloverage {:fail-threshold 90}}};; output is written to ./target/coverage/index.html
 
   :aliases {"test-cljs" ["shadow" "compile" "test"]}
 

@@ -92,7 +92,7 @@
    ;; did it match a remote schema
    (when-let [[c p _m] (and uri->schema (uri->schema ctx path uri))]
 
-     ;; thisis how I would like it to work:
+     ;; this is how I would like it to work:
      
      ;; TODO: risk of a stack overflow here if uri does not resolve in context of remote schema...
      ;; (try
@@ -112,8 +112,7 @@
 ;;------------------------------------------------------------------------------
 ;; expanding $refs
 
-;; should we be resolving this at m1-time ? are we ?
-(defmulti meld (fn [{m :melder d :draft} parent reffed] (or m d)))
+(defmulti meld (fn [{d :draft} parent reffed] d))
 
 ;; adapted from merge-with to pass k as well as vals to f
 (defn meld-with
@@ -128,44 +127,29 @@
 		   (reduce merge-entry (or m1 {}) (seq m2)))]
       (reduce merge2 maps))))
 
-(defn deep-meld [& maps]
+(defn deep-meld [{id-key :id-key} & maps]
   (reduce
    (fn [acc m]
      (meld-with
       (fn choose-val [k val-in-result val-in-latter]
         (if (and (map? val-in-result) (map? val-in-latter))
           (meld-with choose-val val-in-result val-in-latter)
-          (if (= "$id" k) val-in-result val-in-latter)))
+          (if (= id-key k) val-in-result val-in-latter)))
       acc m))
    maps))
 
-(defn meld-deep-under [ctx parent reffed] (if (and (map? reffed)(map? parent)) (deep-meld reffed parent) reffed))
-(defn meld-deep-over  [ctx parent reffed] (if (and (map? reffed)(map? parent)) (deep-meld parent reffed) reffed))
-(defn meld-under      [ctx parent reffed] (if (and (map? reffed)(map? parent)) (merge reffed parent) reffed))
-(defn meld-over       [ctx parent reffed] (if (and (map? reffed)(map? parent)) (merge parent reffed) reffed))
 (defn meld-replace    [ctx parent reffed] (if reffed reffed false))
-;; these two should be equivalent
-(defn meld-all-of     [ctx parent reffed] {"allOf" [parent reffed]})
+(defn meld-deep-over  [ctx parent reffed] (if (and (map? reffed)(map? parent)) (deep-meld ctx parent reffed) reffed))
 
 (defmethod meld "draft3"         [ctx parent reffed] (meld-replace   ctx parent reffed))
 (defmethod meld "draft4"         [ctx parent reffed] (meld-replace   ctx parent reffed))
 (defmethod meld "draft6"         [ctx parent reffed] (meld-replace   ctx parent reffed))
 (defmethod meld "draft7"         [ctx parent reffed] (meld-replace   ctx parent reffed))
-;; both deep-over and under seem to work here
 (defmethod meld "draft2019-09"   [ctx parent reffed] (meld-deep-over ctx parent reffed))
 (defmethod meld "draft2020-12"   [ctx parent reffed] (meld-deep-over ctx parent reffed))
 (defmethod meld "draft2021-12"   [ctx parent reffed] (meld-deep-over ctx parent reffed))
 (defmethod meld "draft-next"     [ctx parent reffed] (meld-deep-over ctx parent reffed))
 (defmethod meld "latest"         [ctx parent reffed] (meld-deep-over ctx parent reffed))
-
-(defmethod meld :deep-meld-over  [ctx parent reffed] (meld-deep-over  ctx parent reffed))
-(defmethod meld :deep-meld-under [ctx parent reffed] (meld-deep-under ctx parent reffed))
-(defmethod meld :meld-under      [ctx parent reffed] (meld-under      ctx parent reffed))
-(defmethod meld :meld-over       [ctx parent reffed] (meld-over       ctx parent reffed))
-(defmethod meld :replace         [ctx parent reffed] (meld-replace    ctx parent reffed))
-(defmethod meld :all-of          [ctx parent reffed] (meld-all-of     ctx parent reffed))
-
-;;(defmethod meld :default         [ctx parent reffed] (meld-evaluate ctx parent reffed))
 
 ;;------------------------------------------------------------------------------
 

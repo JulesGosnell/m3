@@ -24,7 +24,7 @@
   (testing "take first $id, last everything else"
     (is (=
          {"$id" 1, :a 1, :b 2, :c 3}
-         (deep-meld {"$id" 1 :a 1 :b 1 :c 1} {"$id" 2 :b 2 :c 2} {"$id" 3 :c 3})))
+         (deep-meld {:id-key "$id"} {"$id" 1 :a 1 :b 1 :c 1} {"$id" 2 :b 2 :c 2} {"$id" 3 :c 3})))
     )
   )
 
