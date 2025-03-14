@@ -12,16 +12,17 @@
 ;; See the License for the specific language governing permissions and
 ;; limitations under the License.
 
-(ns m3.log)
+(ns m3.log-test
+  (:require
+   #?(:clj  [clojure.test :refer [deftest testing is]]
+      :cljs [cljs.test :refer-macros [deftest testing is]])
+   [m3.log :as log]))
 
-(defn trace [& args]
-  (apply println "TRACE:" (mapv pr-str args)))
+;; for clj coverage - not actually to be used with clj
 
-(defn info [& args]
-  (apply println "INFO:" (mapv pr-str args)))
-
-(defn warn [& args]
-  (apply println "WARN:" (mapv pr-str args)))
-
-(defn error [& args]
-  (apply println "ERROR:" (mapv pr-str args)))
+(deftest test-log
+  (is (nil? (log/trace)))
+  (is (nil? (log/info)))
+  (is (nil? (log/warn)))
+  (is (nil? (log/error))))
+ 
