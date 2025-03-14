@@ -149,7 +149,7 @@
     ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected strings - additional property as not string is invalid"]
     ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected integers - additional property as not integer is invalid"]
     
-    ["refRemote.json" "retrieved nested refs resolve relative to their URI not $id" "number is invalid"]
+    ;;["refRemote.json" "retrieved nested refs resolve relative to their URI not $id" "number is invalid"]
     
     ;; leap-second support seems to be an issue with java-time
     ;; https://coderanch.com/t/667087/java/Reconciling-Java-date-time-GPS
