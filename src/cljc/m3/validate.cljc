@@ -1424,6 +1424,7 @@
   {"http://json-schema.org" "resources/schemas"
    "https://json-schema.org" "resources/schemas"})
 
+;; TODO: uris in sub-schema must inherit fromuris in super-schema...
 (defn uri->schema [uri-base->dir c p {origin :origin path :path :as url}]
   (if-let [dir (uri-base->dir origin)]
     (let [f (str dir path (if (ends-with? path ".json") "" ".json"))
