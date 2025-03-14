@@ -16,7 +16,22 @@
   (:require 
    #?(:clj  [clojure.test :refer [deftest testing is]]
       :cljs [cljs.test :refer-macros [deftest testing is]])
-   [m3.ref :refer [deep-meld]]))
+   [m3.ref :refer [resolve-uri deep-meld]]))
+
+;;------------------------------------------------------------------------------
+
+(deftest test-resolve-uri
+
+  (testing "matches stashed $id"
+    (let [uri {:type :path :path "/a/b"}
+          c {"$id" "c"}
+          m2 {"a" {"b" c}}
+          path ["a"]
+          ctx {:root m2 :uri->path {uri ["a" "b"]} :path->uri {["a" "b"] uri}}]
+    (is (=
+         [(merge ctx {:id-uri uri}) path c]
+         (resolve-uri ctx path uri :ref)))))
+  )
 
 ;;------------------------------------------------------------------------------
 
