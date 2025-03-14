@@ -1,3 +1,6 @@
+(def polyglot-version "24.1.2")
+(def jackson-version "2.18.3")
+
 (defproject org.clojars.jules_gosnell/m3 "0.1.0-SNAPSHOT"
   :description "A pure Clojure/ClojureScript JSON validator"
   :url "https://github.com/JulesGosnell/m3"
@@ -5,15 +8,20 @@
             :url "https://www.apache.org/licenses/LICENSE-2.0"}
 
   :dependencies
-  [[org.slf4j/slf4j-simple "2.1.0-alpha1"]                                  ;; https://github.com/qos-ch/slf4j
-   [org.graalvm.polyglot/polyglot "24.1.2"]                                 ;; https://github.com/oracle/graal
-   [org.graalvm.polyglot/js "24.1.2" :extension "pom"]                      ;; https://github.com/oracle/graal
-   [com.fasterxml.jackson.core/jackson-core "2.18.3"]                       ;; https://github.com/FasterXML/jackson-core
+  [;; java
+   [org.slf4j/slf4j-simple "2.1.0-alpha1"]                                  ;; https://github.com/qos-ch/slf4j
+   [org.graalvm.polyglot/polyglot ~polyglot-version]                        ;; https://github.com/oracle/graal
+   [org.graalvm.polyglot/js ~polyglot-version :extension "pom"]             ;; https://github.com/oracle/graal
+   [com.fasterxml.jackson.core/jackson-core ~jackson-version]               ;; https://github.com/FasterXML/jackson-core
+   [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
+   [com.fasterxml.jackson.dataformat/jackson-dataformat-smile ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
+   ;; clj
    [org.clojure/clojure "1.12.0"]                                           ;; https://clojure.org/releases/downloads
-   [thheller/shadow-cljs "2.28.21"]                                         ;; https://github.com/thheller/shadow-cljs
    [org.clojure/tools.logging "1.3.0"]                                      ;; https://github.com/clojure/tools.logging
-   [camel-snake-kebab "0.4.3"]                                              ;; https://github.com/clj-commons/camel-snake-kebab
    [cheshire/cheshire "5.13.0"]                                             ;; https://github.com/dakrone/cheshire
+   ;; cljs
+   [thheller/shadow-cljs "2.28.21"]                                         ;; https://github.com/thheller/shadow-cljs
+   ;; cljc
    [com.widdindustries/cljc.java-time "0.1.21"]                             ;; https://github.com/henryw374/cljc.java-time
    ]
 
@@ -70,7 +78,7 @@
                        :aot :all
                        :omit-source true}
              :cloverage
-             {:cloverage {:fail-threshold 65}}};; output is written to ./target/coverage/index.html
+             {:cloverage {:fail-threshold 88}}};; output is written to ./target/coverage/index.html
 
   :aliases {"test-cljs" ["shadow" "compile" "test"]}
 
