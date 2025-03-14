@@ -5,10 +5,10 @@
             :url "https://www.apache.org/licenses/LICENSE-2.0"}
 
   :dependencies
-  [[org.slf4j/slf4j-simple "2.0.17"]                                        ;; https://github.com/qos-ch/slf4j
+  [[org.slf4j/slf4j-simple "2.1.0-alpha1"]                                  ;; https://github.com/qos-ch/slf4j
    [org.graalvm.polyglot/polyglot "24.1.2"]                                 ;; https://github.com/oracle/graal
    [org.graalvm.polyglot/js "24.1.2" :extension "pom"]                      ;; https://github.com/oracle/graal
-   [com.fasterxml.jackson.core/jackson-core "2.18.2"]                       ;; https://github.com/FasterXML/jackson-core
+   [com.fasterxml.jackson.core/jackson-core "2.18.3"]                       ;; https://github.com/FasterXML/jackson-core
    [org.clojure/clojure "1.12.0"]                                           ;; https://clojure.org/releases/downloads
    [thheller/shadow-cljs "2.28.21"]                                         ;; https://github.com/thheller/shadow-cljs
    [org.clojure/tools.logging "1.3.0"]                                      ;; https://github.com/clojure/tools.logging
@@ -70,8 +70,7 @@
                        :aot :all
                        :omit-source true}
              :cloverage
-             {:plugins [[lein-cloverage "1.2.4"]] ;; https://github.com/cloverage/cloverage
-              :cloverage {:fail-threshold 65}}};; output is written to ./target/coverage/index.html
+             {:cloverage {:fail-threshold 65}}};; output is written to ./target/coverage/index.html
 
   :aliases {"test-cljs" ["shadow" "compile" "test"]}
 
