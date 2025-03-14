@@ -1465,7 +1465,7 @@
       (when-let [m (uri->schema c p uri)] ;; TODO: what if schema is 'false'
         [(-> (make-context
               (-> c
-                  (select-keys [:uri->schema :trace?])
+                  (select-keys [:uri->schema :trace? :draft :id-key])
                   (assoc :id-uri (uri-base uri)))
               m)
              (assoc :id-uri (uri-base uri))
