@@ -606,19 +606,17 @@
 (defmethod check-property-2 "writeOnly"        [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [_m1-ctx _m1-path _m1-doc]))
 
 (defmethod check-property-2 "default"          [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [_m1-ctx _m1-path _m1-doc]))
-(defmethod check-property-2 "$schema"          [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [_m1-ctx _m1-path _m1-doc]))
+(defmethod check-property-2 "$schema"          [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [_m1-ctx _m1-path _m1-doc])) ;; TODO: switch drafts in context...
 (defmethod check-property-2 "examples"         [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [_m1-ctx _m1-path _m1-doc]))
 (defmethod check-property-2 "$anchor"          [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [_m1-ctx _m1-path _m1-doc]))
 (defmethod check-property-2 "$recursiveAnchor" [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [_m1-ctx _m1-path _m1-doc]))
 (defmethod check-property-2 "$vocabulary"      [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [_m1-ctx _m1-path _m1-doc]))
-(defmethod check-property-2 "$ref"             [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [_m1-ctx _m1-path _m1-doc]))
 
 ;; NYI
 (defmethod check-property-2 "$dynamicAnchor"   [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [_m1-ctx _m1-path _m1-doc]))
-(defmethod check-property-2 "$dynamicRef"      [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [_m1-ctx _m1-path _m1-doc]))
 
 ;; TODO: issue a warning somehow
-(defmethod check-property-2 "deprecated"  [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [_m1-ctx _m1-path _m1-doc]))
+(defmethod check-property-2 "deprecated"  [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [_m1-ctx _m1-path _m1-doc])) ;; TODO: issue a warning or error ?
 
 ;; standard number properties
 
@@ -1372,7 +1370,10 @@
     (fn this [c2 p2 old-m2]
       (let [k (kf c2)]
         (if-let [a (get old-m2 k)]      ;; TODO - how can m2 be nil ?
-          (let [new-m2 (dissoc old-m2 k)]
+          ;; TODO: not sure we should be deleting anchor...
+          (let [new-m2
+                old-m2 ;;(dissoc old-m2 k)
+                ]
             (delegate (or (stasher c2 p2 new-m2 a) c2) p2 new-m2))
           (delegate c2 p2 old-m2))))))
 
