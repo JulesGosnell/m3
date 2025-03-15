@@ -735,7 +735,7 @@
     ;; this is an extension to allow patternProperties to
     ;; leverage formats since the spec does not provide a
     ;; formatProperties...
-    (check-property-2 "format" m2-ctx m2-path m2-doc [(subs m2-val (count "$format:"))]) ; TODO: use check-property ?
+    (check-property "format" m2-ctx m2-path m2-doc [(subs m2-val (count "$format:"))])
     (let [p (ecma-pattern m2-val)]
       (memo
        (fn [_m1-ctx m1-path m1-doc]
