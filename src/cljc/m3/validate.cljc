@@ -949,6 +949,7 @@
   (mapv (fn [[k v]] (check-schema m2-ctx (conj m2-path k) v)) m2-val)
   (fn [_m1-ctx _m1-path _m1-doc]))
 
+;; TODO: handle :default-additional-properties here
 (defmethod check-property-2 :properties [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [ps pps aps]]
   (let [bail (if x? concatv bail-on-error)
         cp-and-ks (mapv (fn [[k v]] [(check-schema m2-ctx (conj m2-path k) v) k]) (when (present? ps) ps))
@@ -1244,34 +1245,6 @@
         (log/warn m)))))
 
 ;;------------------------------------------------------------------------------
-;; the fastest way I can think of to make these tests
-;; probably better to just insist that objects and arrays have type properties
-
-(let [object-schema-properties ["properties" "additionalProperties" "patternProperties" "unevaluatedProperties"]
-      object-schema-properties-set (into #{} object-schema-properties)
-      object-schema-properties-count (count object-schema-properties)]
-  (defn object-schema? [m2]
-    (when (map? m2)
-      (if-let [t (m2 "type")]
-        (= t "object")
-        (and
-         (map? m2)
-         (let [[container containees] (if (> (count m2) object-schema-properties-count) [m2 object-schema-properties-set] [object-schema-properties (keys m2)])]
-           (some (partial contains? container) containees)))))))
-
-(let [array-schema-properties ["items" "additionalItems" "prefixItems" "unevaluatedItems"]
-      array-schema-properties-set (into #{} array-schema-properties)
-      array-schema-properties-count (count array-schema-properties)]
-  (defn array-schema? [m2]
-    (when (map? m2)
-      (if-let [t (m2 "type")]
-        (= t "array")
-        (and
-         (map? m2)
-         (let [[container containees] (if (> (count m2) array-schema-properties-count) [m2 array-schema-properties-set] [array-schema-properties (keys m2)])]
-           (some (partial contains? container) containees)))))))
-
-;;------------------------------------------------------------------------------
 
 (defn path-extends?
   "does the second path extend the first - equality is treated as extension."
@@ -1284,7 +1257,7 @@
   {
    ["properties" "patternProperties" "additionalProperties" ;; "unevaluatedProperties"
     ] :properties
-   ;; ["prefixItems" "items" "additionalItems" "unevaluateItems"]                       :items
+   ;; ["prefixItems" "items" "additionalItems" "unevaluateItems"]                       :items ;; TODO: handle :default-additional-items here
    ;; ["required" "dependentRequired"]                                                  :required
    ;; ["dependencies" "dependentSchemas" "propertyDependencies"]                        :depedencies
    ["contains" "minContains" "maxContains"]                                          :contains
@@ -1311,14 +1284,7 @@
 
 (defn check-schema-2 [{x? :exhaustive? t? :trace? :as m2-ctx} m2-path m2-doc]
   ;; TODO; this needs to be simplified
-  (let [bail (if x? concatv bail-on-error)
-        ;; TODO - fix this - it will no longer work
-        m2-doc (if (and (object-schema? m2-doc) (not (contains? m2-doc "additionalProperties")) (contains? m2-ctx :default-additional-properties))
-                 (assoc m2-doc "additionalProperties" (:default-additional-properties m2-ctx))
-                 m2-doc)
-        m2-doc (if (and (array-schema? m2-doc) (not (contains? m2-doc "additionalItems")) (contains? m2-ctx :default-additional-items))
-                 (assoc m2-doc "additionalItems" (:default-additional-items m2-ctx))
-                 m2-doc)]
+  (let [bail (if x? concatv bail-on-error)]
     (cond
       (true? m2-doc)
       (constantly nil)
