@@ -1246,12 +1246,34 @@
         (log/warn m)))))
 
 ;;------------------------------------------------------------------------------
+;; the fastest way I can think of to make these tests
+;; probably better to just insist that objects and arrays have type properties
 
-(defn object-schema? [{t "type" ps "properties" pps "patternProperties" aps "additionalProperties" ups "unevaluatedProperties"}]
-  (or (= "object" t) ps pps aps ups))
+(let [object-schema-properties ["properties" "additionalProperties" "patternProperties" "unevaluatedProperties"]
+      object-schema-properties-set (into #{} object-schema-properties)
+      object-schema-properties-count (count object-schema-properties)]
+  (defn object-schema? [m2]
+    (when (map? m2)
+      (if-let [t (m2 "type")]
+        (= t "object")
+        (and
+         (map? m2)
+         (let [[container containees] (if (> (count m2) object-schema-properties-count) [m2 object-schema-properties-set] [object-schema-properties (keys m2)])]
+           (some (partial contains? container) containees)))))))
 
-(defn array-schema? [{t "type" is "items" ais "additionalItems" pis "prefixItems" uis "unevaluatedItems"}]
-  (or (= "array" t) is ais pis uis))
+(let [array-schema-properties ["items" "additionalItems" "prefixItems" "unevaluatedItems"]
+      array-schema-properties-set (into #{} array-schema-properties)
+      array-schema-properties-count (count array-schema-properties)]
+  (defn array-schema? [m2]
+    (when (map? m2)
+      (if-let [t (m2 "type")]
+        (= t "array")
+        (and
+         (map? m2)
+         (let [[container containees] (if (> (count m2) array-schema-properties-count) [m2 array-schema-properties-set] [array-schema-properties (keys m2)])]
+           (some (partial contains? container) containees)))))))
+
+;;------------------------------------------------------------------------------
 
 (defn path-extends?
   "does the second path extend the first - equality is treated as extension."
