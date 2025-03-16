@@ -1255,11 +1255,10 @@
 ;; TODO: a single lookup that returns both group and property list
 (def properties->group
   {
-   ["properties" "patternProperties" "additionalProperties" ;; "unevaluatedProperties"
-    ] :properties
+   ["properties" "patternProperties" "additionalProperties" "unevaluatedProperties"] :properties ;; TODO: what about propertyNames ?
    ;; ["prefixItems" "items" "additionalItems" "unevaluateItems"]                       :items ;; TODO: handle :default-additional-items here
    ;; ["required" "dependentRequired"]                                                  :required
-   ;; ["dependencies" "dependentSchemas" "propertyDependencies"]                        :depedencies
+   ;; ["dependencies" "dependentSchemas" "propertyDependencies"]                        :dependencies
    ["contains" "minContains" "maxContains"]                                          :contains
    ["minimum" "exclusiveMinimum"]                                                    :minimum
    ["maximum" "exclusiveMaximum"]                                                    :maximum
@@ -1406,6 +1405,18 @@
 (def $schema-uri->draft
   (reduce-kv (fn [acc k v] (conj acc [(parse-uri k) v])) {} $schema->draft))
 
+;; TODO: merge with above somehow... - grow into jump table for entire codebase
+(def $schema->draft-info
+  {
+   "http://json-schema.org/draft-03/schema"       ["draft3"       "id" ]
+   "http://json-schema.org/draft-04/schema"       ["draft4"       "id" ]
+   "http://json-schema.org/draft-06/schema"       ["draft6"       "$id"]
+   "http://json-schema.org/draft-07/schema"       ["draft7"       "$id"]
+   "https://json-schema.org/draft/2019-09/schema" ["draft2019-09" "$id"]
+   "https://json-schema.org/draft/2020-12/schema" ["draft2020-12" "$id"]
+   "https://json-schema.org/draft/next/schema"    ["draft-next"   "$id"]
+   })
+
 ;;------------------------------------------------------------------------------
 
 ;; TODO: rename
@@ -1488,7 +1499,19 @@
           {:valid? (empty? es) :errors es})))))
   ([m2-ctx schema m1-ctx document]
    ((validate m2-ctx schema) m1-ctx document))
-  ([{s "$schema" :as document}]
-   (if s
-     ((validate {:trace? false} (uri->schema-2 {} [] (parse-uri s))) {} document)
+  ([{sid "$schema" :as m1}]
+   ;; by recursing to top of schema hierarchy and then validating downwards we:
+   ;; - confirm validity of entire model, not just the m1
+   ;; - we can use our implicit knowledge of the structure of json docs to discover all the ids and anchors
+   (if sid
+     (let [[draft idk] (get $schema->draft-info sid ["latest" "$id"])
+           id (m1 idk)
+           m2 (uri->schema-2 {} [] (parse-uri sid))]
+       ;;(log/info "validating:" sid "/" id)
+       (if (= m2 m1)
+         ;; we are at top of schema hierarchy - ground out
+         ((validate {:draft draft :trace? false} m2) {} m1)
+         ;; continue up schema hierarchy...
+         (validate m2)))
      [{:errors "no $schema given"}])))
+
