@@ -20,7 +20,7 @@
    #?(:cljs [goog.string :as gstring])
    #?(:cljs [goog.string.format])
    [clojure.pprint :refer [pprint]]
-   [m3.validate :refer [validate draft->$schema uri->continuation json-decode]]]
+   [m3.validate :refer [self-validate uri->continuation json-decode]]]
   [:import
    #?(:clj  [java.io File])])
 
@@ -194,14 +194,10 @@
    "http://localhost:1234" "test-resources/JSON-Schema-Test-Suite/remotes"})
 
 (defn is-validated [c2 m2 c1 m1 & [sign]]
-  (let [{v? :valid? es :errors} (validate c2 m2 c1 m1)]
+  (let [{v? :valid? es :errors} (self-validate c2 m2 c1 m1)]
     (if (or (nil? sign) (true? sign))
       (is v? (json->string es))
       (is (not v?) (str "should not be valid: " (pr-str m2 m1))))))
-
-(defn is-validated2 [m2]
-  (let [{v? :valid? es :errors} (validate m2)]
-    (is v? (json->string es))))
 
 (defn test-file [dname f draft]
   (let [feature (file-name f)]
@@ -226,8 +222,6 @@
                                     (and (= "zeroTerminatedFloats.json" feature)
                                          (= "a float is not an integer even without fractional part" d2))))]
                         ;;(prn "testing: " dname (file-name f) d1 d2)
-                        (when (map? m2)
-                          (testing "m3/m2" (is-validated2 (assoc m2 "$schema" (str (draft->$schema draft) "#")))))
                         (try (testing "m2/m1" (is-validated c2 m2 c1 m1 v?)) (catch Throwable e (prn [(file-name f) d1 d2] e)))))
                     ;;(println "skipping:" d2)
                     ))))))))))

@@ -1475,43 +1475,45 @@
          m]))))  
 
 ;; TODO: rename :root to ?:expanded?
-(defn validate
-  ([m2-ctx schema]
-   (let [{draft :draft id-key :id-key :as m2-ctx} (make-context m2-ctx schema)
-         sid (get schema id-key)
-         cs (check-schema m2-ctx [] schema)]
-     (memo
-      (fn [m1-ctx {did id-key dsid "$schema" :as document}]
+(defn validate [m2-ctx schema]
+  (let [{draft :draft id-key :id-key :as m2-ctx} (make-context m2-ctx schema)
+        sid (get schema id-key)
+        cs (check-schema m2-ctx [] schema)]
+    (memo
+     (fn [m1-ctx {did id-key dsid "$schema" :as document}]
         ;;(log/info "validate:" sid "/" did)
         ;;(when (and dsid (not (= sid dsid))) (log/warn (format "document schema id not consistent with schema id: %s != %s" dsid sid)))
-        (let [m1-ctx (assoc m1-ctx :id-key id-key  :uri->path {}) ;; docs must be of same draft as their schemas... ?
-              m1-ctx (json-walk stash m1-ctx {} [] schema)
-              m1-ctx (assoc
-                      m1-ctx
-                      :id-key id-key
-                      :id-uri (when did (parse-uri did))
-                      :original-root document
-                      :recursive-anchor []
-                      :root document
-                      :draft draft
-                      :melder (:melder m2-ctx))
-              es (cs m1-ctx [] document)]
-          {:valid? (empty? es) :errors es})))))
-  ([m2-ctx schema m1-ctx document]
-   ((validate m2-ctx schema) m1-ctx document))
-  ([{sid "$schema" :as m1}]
-   ;; by recursing to top of schema hierarchy and then validating downwards we:
-   ;; - confirm validity of entire model, not just the m1
-   ;; - we can use our implicit knowledge of the structure of json docs to discover all the ids and anchors
+       (let [m1-ctx (assoc m1-ctx :id-key id-key  :uri->path {}) ;; docs must be of same draft as their schemas... ?
+             m1-ctx (json-walk stash m1-ctx {} [] schema)
+             m1-ctx (assoc
+                     m1-ctx
+                     :id-key id-key
+                     :id-uri (when did (parse-uri did))
+                     :original-root document
+                     :recursive-anchor []
+                     :root document
+                     :draft draft
+                     :melder (:melder m2-ctx))
+             es (cs m1-ctx [] document)]
+         {:valid? (empty? es) :errors es})))))
+
+;; by recursing to top of schema hierarchy and then validating downwards we:
+;; - confirm validity of entire model, not just the m1
+;; - we can use our implicit knowledge of the structure of json docs to discover all the ids and anchors
+(defn self-validate
+  ([c1 {sid "$schema" :as m1}]
    (if sid
      (let [[draft idk] (get $schema->draft-info sid ["latest" "$id"])
            id (m1 idk)
+           c2 {}
            m2 (uri->schema-2 {} [] (parse-uri sid))]
        ;;(log/info "validating:" sid "/" id)
        (if (= m2 m1)
          ;; we are at top of schema hierarchy - ground out
          ((validate {:draft draft :trace? false} m2) {} m1)
          ;; continue up schema hierarchy...
-         (validate m2)))
-     [{:errors "no $schema given"}])))
-
+         (self-validate c2 m2)))
+     [{:errors "no $schema given"}]))
+  ([m2-ctx schema m1-ctx document]
+   (self-validate m2-ctx schema)
+   ((validate m2-ctx schema) m1-ctx document)))
