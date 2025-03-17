@@ -1437,7 +1437,19 @@
 
 (def uri->schema-2 (partial uri->schema uri-base->dir))
 
-(declare uri->continuation)
+(defn uri->continuation [uri-base->dir]
+  (let [uri->schema (partial uri->schema uri-base->dir)]
+    (fn [c p uri]
+      (when-let [m (uri->schema c p uri)] ;; TODO: what if schema is 'false'
+        [(-> (make-context
+              (-> c
+                  (select-keys [:uri->schema :trace? :draft :id-key])
+                  (assoc :id-uri (uri-base uri)))
+              m)
+             (assoc :id-uri (uri-base uri))
+             (update :uri->path assoc (uri-base uri) []))
+         []
+         m]))))
 
 (defn make-context [{draft :draft u->s :uri->schema :as c2} {s "$schema" :as m2}]
   (let [draft (or draft
@@ -1458,24 +1470,10 @@
      :root m2
      :strict-format? (let [f? (get c2 :strict-format?)] (if (nil? f?) true f?)) ;; pull this out into some default fn
      :strict-integer? (let [f? (get c2 :strict-integer?)] (if (nil? f?) false f?)) ;; pull this out into some default fn
-     )))
-
-(defn uri->continuation [uri-base->dir]
-  (let [uri->schema (partial uri->schema uri-base->dir)]
-    (fn [c p uri]
-      (when-let [m (uri->schema c p uri)] ;; TODO: what if schema is 'false'
-        [(-> (make-context
-              (-> c
-                  (select-keys [:uri->schema :trace? :draft :id-key])
-                  (assoc :id-uri (uri-base uri)))
-              m)
-             (assoc :id-uri (uri-base uri))
-             (update :uri->path assoc (uri-base uri) []))
-         []
-         m]))))  
+     )))  
 
 ;; TODO: rename :root to ?:expanded?
-(defn validate [m2-ctx schema]
+(defn validate-2 [m2-ctx schema]
   (let [{draft :draft id-key :id-key :as m2-ctx} (make-context m2-ctx schema)
         sid (get schema id-key)
         cs (check-schema m2-ctx [] schema)]
@@ -1500,20 +1498,21 @@
 ;; by recursing to top of schema hierarchy and then validating downwards we:
 ;; - confirm validity of entire model, not just the m1
 ;; - we can use our implicit knowledge of the structure of json docs to discover all the ids and anchors
-(defn self-validate
+(defn validate
+  ;; when a document is self-descriptive (i.e. it has a $schema) we
+  ;; can use this entry point....
   ([c1 {sid "$schema" :as m1}]
    (if sid
-     (let [[draft idk] (get $schema->draft-info sid ["latest" "$id"])
-           id (m1 idk)
-           c2 {}
+     (let [draft (get $schema->draft sid "latest")
            m2 (uri->schema-2 {} [] (parse-uri sid))]
-       ;;(log/info "validating:" sid "/" id)
        (if (= m2 m1)
          ;; we are at top of schema hierarchy - ground out
-         ((validate {:draft draft :trace? false} m2) {} m1)
+         ((validate-2 {:draft draft} m2) c1 m1)
          ;; continue up schema hierarchy...
-         (self-validate c2 m2)))
+         (validate {} m2)))
      [{:errors "no $schema given"}]))
+  ;; but some m1s are not objects (e.g. string) and thus have nowhere
+  ;; to carry $schema property - in which case use this entry point...
   ([m2-ctx schema m1-ctx document]
-   (self-validate m2-ctx schema)
-   ((validate m2-ctx schema) m1-ctx document)))
+   (validate m2-ctx schema)
+   ((validate-2 m2-ctx schema) m1-ctx document)))

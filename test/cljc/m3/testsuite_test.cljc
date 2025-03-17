@@ -20,7 +20,7 @@
    #?(:cljs [goog.string :as gstring])
    #?(:cljs [goog.string.format])
    [clojure.pprint :refer [pprint]]
-   [m3.validate :refer [self-validate uri->continuation json-decode]]]
+   [m3.validate :refer [validate uri->continuation json-decode]]]
   [:import
    #?(:clj  [java.io File])])
 
@@ -194,7 +194,7 @@
    "http://localhost:1234" "test-resources/JSON-Schema-Test-Suite/remotes"})
 
 (defn is-validated [c2 m2 c1 m1 & [sign]]
-  (let [{v? :valid? es :errors} (self-validate c2 m2 c1 m1)]
+  (let [{v? :valid? es :errors} (validate c2 m2 c1 m1)]
     (if (or (nil? sign) (true? sign))
       (is v? (json->string es))
       (is (not v?) (str "should not be valid: " (pr-str m2 m1))))))
