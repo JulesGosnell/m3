@@ -314,7 +314,7 @@
          (odt/parse m1-doc)
          nil
          (catch Exception e
-           [(make-error (str "format: not a valid date-time: " (pr-str m1-doc) " - " (ex-message e)) m2-path m2-doc m1-path m1-doc)]))))))
+           [(make-error (str "format: not a valid date-time: " (ex-message e)) m2-path m2-doc m1-path m1-doc)]))))))
 
 (defmethod check-format-2 "date" [_format _m2-ctx m2-path m2-doc]
   (memo
@@ -324,7 +324,7 @@
          (ld/parse m1-doc)
          nil
          (catch Exception e
-           [(make-error (str "format: not a valid date: " (pr-str m1-doc) " - " (ex-message e)) m2-path m2-doc m1-path m1-doc)]))))))
+           [(make-error (str "format: not a valid date: " (ex-message e)) m2-path m2-doc m1-path m1-doc)]))))))
 
 (defmethod check-format-2 "time" [_format _m2-ctx m2-path m2-doc]
   (memo
@@ -334,7 +334,7 @@
          (ot/parse m1-doc)
          nil
          (catch Exception e
-           [(make-error (str "format: not a valid time: " (pr-str m1-doc) " - " (ex-message e)) m2-path m2-doc m1-path m1-doc)]))))))
+           [(make-error (str "format: not a valid time: " (ex-message e)) m2-path m2-doc m1-path m1-doc)]))))))
 
 (defmethod check-format-2 "json-pointer" [format m2-ctx m2-path m2-doc]
   (memo
@@ -479,7 +479,7 @@
   (memo
    (fn [_m1-ctx m1-path m1-doc]
      (when (and (string? m1-doc) (not (json-duration? m1-doc)))
-       [(make-error (str "format: not a valid duration: " (pr-str m1-doc)) m2-path m2-doc m1-path m1-doc)]))))
+       [(make-error (str "format: not a valid duration: ") m2-path m2-doc m1-path m1-doc)]))))
 
 (defmethod check-format-2 "regex" [_format _m2-ctx m2-path m2-doc]
   (memo
@@ -489,7 +489,7 @@
          (ecma-pattern m1-doc)
          [])
        (catch Exception e
-         [(make-error (str "format: not a valid regex: " (pr-str m1-doc) " - " (ex-message e)) m2-path m2-doc m1-path m1-doc)])))))
+         [(make-error (str "format: not a valid regex: " (ex-message e)) m2-path m2-doc m1-path m1-doc)])))))
 
 (defmethod check-format-2 "unknown" [_format _m2-ctx _m2-path _m2-doc]
   (memo
