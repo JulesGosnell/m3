@@ -260,7 +260,7 @@
 
 (defn match [format pattern _m2-ctx m2-path m2-doc m1-path m1-doc]
   (when-not (re-find pattern m1-doc)
-    [(make-error (str "format: not a valid " format ": " (pr-str m1-doc) " - " (pr-str pattern)) m2-path m2-doc m1-path m1-doc)]))
+    [(make-error (str "format: not a valid " format) m2-path m2-doc m1-path m1-doc)]))
 
 ;; standard formats
 
@@ -790,32 +790,35 @@
                  (checker
                   m1-ctx
                   m1-path
-                  (try
-                    (cmt-decoder
-                     (try
-                       (ce-decoder m1-doc)
-                       (catch Exception e
-                         (throw
-                          (ex-info
-                           nil
-                           {:errors
-                            (let [m (str "contentEncoding: error during decode: " (ex-message e))]
-                              (if strict?
-                                [(make-error m m2-path m2-doc m1-path m1-doc)]
-                                (do
-                                  (log/warn (string-replace m #"\n" " - "))
-                                  [])))})))))
-                    (catch Exception e
-                      (throw
-                       (ex-info
-                        nil
-                        {:errors
-                         (let [m (str "contentMediaType: error during decode: " (ex-message e))]
-                           (if strict?
-                             [(make-error m m2-path m2-doc m1-path m1-doc)]
-                             (do
-                               (log/warn (string-replace m #"\n" " - "))
-                               [])))})))))]
+                  (let [new-m1-doc
+                        (try
+                          (ce-decoder m1-doc)
+                          (catch Exception e
+                            (throw
+                             (ex-info
+                              nil
+                              {:errors
+                               (let [m (str "contentEncoding: could not " ce " decode: " (pr-str m1-doc) " - " (ex-message e))]
+                                 (if strict?
+                                   [(make-error m m2-path m2-doc m1-path m1-doc)]
+                                   (do
+                                     (log/warn (string-replace m #"\n" " - "))
+                                     [])))}))))]
+                    (try
+                      (cmt-decoder new-m1-doc)
+                      (catch Exception e
+                        (throw
+                         (ex-info
+                          nil
+                          {:errors
+                           (let [m (str "contentMediaType: could not " cmt " decode: " (pr-str new-m1-doc) (if (present? ce) (str " (from " ce " encoded " (pr-str m1-doc) ")") "") " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
+                             (if strict?
+                               [(make-error m m2-path m2-doc m1-path m1-doc)]
+                               (do
+                                 (log/warn m
+                                           ;;
+                                           )
+                                 [])))}))))))]
              (when (seq es)
                (if strict?
                  es
@@ -1252,7 +1255,7 @@
       (memo
        (fn [_m1-ctx m1-path m1-doc]
          (cp m1-path m1-doc))))
-    (let [m (str "unexpected property in schema: " (pr-str property))]
+    (let [m (str "property: unexpected property encountered: " (pr-str property))]
       (fn [_m1-ctx m1-path m1-doc]
         (log/warn m)))))
 
