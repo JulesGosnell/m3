@@ -258,44 +258,48 @@
 
 (def check-format (memo check-format-2 check-format-keys))
 
-(defn match [pattern _m2-ctx m2-path m2-doc m1-path m1-doc]
+(defn match [format pattern _m2-ctx m2-path m2-doc m1-path m1-doc]
   (when-not (re-find pattern m1-doc)
-    [(make-error (str "format: does not match pattern: " (pr-str m1-doc) " - " (pr-str pattern)) m2-path m2-doc m1-path m1-doc)]))
+    [(make-error (str "format: not a valid " format ": " (pr-str m1-doc) " - " (pr-str pattern)) m2-path m2-doc m1-path m1-doc)]))
 
 ;; standard formats
 
-(defmethod check-format-2 "email" [_format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "email" [format m2-ctx m2-path m2-doc]
   (memo
    (fn [_m1-ctx m1-path m1-doc]
      (when (string? m1-doc)
        (match
+        format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^(?:[^\s@\"\.](?:(?!\.\.)[^\s@\"])*[^\s@\"\.]|\"(?:[^\r\n\\\"]|\\[\s\S])+\")@(?:[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)*|\[IPv6:[a-fA-F0-9:]+\]|\[(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\])$"
         m2-ctx m2-path m2-doc m1-path m1-doc)))))
 
-(defmethod check-format-2 "ipv4" [_format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "ipv4" [format m2-ctx m2-path m2-doc]
   (memo
    (fn [_m1-ctx m1-path m1-doc]
      (when (string? m1-doc)
        (match
+        format
         ;; https://howtodoinjava.com/java/regex/java-regex-validate-email-address/
         #"^(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(\.(?!$)|$)){4}$"
         m2-ctx m2-path m2-doc m1-path m1-doc)))))
 
-(defmethod check-format-2 "ipv6" [_format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "ipv6" [format m2-ctx m2-path m2-doc]
   (memo
    (fn [_m1-ctx m1-path m1-doc]
      (when (string? m1-doc)
        (match
+        format
         ;; adapted from: https://github.com/ajv-validator/ajv-formats/blob/master/src/formats.ts
         #"^((([0-9a-f]{1,4}:){7}([0-9a-f]{1,4}|:))|(([0-9a-f]{1,4}:){6}(:[0-9a-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-f]{1,4}:){5}(((:[0-9a-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-f]{1,4}:){4}(((:[0-9a-f]{1,4}){1,3})|((:[0-9a-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){3}(((:[0-9a-f]{1,4}){1,4})|((:[0-9a-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){2}(((:[0-9a-f]{1,4}){1,5})|((:[0-9a-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){1}(((:[0-9a-f]{1,4}){1,6})|((:[0-9a-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9a-f]{1,4}){1,7})|((:[0-9a-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))$"
         m2-ctx m2-path m2-doc m1-path m1-doc)))))
 
-(defmethod check-format-2 "hostname" [_format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "hostname" [format m2-ctx m2-path m2-doc]
   (memo
    (fn [_m1-ctx m1-path m1-doc]
      (when (string? m1-doc)
        (match
+        format
         ;; adapted from: https://stackoverflow.com/questions/106179/regular-expression-to-match-dns-hostname-or-ip-address
         #"^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]{0,61}[A-Za-z0-9])$"
         m2-ctx m2-path m2-doc m1-path m1-doc)))))
@@ -330,20 +334,22 @@
          (catch Exception e
            [(make-error (str "format: not a valid time: " (pr-str m1-doc) " - " (ex-message e)) m2-path m2-doc m1-path m1-doc)]))))))
 
-(defmethod check-format-2 "json-pointer" [_format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "json-pointer" [format m2-ctx m2-path m2-doc]
   (memo
    (fn [_m1-ctx m1-path m1-doc]
      (when (string? m1-doc)
        (match
+        format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^(?:/(?:[^~/]|~[01])*)*$"
         m2-ctx m2-path m2-doc m1-path m1-doc)))))
 
-(defmethod check-format-2 "relative-json-pointer" [_format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "relative-json-pointer" [format m2-ctx m2-path m2-doc]
   (memo
    (fn [_m1-ctx m1-path m1-doc]
      (when (string? m1-doc)
        (match
+        format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^(?:0|[1-9][0-9]*)(#|(?:/(?:[^~/]|~[01])*)*)$|^#(?:/(?:[^~/]|~[01])*)*$"
         m2-ctx m2-path m2-doc m1-path m1-doc)))))
@@ -353,35 +359,38 @@
   ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
   #"^(?:[A-Za-z][A-Za-z0-9+.\-]*:[^\s]*|#(?:[^\s]*)?)$")
 
-(defmethod check-format-2 "uri" [_format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "uri" [format m2-ctx m2-path m2-doc]
   (memo
    (fn [_m1-ctx m1-path m1-doc]
      (when (string? m1-doc)
-       (match uri-regexp m2-ctx m2-path m2-doc m1-path m1-doc)))))
+       (match format uri-regexp m2-ctx m2-path m2-doc m1-path m1-doc)))))
 
-(defmethod check-format-2 "uri-reference" [_format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "uri-reference" [format m2-ctx m2-path m2-doc]
   (memo
    (fn [_m1-ctx m1-path m1-doc]
      (when (string? m1-doc)
        (match
+        format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^[^\s\\]*$"
         m2-ctx m2-path m2-doc m1-path m1-doc)))))
 
-(defmethod check-format-2 "uri-template" [_format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "uri-template" [format m2-ctx m2-path m2-doc]
   (memo
    (fn [_m1-ctx m1-path m1-doc]
      (when (string? m1-doc)
        (match
+        format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^(?:[^\s{}]|(?:\{[^\s{}]*\}))*$"
         m2-ctx m2-path m2-doc m1-path m1-doc)))))
 
-(defmethod check-format-2 "idn-email" [_format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "idn-email" [format m2-ctx m2-path m2-doc]
   (memo
    (fn [_m1-ctx m1-path m1-doc]
      (when (string? m1-doc)
        (match
+        format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^(?:[^\s@\[\]\"(),:;<>\\]+(?:\.[^\s@\[\]\"(),:;<>\\]+)*|\"(?:[^\"\\\r\n]|\\.)+\")@(?:[^\s@\[\]\"(),:;<>\\]+\.)*[^\s@\[\]\"(),:;<>\\]+$"
         m2-ctx m2-path m2-doc m1-path m1-doc)))))
@@ -396,29 +405,32 @@
      (when (string? m1-doc)
        nil))));NYI
 
-(defmethod check-format-2 "iri" [_format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "iri" [format m2-ctx m2-path m2-doc]
   (memo
    (fn [_m1-ctx m1-path m1-doc]
      (when (string? m1-doc)
        (match
+        format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^[A-Za-z][A-Za-z0-9+.\-]*://(?:[^\s/?#@\\]+@)?(?:\[[0-9A-Fa-f:]+\]|[^\s/?#@:]+)(?::\d+)?(?:/[^\s?#\\]*)?(?:\?[^\s#\\]*)?(?:#[^\s\\]*)?$"
         m2-ctx m2-path m2-doc m1-path m1-doc)))))
 
-(defmethod check-format-2 "iri-reference" [_format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "iri-reference" [format m2-ctx m2-path m2-doc]
   (memo
    (fn [_m1-ctx m1-path m1-doc]
      (when (string? m1-doc)
        (match
+        format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^[^\s\\]*$"
         m2-ctx m2-path m2-doc m1-path m1-doc)))))
 
-(defmethod check-format-2 "uuid" [_format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "uuid" [format m2-ctx m2-path m2-doc]
   (memo
    (fn [_m1-ctx m1-path m1-doc]
      (when (string? m1-doc)
        (match
+        format
         ;; https://www.jvt.me/posts/2022/01/14/java-uuid-regex/
         #"^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"
         m2-ctx m2-path m2-doc m1-path m1-doc)))))
