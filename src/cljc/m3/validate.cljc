@@ -773,12 +773,12 @@
 
 (def cmt->decoder
   {
-   absent             json-decode
    "application/json" json-decode
    })
 
 (defmethod check-property-2 :content [_property {d :draft :as m2-ctx} m2-path m2-doc [ce cmt cs]]
   (let [ce-decoder (ce->decoder ce)
+        cmt (if (present? cmt) cmt "application/json")
         cmt-decoder (cmt->decoder cmt)
         strict? (#{"draft7"} d) ;; check a context flag aswell
         checker (if (present? cs) (check-schema m2-ctx m2-path cs) (constantly []))]
