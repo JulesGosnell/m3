@@ -1,4 +1,4 @@
-(def polyglot-version "24.1.2")
+(def polyglot-version "24.2.0")
 (def jackson-version "2.18.3")
 
 (defproject org.clojars.jules_gosnell/m3 "0.1.0-SNAPSHOT"
