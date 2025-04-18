@@ -82,13 +82,12 @@
 
     ;; leave these til last - maybe a big job
     "unevaluatedItems.json"
-    "unevaluatedProperties.json"
+    ;;"unevaluatedProperties.json"
     })
 
 (def exclude-test?
-  #{
-    ;; I think we need $vocabulary working as the remote schema is draft7 but contains a dependentRequired in it...
-    
+  #{;; I think we need $vocabulary working as the remote schema is draft7 but contains a dependentRequired in it...
+
     ;; [{"type" "object",
     ;;   "allOf"
     ;;   [{"properties" {"foo" true}}
@@ -99,7 +98,7 @@
     ;; {"$id": "http://localhost:1234/draft7/integer.json",
     ;;  "$schema": "http://json-schema.org/draft-07/schema#",
     ;;  "dependentRequired": {"foo": ["bar"]}}
-    
+
     ["cross-draft.json" "refs to historic drafts are processed as historic drafts" "missing bar is valid"]
     ["cross-draft.json" "refs to historic drafts are processed as historic drafts" "first item not a string is valid"]
 
@@ -141,16 +140,16 @@
     ["not.json" "collect annotations inside a 'not', even if collection is disabled" "unevaluated property"] ;; needs unevaluatedProperties
     ["ref.json" "ref creates new scope when adjacent to keywords" "referenced subschema doesn't see annotations from properties"]  ;; needs unevaluatedProperties
     ["ref.json" "$ref with $recursiveAnchor" "extra items allowed for inner arrays"] ;; needs unevaluatedItems
-    
+
     ;; new - after I decided to choose first rather than last $id in a meld
     ["dynamicRef.json" "An $anchor with the same name as a $dynamicAnchor is not used for dynamic scope resolution" "Any array is valid"]
     ["dynamicRef.json" "A $dynamicRef without a matching $dynamicAnchor in the same schema resource behaves like a normal $ref to $anchor" "Any array is valid"]
     ["dynamicRef.json" "A $dynamicRef with a non-matching $dynamicAnchor in the same schema resource behaves like a normal $ref to $anchor" "Any array is valid"]
     ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected strings - additional property as not string is invalid"]
     ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected integers - additional property as not integer is invalid"]
-    
+
     ["refRemote.json" "retrieved nested refs resolve relative to their URI not $id" "number is invalid"]
-    
+
     ;; leap-second support seems to be an issue with java-time
     ;; https://coderanch.com/t/667087/java/Reconciling-Java-date-time-GPS
     ["date-time.json" "validation of date-time strings" "a valid date-time with a leap second, UTC"]
@@ -167,10 +166,50 @@
 
     ;; issues with cljs
     #?@(:cljs
-        [
-         ;; javascript treats numbers differently - grrr
-         ["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]
-         ])
+        [;; javascript treats numbers differently - grrr
+         ["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]])
+
+      ["not.json" "collect annotations inside a 'not', even if collection is disabled" "annotations are still collected inside a 'not'"]
+      ["unevaluatedProperties.json" "dependentSchemas with unevaluatedProperties" "unevaluatedProperties sees bar when foo2 is present"]
+      ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "a is valid"]
+      ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "all + foo is valid"]
+      ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "all is valid"]
+      ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "b is valid"]
+      ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "c is valid"]
+      ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "d is valid"]
+      ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "xx + foox is valid"]
+      ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "xx is valid"]
+      ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "a is valid"]
+      ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "all + foo is valid"]
+      ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "all is valid"]
+      ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "b is valid"]
+      ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "c is valid"]
+      ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "d is valid"]
+      ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "xx + foox is valid"]
+      ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "xx is valid"]
+      ["unevaluatedProperties.json" "nested unevaluatedProperties, outer false, inner true, properties inside" "with nested unevaluated properties"]
+      ["unevaluatedProperties.json" "nested unevaluatedProperties, outer false, inner true, properties inside" "with no nested unevaluated properties"]
+      ["unevaluatedProperties.json" "nested unevaluatedProperties, outer false, inner true, properties outside" "with nested unevaluated properties"]
+      ["unevaluatedProperties.json" "propertyDependencies with unevaluatedProperties" "unevaluatedProperties sees buz when foo2 is present"]
+      ["unevaluatedProperties.json" "unevaluatedProperties + ref inside allOf / oneOf" "a and b and x are valid"]
+      ["unevaluatedProperties.json" "unevaluatedProperties + ref inside allOf / oneOf" "a and b and y are valid"]
+      ["unevaluatedProperties.json" "unevaluatedProperties + ref inside allOf / oneOf" "a and x are valid"]
+      ["unevaluatedProperties.json" "unevaluatedProperties + ref inside allOf / oneOf" "a and y are valid"]
+      ["unevaluatedProperties.json" "unevaluatedProperties can see annotations from if without then and else" "valid in case if is evaluated"]
+      ["unevaluatedProperties.json" "unevaluatedProperties can see inside propertyDependencies" "allows bar if foo = foo1"]
+      ["unevaluatedProperties.json" "unevaluatedProperties with $dynamicRef" "with no unevaluated properties"]
+      ["unevaluatedProperties.json" "unevaluatedProperties with anyOf" "when one matches and has no unevaluated properties"]
+      ["unevaluatedProperties.json" "unevaluatedProperties with anyOf" "when two match and has no unevaluated properties"]
+      ["unevaluatedProperties.json" "unevaluatedProperties with dependentSchemas" "with no unevaluated properties"]
+      ["unevaluatedProperties.json" "unevaluatedProperties with if/then/else" "when if is false and has no unevaluated properties"]
+      ["unevaluatedProperties.json" "unevaluatedProperties with if/then/else" "when if is true and has no unevaluated properties"]
+      ["unevaluatedProperties.json" "unevaluatedProperties with if/then/else, else not defined" "when if is true and has no unevaluated properties"]
+      ["unevaluatedProperties.json" "unevaluatedProperties with if/then/else, then not defined" "when if is false and has no unevaluated properties"]
+      ["unevaluatedProperties.json" "unevaluatedProperties with nested additionalProperties" "with additional properties"]
+      ["unevaluatedProperties.json" "unevaluatedProperties with nested patternProperties" "with no additional properties"]
+      ["unevaluatedProperties.json" "unevaluatedProperties with nested properties" "with no additional properties"]
+      ["unevaluatedProperties.json" "unevaluatedProperties with nested unevaluatedProperties" "with nested unevaluated properties"]
+      ["unevaluatedProperties.json" "unevaluatedProperties with oneOf" "with no unevaluated properties"]
     })
 
 (defn load-schema [s]
@@ -275,3 +314,14 @@
          description)
         m1 (((index-by "description" m1s) test-name) "data")]
     [m2 m1]))
+
+;;------------------------------------------------------------------------------
+
+(defn test-m1 [c2 m2 {d "description" m1 "data" v? "valid"}]
+  (testing d
+    (is-validated c2 m2 {} m1 v?)))
+    
+
+(defn test-m2 [{d "description" m2 "schema" tests "tests"}]
+  (testing d
+    (doseq [test tests] (test-m1 {:draft "draft2019-09"} m2 test))))

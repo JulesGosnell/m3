@@ -32,6 +32,8 @@
       [org.graalvm.polyglot Context Value]))
   )
 
+;; consider https://docs.oracle.com/javase/8/docs/api/java/time/package-summary.html - other time types...
+
 #?(:cljs
    (def Exception js/Error))
 
@@ -950,7 +952,7 @@
     (constantly [])))
 
 ;; TODO
-;; "unevaluatedProperties"
+;; "unevaluatedItems"
 ;; - linked to schema composition
 ;; - see http://json-schema.org/understanding-json-schema/reference/object.html#unevaluated-properties
 
@@ -965,7 +967,7 @@
   (fn [_m1-ctx _m1-path _m1-doc]))
 
 ;; TODO: handle :default-additional-properties here
-(defmethod check-property-2 :properties [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [ps pps aps]]
+(defmethod check-property-2 :properties [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [ps pps aps ups]]
   (let [bail (if x? concatv bail-on-error)
         cp-and-ks (mapv (fn [[k v]] [(check-schema m2-ctx (conj m2-path k) v) k]) (when (present? ps) ps))
         named? (if (present? ps) (partial contains? ps) (constantly false))
@@ -974,7 +976,13 @@
         patterns (mapv second cp-and-pattern-and-ks)
         pattern? (if (seq patterns) (fn [k] (some (fn [pattern] (ecma-match pattern k)) patterns)) (constantly false))
         
-        cs (if (present? aps) (check-schema m2-ctx m2-path aps) (constantly []))]
+        [em cs] (cond
+                  (present? aps)
+                  ["additionalProperties: at least one additional property failed to conform to schema" (check-schema m2-ctx m2-path aps)]
+                  (present? ups)
+                  ["unevaluatedProperties: at least one unevaluated property failed to conform to schema" (check-schema m2-ctx m2-path ups)]
+                  :else
+                  [nil (constantly [])])]
     (memo
      (fn [m1-ctx m1-path m1-doc]
        (when (json-object? m1-doc)
@@ -1009,7 +1017,7 @@
           ;; properties schema
           (when-let [additional (seq (remove (fn [[k _v]] (or (named? k) (pattern? k))) m1-doc))]
             (make-error-on-failure
-             "additionalProperties: at least one additional property failed to conform to schema"
+             em
              m2-path m2-doc m1-path m1-doc
              (reduce
               (fn [acc [k v]]
