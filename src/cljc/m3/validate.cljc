@@ -479,7 +479,7 @@
   (memo
    (fn [_m1-ctx m1-path m1-doc]
      (when (and (string? m1-doc) (not (json-duration? m1-doc)))
-       [(make-error (str "format: not a valid duration: ") m2-path m2-doc m1-path m1-doc)]))))
+       [(make-error "format: not a valid duration:" m2-path m2-doc m1-path m1-doc)]))))
 
 (defmethod check-format-2 "regex" [_format _m2-ctx m2-path m2-doc]
   (memo
