@@ -673,7 +673,7 @@
                    ce (check-exclusive m1-path m1-doc)]
                (-> [] (cm) (ce))))))))))
 
-(defmethod check-property-2 :minimum [_property m2-ctx m2-path m2-doc m2-vals]
+(defmethod check-property-2 ["minimum" "exclusiveMinimum"] [_property m2-ctx m2-path m2-doc m2-vals]
   ((check-m??imum
     >
     >=
@@ -683,7 +683,7 @@
    m2-ctx m2-path m2-doc m2-vals))
 
 ;; TODO: optimise
-(defmethod check-property-2 :maximum [_property m2-ctx m2-path m2-doc m2-vals]
+(defmethod check-property-2 ["maximum" "exclusiveMaximum"] [_property m2-ctx m2-path m2-doc m2-vals]
   ((check-m??imum
     <
     <=
@@ -778,7 +778,7 @@
    "application/json" json-decode
    })
 
-(defmethod check-property-2 :content [_property {d :draft :as m2-ctx} m2-path m2-doc [ce cmt cs]]
+(defmethod check-property-2 ["contentEncoding" "contentMediaType" "contentSchema"] [_property {d :draft :as m2-ctx} m2-path m2-doc [ce cmt cs]]
   (let [ce-decoder (ce->decoder ce)
         cmt (if (present? cmt) cmt "application/json")
         cmt-decoder (cmt->decoder cmt)
@@ -941,7 +941,7 @@
     (fn [m1-ctx m1-path m1-doc]
       (empty? (checker m1-ctx m1-path m1-doc)))))
 
-(defmethod check-property-2 :if-then-else [_property m2-ctx m2-path m2-doc [if? then else]]
+(defmethod check-property-2 ["if" "then" "else"] [_property m2-ctx m2-path _m2-doc [if? then else]]
   (if (present? if?)
     (let [if-checker (check-schema m2-ctx m2-path if?)
           then-checker (if (present? then) (check-schema m2-ctx m2-path then) (constantly []))
@@ -967,7 +967,7 @@
   (fn [_m1-ctx _m1-path _m1-doc]))
 
 ;; TODO: handle :default-additional-properties here
-(defmethod check-property-2 :properties [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [ps pps aps ups]]
+(defmethod check-property-2 ["properties" "patternProperties" "additionalProperties" "unevaluatedProperties"] [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [ps pps aps ups]]
   (let [bail (if x? concatv bail-on-error)
         cp-and-ks (mapv (fn [[k v]] [(check-schema m2-ctx (conj m2-path k) v) k]) (when (present? ps) ps))
         named? (if (present? ps) (partial contains? ps) (constantly false))
@@ -979,8 +979,8 @@
         [em cs] (cond
                   (present? aps)
                   ["additionalProperties: at least one additional property failed to conform to schema" (check-schema m2-ctx m2-path aps)]
-                  (present? ups)
-                  ["unevaluatedProperties: at least one unevaluated property failed to conform to schema" (check-schema m2-ctx m2-path ups)]
+                   (present? ups)
+                   ["unevaluatedProperties: at least one unevaluated property failed to conform to schema" (check-schema m2-ctx m2-path ups)]
                   :else
                   [nil (constantly [])])]
     (memo
@@ -1149,7 +1149,7 @@
       :else success)))
 
 ;; TODO: optimise
-(defmethod check-property-2 :contains [_property m2-ctx m2-path m2-doc [m2-val mn? mx?]]
+(defmethod check-property-2 ["contains" "minContains" "maxContains"] [_property m2-ctx m2-path m2-doc [m2-val mn? mx?]]
   (if-let [checker (and (present? m2-val) (make-checker m2-ctx m2-path m2-val))]
     (let [lower-bound (if (present? mn?) mn? 1)
           upper-bound (if (present? mx?) mx? long-max-value)]
@@ -1198,6 +1198,7 @@
 (defn check-of [{x? :exhaustive? p? :parallel :as m2-ctx} m2-path m2-doc m2-val]
   (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema m2-ctx (conj m2-path i) sub-schema)]) m2-val))]
     (fn [m1-ctx m1-path m1-doc message failed? failing?]
+      ;;(println "check-of:" m2-path m1-path i-and-css)
       (let [bail (if x? (constantly false) failing?)]
         (make-error-on
          message
@@ -1208,6 +1209,7 @@
             )
          (reduce
           (fn [acc [i cs]]
+            ;;(println "THERE:" m2-path i)
             (let [e (cs m1-ctx m1-path m1-doc)
                   es (concatv acc e)]
               (if (bail i acc e) (reduced es) es)))
@@ -1274,20 +1276,125 @@
   [l r]
   (every? (partial apply =) (map vector l r)))
 
+
+
+(let [property-groups
+      [;; TODO: push quick wins towards lower ranks - type, format etc...
+
+       ["type"]
+       ["const"]
+       ["minLength"]
+       ["maxLength"]
+       ["multipleOf"]
+       ["format"]
+       ["enum"]
+       ["pattern"]
+
+       ["$ref"]
+       ["$schema"]
+       ["$id"]
+       ["$anchor"]
+       ["$recursiveRef"]
+       ["$recursiveAnchor"]
+       ["$dynamicRef"]
+       ["$dynamicAnchor"]
+       ["$vocabulary"]
+       ["title"]
+       ["description"]
+       ["default"]
+       ["examples"]
+       ["deprecated"]
+       ["readOnly"]
+       ["writeOnly"]
+       ["$comment"]
+       ["definitions"]
+       ["$defs"]
+
+;; ?
+       ["propertyNames"]
+       ["propertyDependencies"]
+
+       ["minProperties"]
+       ["maxProperties"]
+       ["allOf"]
+       ["anyOf"]
+       ["oneOf"]
+       ["not"]
+
+   ;; ["required" "dependentRequired"]                                                  :required
+       ["required"]
+       ["dependentRequired"]
+
+   ;; ["dependencies" "dependentSchemas" "propertyDependencies"]                        :dependencies
+       ["dependencies"]
+       ["dependentSchemas"]
+       ["dependentRequired"]
+
+       ["contains" "minContains" "maxContains"]  ;; TODO: I think this involves evaluation ?
+       ["minimum" "exclusiveMinimum"]
+       ["maximum" "exclusiveMaximum"]
+       ["contentEncoding" "contentMediaType" "contentSchema"]
+       ["if" "then" "else"]
+
+   ;; these should be evaluated last since they need to know about unevaluated properties/items
+
+       ["minItems"]
+       ["maxItems"]
+       ["uniqueItems"]
+   ;; ["prefixItems" "items" "additionalItems" "unevaluateItems"]                       :items ;; TODO: handle :default-additional-items here
+       ["prefixItems"]
+       ["items"]
+       ["additionalItems"]
+       ["unevaluatedItems"]
+
+       ["properties" "patternProperties" "additionalProperties" "unevaluatedProperties"] ;; TODO: what about propertyNames ?
+       ]
+      property->ranks-and-group
+      (into {} (mapcat (fn [i ps] (map-indexed (fn [j p] [p [[i j] ps]]) ps)) (range) property-groups))]
+
+  (defn compile-m2 [m2]
+    (mapv
+     second
+     (sort-by
+      first
+      (reduce
+       (fn [acc [k v]]
+         (let [[[r1 r2] g] (property->ranks-and-group k)]
+           (update
+            acc
+            r1
+            (fnil (fn [[k v] & args] [k (apply assoc v args)]) [g (vec (repeat (count g) :absent))])
+            r2
+            v)))
+       {}
+       m2)))))
+
+
+
+;; we also need to rank constraints so that unevaluated* can be processed at end of object/array
+
 ;; we need to figure out how to group properties that need to be processed together:
 ;; TODO: a single lookup that returns both group and property list
 (def properties->group
   {
-   ["properties" "patternProperties" "additionalProperties" "unevaluatedProperties"] :properties ;; TODO: what about propertyNames ?
-   ;; ["prefixItems" "items" "additionalItems" "unevaluateItems"]                       :items ;; TODO: handle :default-additional-items here
+   ;; TODO: push quick wins towards lower ranks - type, format etc...
+   
    ;; ["required" "dependentRequired"]                                                  :required
    ;; ["dependencies" "dependentSchemas" "propertyDependencies"]                        :dependencies
-   ["contains" "minContains" "maxContains"]                                          :contains
-   ["minimum" "exclusiveMinimum"]                                                    :minimum
-   ["maximum" "exclusiveMaximum"]                                                    :maximum
-   ["contentEncoding" "contentMediaType" "contentSchema"]                            :content
-   ["if" "then" "else"]                                                              :if-then-else
+   ["contains" "minContains" "maxContains"]                                          ["contains" "minContains" "maxContains"] ;; TODO: I think this involves evaluation ?
+   ["minimum" "exclusiveMinimum"]                                                    ["minimum" "exclusiveMinimum"]
+   ["maximum" "exclusiveMaximum"]                                                    ["maximum" "exclusiveMaximum"]
+   ["contentEncoding" "contentMediaType" "contentSchema"]                            ["contentEncoding" "contentMediaType" "contentSchema"]
+   ["if" "then" "else"]                                                              ["if" "then" "else"]
+
+   ;; these should be evaluated last since they need to know about unevaluated properties/items
+   
+   ;; ["prefixItems" "items" "additionalItems" "unevaluateItems"]                       :items ;; TODO: handle :default-additional-items here
+   ["properties" "patternProperties" "additionalProperties" "unevaluatedProperties"] ["properties" "patternProperties" "additionalProperties" "unevaluatedProperties"] ;; TODO: what about propertyNames ?
    })
+
+(when-not (instance? clojure.lang.PersistentArrayMap  properties->group) (log/error "properties->group MUST be an ORDERED map"))
+
 (let [g->ps 
   (reduce-kv (fn [acc k v] (assoc acc v k)) {} properties->group)]
   (defn group->properties [g]
@@ -1296,10 +1403,6 @@
 (let [p->g (reduce-kv (fn [acc ks v] (reduce (fn [acc k] (assoc acc k v)) acc ks)) {} properties->group)]
   (defn property->group [p]
     (get p->g p p)))
-
-(let [p->g-and-ps (reduce-kv (fn [acc ps g] (reduce (fn [acc p] (assoc acc p [g ps])) acc ps)) {} properties->group)]
-  (defn property->group-and-properties [p]
-    (or (get p->g-and-ps p) [p [p]])))
 
 (defn select-values [m ks absent]
   (mapv (fn [k] (get m k :absent)) ks))
@@ -1327,6 +1430,7 @@
                  [new-m2-path (check-property k m2-ctx new-m2-path m2-doc v)]))
              group->values)]
         (fn [m1-ctx m1-path m1-doc]
+          ;;(prn "HERE:" m2-path-and-cps)
           (when (present? m1-doc)
             (make-error-on-failure
              "schema: document did not conform"

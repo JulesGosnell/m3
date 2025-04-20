@@ -20,7 +20,7 @@
    #?(:cljs [goog.string :as gstring])
    #?(:cljs [goog.string.format])
    [clojure.pprint :refer [pprint]]
-   [m3.validate :refer [validate uri->continuation json-decode]]]
+   [m3.validate :refer [validate validate-2 uri->continuation json-decode]]]
   [:import
    #?(:clj  [java.io File])])
 
@@ -317,11 +317,12 @@
 
 ;;------------------------------------------------------------------------------
 
-(defn test-m1 [c2 m2 {d "description" m1 "data" v? "valid"}]
+(defn test-m1 [c2 m2 {d "description" m1 "data" expected-v? "valid"}]
   (testing d
-    (is-validated c2 m2 {} m1 v?)))
+    (let [{actual-v? :valid?} ((validate-2 c2 m2) {} m1)]
+      (is actual-v? expected-v?))))
     
 
-(defn test-m2 [{d "description" m2 "schema" tests "tests"}]
+(defn test-m2 [c2 {d "description" m2 "schema" tests "tests"}]
   (testing d
-    (doseq [test tests] (test-m1 {:draft "draft2019-09"} m2 test))))
+    (doseq [test tests] (test-m1 c2 m2 test))))
