@@ -743,7 +743,7 @@
                (> (json-length m1-doc) m2-val)))
          [(make-error "maxLength: string too long" m2-path m2-doc m1-path m1-doc)])))))
 
-(defmethod check-property-2 "pattern" [property m2-ctx m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "pattern" [_property m2-ctx m2-path m2-doc [m2-val]]
   (if (starts-with? m2-val "$format:")
     ;; N.B.
     ;; this is an extension to allow patternProperties to
@@ -1293,6 +1293,7 @@
        ["$ref"]
        ["$schema"]
        ["$id"]
+       ["id"]
        ["$anchor"]
        ["$recursiveRef"]
        ["$recursiveAnchor"]
@@ -1316,10 +1317,11 @@
 
        ["minProperties"]
        ["maxProperties"]
-       ["allOf"]
+
+       ["not"]
        ["anyOf"]
        ["oneOf"]
-       ["not"]
+       ["allOf"]
 
    ;; ["required" "dependentRequired"]                                                  :required
        ["required"]
@@ -1347,6 +1349,11 @@
        ["additionalItems"]
        ["unevaluatedItems"]
 
+
+       ;; TODO:
+       ;; - ensure ordering of interdependent properties - evaluated MUST come after all relevant siblings
+       ;; - push expensive checks to end as we may never need them...
+       
        ["properties" "patternProperties" "additionalProperties" "unevaluatedProperties"] ;; TODO: what about propertyNames ?
        ]
       property->ranks-and-group
@@ -1359,7 +1366,7 @@
       first
       (reduce
        (fn [acc [k v]]
-         (let [[[r1 r2] g] (property->ranks-and-group k)]
+         (let [[[r1 r2] g] (property->ranks-and-group k [[0 0] [k]])]
            (update
             acc
             r1
@@ -1368,44 +1375,6 @@
             v)))
        {}
        m2)))))
-
-
-
-;; we also need to rank constraints so that unevaluated* can be processed at end of object/array
-
-;; we need to figure out how to group properties that need to be processed together:
-;; TODO: a single lookup that returns both group and property list
-(def properties->group
-  {
-   ;; TODO: push quick wins towards lower ranks - type, format etc...
-   
-   ;; ["required" "dependentRequired"]                                                  :required
-   ;; ["dependencies" "dependentSchemas" "propertyDependencies"]                        :dependencies
-   ["contains" "minContains" "maxContains"]                                          ["contains" "minContains" "maxContains"] ;; TODO: I think this involves evaluation ?
-   ["minimum" "exclusiveMinimum"]                                                    ["minimum" "exclusiveMinimum"]
-   ["maximum" "exclusiveMaximum"]                                                    ["maximum" "exclusiveMaximum"]
-   ["contentEncoding" "contentMediaType" "contentSchema"]                            ["contentEncoding" "contentMediaType" "contentSchema"]
-   ["if" "then" "else"]                                                              ["if" "then" "else"]
-
-   ;; these should be evaluated last since they need to know about unevaluated properties/items
-   
-   ;; ["prefixItems" "items" "additionalItems" "unevaluateItems"]                       :items ;; TODO: handle :default-additional-items here
-   ["properties" "patternProperties" "additionalProperties" "unevaluatedProperties"] ["properties" "patternProperties" "additionalProperties" "unevaluatedProperties"] ;; TODO: what about propertyNames ?
-   })
-
-(when-not (instance? clojure.lang.PersistentArrayMap  properties->group) (log/error "properties->group MUST be an ORDERED map"))
-
-(let [g->ps 
-  (reduce-kv (fn [acc k v] (assoc acc v k)) {} properties->group)]
-  (defn group->properties [g]
-    (get g->ps g [g])))
-
-(let [p->g (reduce-kv (fn [acc ks v] (reduce (fn [acc k] (assoc acc k v)) acc ks)) {} properties->group)]
-  (defn property->group [p]
-    (get p->g p p)))
-
-(defn select-values [m ks absent]
-  (mapv (fn [k] (get m k :absent)) ks))
 
 (defn check-schema-2 [{x? :exhaustive? t? :trace? :as m2-ctx} m2-path m2-doc]
   ;; TODO; this needs to be simplified
@@ -1420,15 +1389,13 @@
           [(make-error "schema is false: nothing will match" m2-path m2-doc m1-path m1-doc)]))
 
       :else
-      (let [group->keys (group-by property->group (keys m2-doc))
-            ;; I think there is a more clever way to do this where we iterat through the m2-doc grouping the [k v] tuple rather thn just the k and then having to later deref the v... - leave for later
-            group->values (mapv (fn [[g ks]] [g (select-values m2-doc (group->properties g) absent)]) group->keys)
-            m2-path-and-cps
+      (let [m2-path-and-cps
             (mapv
-             (fn [[k v]]
-               (let [new-m2-path (conj m2-path k)]
-                 [new-m2-path (check-property k m2-ctx new-m2-path m2-doc v)]))
-             group->values)]
+             (fn [[ks vs]]
+               (let [ks (if (= 1 (count ks)) (first ks) ks) ;; hack - lose later
+                     new-m2-path (conj m2-path ks)]
+                 [new-m2-path (check-property ks m2-ctx new-m2-path m2-doc vs)]))
+             (compile-m2 m2-doc))]
         (fn [m1-ctx m1-path m1-doc]
           ;;(prn "HERE:" m2-path-and-cps)
           (when (present? m1-doc)
