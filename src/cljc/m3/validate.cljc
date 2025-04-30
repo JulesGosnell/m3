@@ -1426,9 +1426,12 @@
 (defn dont-bail-on-error [m1-ctx acc es]
   [m1-ctx (concatv acc es)])
 
-(defn check-schema-2 [{x? :exhaustive? t? :trace? :as m2-ctx} m2-path m2-doc]
+(defn get-bail [{x? :exhaustive?}]
+  (if x? dont-bail-on-error do-bail-on-error))
+
+(defn check-schema-2 [{t? :trace? :as m2-ctx} m2-path m2-doc]
   ;; TODO; this needs to be simplified
-  (let [bail (if x? dont-bail-on-error do-bail-on-error)]
+  (let [bail (get-bail m2-ctx)]
     (cond
       (true? m2-doc)
       (fn [m1-ctx _m1-path _m1-doc]
