@@ -1418,9 +1418,17 @@
        {}
        m2)))))
 
+(defn do-bail-on-error [m1-ctx acc es]
+  (if (seq es)
+    (reduced [m1-ctx es])
+    [m1-ctx acc]))
+
+(defn dont-bail-on-error [m1-ctx acc es]
+  [m1-ctx (concatv acc es)])
+
 (defn check-schema-2 [{x? :exhaustive? t? :trace? :as m2-ctx} m2-path m2-doc]
   ;; TODO; this needs to be simplified
-  (let [bail (if x? concatv bail-on-error)]
+  (let [bail (if x? dont-bail-on-error do-bail-on-error)]
     (cond
       (true? m2-doc)
       (fn [m1-ctx _m1-path _m1-doc]
@@ -1441,19 +1449,18 @@
                  [new-m2-path (check-property ks m2-ctx new-m2-path m2-doc vs)]))
              (compile-m2 m2-doc))]
         (fn [m1-ctx m1-path m1-doc]
-          [m1-ctx
-          ;;(prn "HERE:" m2-path-and-cps)
-           (when (present? m1-doc)
-             (make-error-on-failure
-              "schema: document did not conform"
-              m2-path m2-doc m1-path m1-doc
-              (reduce
-               (fn [acc [new-m2-path cp]]
-                 (let [[new-m1-ctx [{m :message} :as es]] (cp m1-ctx m1-path m1-doc)] ;; TODO: thread m1-ctx
-                   (when t? (println (pr-str new-m2-path) (pr-str m1-path) (if (seq es) ["❌" m] "✅")))
-                   (bail acc es)))
-               []
-               m2-path-and-cps)))])))))
+          (if (present? m1-doc)
+            (let [[new-m1-ctx es]
+                  (reduce
+                   (fn [[old-m1-ctx acc] [new-m2-path cp]]
+                     (let [[new-m1-ctx [{m :message} :as es]] (cp old-m1-ctx m1-path m1-doc)]
+                       (when t? (println (pr-str new-m2-path) (pr-str m1-path) (if (seq es) ["❌" m] "✅")))
+                       (bail new-m1-ctx acc es)))
+                   [m1-ctx []]
+                   m2-path-and-cps)]
+              [new-m1-ctx
+               (make-error-on-failure "schema: document did not conform" m2-path m2-doc m1-path m1-doc es)])
+            [m1-ctx []]))))))
 
 ;; quicker than actual 'apply' [?]
 (defn apply3 [f [c p m]]
