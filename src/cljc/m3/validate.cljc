@@ -1128,26 +1128,19 @@
 
 (defmethod check-property-2 "items" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val :as m2-vals]]
   (let [bail (if x? continue bail-out)]
-    ;; TODO: we should do this branch on validator version ?
-    (if (json-array? m2-val)
-      (let [cp (check-property "prefixItems" m2-ctx m2-path {"prefixItems" m2-val} m2-vals)]
-        (memo
-         (fn [m1-ctx m1-path m1-doc]
-           (if (json-array? m1-doc)
-             (cp m1-ctx m1-path m1-doc)
-             [m1-ctx nil]))))
-      ;; TODO: achieve this by looking at m1-ctx ?
-      (let [n (count (m2-doc "prefixItems"))
-            cs (check-schema m2-ctx m2-path m2-val)]
-        (memo
-         (fn [m1-ctx m1-path m1-doc]
-           (if (json-array? m1-doc)
-             (let [items (drop n m1-doc)
-                   i-and-css (map-indexed (fn [i _] [i cs]) items)]
-               (check-items
-                m2-path m2-doc m1-ctx m1-path items bail i-and-css
-                "items: at least one item did not conform to schema"))
-             [m1-ctx []])))))))
+    (let [n (count (m2-doc "prefixItems")) ;; TODO: achieve this by looking at m1-ctx ?
+          css (if (json-array? m2-val)
+                (map-indexed (fn [i v] (check-schema m2-ctx (conj m2-path i) v)) m2-val)
+                (repeat (check-schema m2-ctx m2-path m2-val)))]
+      (memo
+       (fn [m1-ctx m1-path m1-doc]
+         (if (json-array? m1-doc)
+           (let [items (drop n m1-doc)
+                 i-and-css (mapv (fn [i cs _] [i cs]) (range) css items)]
+             (check-items
+              m2-path m2-doc m1-ctx m1-path items bail i-and-css
+              "items: at least one item did not conform to schema"))
+           [m1-ctx []]))))))
 
 (defmethod check-property-2 "additionalItems" [_property m2-ctx m2-path {is "items" :as m2-doc} [m2-val]]
   ;; N.B.
