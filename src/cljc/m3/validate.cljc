@@ -1109,7 +1109,7 @@
          (map vector i-and-css m1-doc))]
     [;;m1-ctx
      ;; TODO: only record evaluated-items if unevaluatedItems needed later ?
-     (update m1-ctx :evaluated-items assoc m1-path (first (last i-and-css)))
+     (update m1-ctx :evaluated-items update m1-path (fnil into #{}) (map first i-and-css))
      (make-error-on-failure message m2-path m2-doc m1-path m1-doc es)]))
 
 (defmethod check-property-2 "prefixItems" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
@@ -1158,10 +1158,11 @@
   (let [bail (if x? continue bail-out)
         css (repeat (check-schema m2-ctx m2-path m2-val))]
     (memo
-     (fn [{eis :evaluated-items :as m1-ctx} m1-path m1-doc]
+     (fn [{p->eis :evaluated-items :as m1-ctx} m1-path m1-doc]
        (if (json-array? m1-doc)
-         (let [n (or (get eis m1-path) 0)
-               items  (drop n m1-doc)
+         (let [eis (or (get p->eis m1-path) #{})
+               n (count eis)
+               items  (drop n m1-doc) ;; we really need a (drop-while-kv (fn [k v] (n k)) m1-doc)
                i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
            (check-items m2-path m2-doc m1-ctx m1-path items bail i-and-css "unevaluatedItems: at least one item did not conform to schema"))
          [m1-ctx []])))))
@@ -1237,7 +1238,7 @@
                  (if (bail i old-es new-es) (reduced [c es]) [c es])))
              [m1-ctx []]
              i-and-css)]
-        [m1-ctx
+        [(update m1-ctx :evaluated-items update m1-path (fnil into #{}) (map first i-and-css))
          (make-error-on message m2-path m2-doc m1-path m1-doc failed? es)]))))
 
 (defmethod check-property-2 "oneOf" [_property m2-ctx m2-path m2-doc [m2-val]]
