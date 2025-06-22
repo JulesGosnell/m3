@@ -1155,20 +1155,12 @@
 (defmethod check-property-2 "additionalItems" [_property m2-ctx m2-path {is "items" :as m2-doc} [m2-val]]
   (if (json-array? is)
     (let [n (count is)]
-      (cond
-        (boolean? m2-val)
+      (let [checker (make-checker m2-ctx m2-path m2-val)]
         (memo
          (fn [m1-ctx m1-path m1-doc]
            [m1-ctx
-            (when (and (false? m2-val) (> (count m1-doc) n))
-              [(make-error "additionalItems: should not be present" m2-path m2-doc m1-path m1-doc)])]))
-        (json-object? m2-val)
-        (let [checker (make-checker m2-ctx m2-path m2-val)]
-          (memo
-           (fn [m1-ctx m1-path m1-doc]
-             [m1-ctx
-              (when-not (every? (partial checker m1-ctx m1-path) (drop n m1-doc))
-                [(make-error "additionalItems: present and non-conformant" m2-path m2-doc m1-path m1-doc)])])))))
+            (when-not (every? (partial checker m1-ctx m1-path) (drop n m1-doc))
+              [(make-error "additionalItems: present and non-conformant" m2-path m2-doc m1-path m1-doc)])]))))
     (fn [m1-ctx _m1-path _m1-doc]
       [m1-ctx nil])))
     
