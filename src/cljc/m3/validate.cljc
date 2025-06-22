@@ -1224,28 +1224,20 @@
     (fn [m1-ctx _m1-path _m1-doc]
       [m1-ctx nil])))
 
-;; TODO: look for parallel? flag in context and use pmap instead of map
-(defn check-of [{x? :exhaustive? p? :parallel :as m2-ctx} m2-path m2-doc m2-val]
+(defn check-of [{x? :exhaustive? :as m2-ctx} m2-path m2-doc m2-val]
   (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema m2-ctx (conj m2-path i) sub-schema)]) m2-val))]
     (fn [m1-ctx m1-path m1-doc message failed? failing?]
-      ;;(println "check-of:" m2-path m1-path i-and-css)
-      (let [bail (if x? (constantly false) failing?)]
-        ;; TODO: old-copy of m1-ctx being returned
-        [m1-ctx
-         (make-error-on
-          message
-          m2-path m2-doc m1-path m1-doc
-          failed?
-          (if p?
-            (pmap)
+      (let [bail (if x? (constantly false) failing?)
+            [_m1-ctx es]
             (reduce
-             (fn [acc [i cs]]
-            ;;(println "THERE:" m2-path i)
-               (let [[new-m1-ctx e] (cs m1-ctx m1-path m1-doc)
-                     es (concatv acc e)]
-                 (if (bail i acc e) (reduced es) es)))
-             []
-             i-and-css)))]))))
+             (fn [[c old-es] [i cs]]
+               (let [[c new-es] (cs c m1-path m1-doc)
+                     es (concatv old-es new-es)]
+                 (if (bail i old-es new-es) (reduced [c es]) [c es])))
+             [m1-ctx []]
+             i-and-css)]
+        [m1-ctx
+         (make-error-on message m2-path m2-doc m1-path m1-doc failed? es)]))))
 
 (defmethod check-property-2 "oneOf" [_property m2-ctx m2-path m2-doc [m2-val]]
   (let [co (check-of m2-ctx m2-path m2-doc m2-val)
