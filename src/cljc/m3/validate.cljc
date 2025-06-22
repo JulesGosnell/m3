@@ -1108,12 +1108,10 @@
              (bail c old-es new-es)))
          [m1-ctx []]
          (map vector i-and-css m1-doc))]
-    (if (seq es)
-      [m1-ctx (make-error-on-failure message m2-path m2-doc m1-path m1-doc es)]
-      [m1-ctx
-       ;; TODO:
-       ;; (update m1-ctx :evaluated-items update m1-path (fnil conj #{}) (mapv first i-and-css))
-       []])))
+    [m1-ctx
+     ;; TODO:
+     ;; (update m1-ctx :evaluated-items update m1-path (fnil conj #{}) (mapv first i-and-css))
+     (make-error-on-failure message m2-path m2-doc m1-path m1-doc es)]))
 
 (defmethod check-property-2 "prefixItems" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
   (let [bail (if x? continue bail-out)
@@ -1121,40 +1119,39 @@
     (memo
      (fn [m1-ctx m1-path m1-doc]
        (if (json-array? m1-doc)
-         (check-items
-          m2-path m2-doc m1-ctx m1-path m1-doc bail i-and-css
-          "prefixItems: at least one item did not conform to respective schema")
+         (check-items m2-path m2-doc m1-ctx m1-path m1-doc bail i-and-css "prefixItems: at least one item did not conform to respective schema")
          [m1-ctx []])))))
 
 (defmethod check-property-2 "items" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val :as m2-vals]]
-  (let [bail (if x? continue bail-out)]
-    (let [n (count (m2-doc "prefixItems")) ;; TODO: achieve this by looking at m1-ctx ?
-          css (if (json-array? m2-val)
-                (map-indexed (fn [i v] (check-schema m2-ctx (conj m2-path i) v)) m2-val)
-                (repeat (check-schema m2-ctx m2-path m2-val)))]
-      (memo
-       (fn [m1-ctx m1-path m1-doc]
-         (if (json-array? m1-doc)
-           (let [items (drop n m1-doc)
-                 i-and-css (mapv (fn [i cs _] [i cs]) (range) css items)]
-             (check-items
-              m2-path m2-doc m1-ctx m1-path items bail i-and-css
-              "items: at least one item did not conform to schema"))
-           [m1-ctx []]))))))
+  (let [bail (if x? continue bail-out)
+        n (count (m2-doc "prefixItems")) ;; TODO: achieve this by looking at m1-ctx ?
+        [m css] (if (json-array? m2-val)
+              ["respective " (map-indexed (fn [i v] (check-schema m2-ctx (conj m2-path i) v)) m2-val)]
+              ["" (repeat (check-schema m2-ctx m2-path m2-val))])]
+    (memo
+     (fn [m1-ctx m1-path m1-doc]
+       (if (json-array? m1-doc)
+         (let [items (drop n m1-doc)
+               i-and-css (mapv (fn [i cs _] [i cs]) (range) css items)]
+           (check-items m2-path m2-doc m1-ctx m1-path items bail i-and-css (str "items: at least one item did not conform to " m "schema")))
+         [m1-ctx []])))))
 
-(defmethod check-property-2 "additionalItems" [_property m2-ctx m2-path {is "items" :as m2-doc} [m2-val]]
+(defmethod check-property-2 "additionalItems" [_property {x? :exhaustive? :as m2-ctx} m2-path {is "items" :as m2-doc} [m2-val]]
   ;; N.B.
   ;; prefixItems cannot co-occur
   ;; unevaluatedItems cannot co-occur
   ;; additionalItems is only used when items is a tuple
   (if (json-array? is)
-    (let [n (count is)]
-      (let [checker (make-checker m2-ctx m2-path m2-val)]
-        (memo
-         (fn [m1-ctx m1-path m1-doc]
-           [m1-ctx
-            (when-not (every? (partial checker m1-ctx m1-path) (drop n m1-doc))
-              [(make-error "additionalItems: present and non-conformant" m2-path m2-doc m1-path m1-doc)])]))))
+    (let [bail (if x? continue bail-out)
+          n (count is)
+          css (repeat (check-schema m2-ctx m2-path m2-val))]
+      (memo
+       (fn [m1-ctx m1-path m1-doc]
+         (if (json-array? m1-doc)
+           (let [items  (drop n m1-doc)
+                 i-and-css (mapv (fn [i cs _] [i cs]) (range) css items)]
+             (check-items m2-path m2-doc m1-ctx m1-path items bail i-and-css "additionalItems: at least one item did not conform to schema"))
+           [m1-ctx []]))))
     (fn [m1-ctx _m1-path _m1-doc]
       [m1-ctx nil])))
     
