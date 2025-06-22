@@ -1100,28 +1100,30 @@
     (reduced [c new-es])
     [c old-es]))
 
+(defn check-items [m2-path m2-doc m1-ctx m1-path m1-doc bail i-and-css message]
+  (let [[m1-ctx es]
+        (reduce
+         (fn [[c old-es] [[i cs] sub-document]]
+           (let [[c new-es] (cs c (conj m1-path i) sub-document)]
+             (bail c old-es new-es)))
+         [m1-ctx []]
+         (map vector i-and-css m1-doc))]
+    (if (seq es)
+      [m1-ctx (make-error-on-failure message m2-path m2-doc m1-path m1-doc es)]
+      [m1-ctx
+       ;; TODO:
+       ;; (update m1-ctx :evaluated-items update m1-path (fnil conj #{}) (mapv first i-and-css))
+       []])))
+
 (defmethod check-property-2 "prefixItems" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
   (let [bail (if x? continue bail-out)
         i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema m2-ctx (conj m2-path i) sub-schema)]) m2-val))]
     (memo
      (fn [m1-ctx m1-path m1-doc]
        (if (json-array? m1-doc)
-         (let [[m1-ctx es]
-               (reduce
-                (fn [[c old-es] [[i cs] sub-document]]
-                  (let [[c new-es] (cs c (conj m1-path i) sub-document)]
-                    (bail c old-es new-es)))
-                [m1-ctx []]
-                (map vector i-and-css m1-doc))]
-           (if (seq es)
-             [m1-ctx
-              (make-error-on-failure
-               "prefixItems: at least one item did not conform to respective schema"
-               m2-path m2-doc m1-path m1-doc es)]
-             [m1-ctx
-              ;; TODO:
-              ;; (update m1-ctx :evaluated-items update m1-path (fnil conj #{}) (mapv first i-and-css))
-              []]))
+         (check-items
+          m2-path m2-doc m1-ctx m1-path m1-doc bail i-and-css
+          "prefixItems: at least one item did not conform to respective schema")
          [m1-ctx []])))))
 
 (defmethod check-property-2 "items" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val :as m2-vals]]
@@ -1129,36 +1131,25 @@
     (if (true? m2-val) ;; cheeky look-ahead - potentially save lots of unnecessary work...
       (fn [m1-ctx _m1-path _m1-doc]
         [m1-ctx nil])
+      ;; TODO: we should do this branch on validator version ?
       (if (json-array? m2-val)
-        ;; TODO: achieve this by looking at m1-ctx ?
         (let [cp (check-property "prefixItems" m2-ctx m2-path {"prefixItems" m2-val} m2-vals)]
           (memo
            (fn [m1-ctx m1-path m1-doc]
              (if (json-array? m1-doc)
                (cp m1-ctx m1-path m1-doc)
                [m1-ctx nil]))))
+        ;; TODO: achieve this by looking at m1-ctx ?
         (let [n (count (m2-doc "prefixItems"))
               cs (check-schema m2-ctx m2-path m2-val)]
           (memo
            (fn [m1-ctx m1-path m1-doc]
              (if (json-array? m1-doc)
-               (let [i-and-items (map-indexed vector (drop n m1-doc))
-                     [m1-ctx es]
-                     (reduce
-                      (fn [[c old-es] [i sub-document]]
-                        (let [[c new-es] (cs m1-ctx (conj m1-path i) sub-document)]
-                          (bail c old-es new-es)))
-                      [m1-ctx []]
-                      i-and-items)]
-                 (if (seq es)
-                   [m1-ctx
-                    (make-error-on-failure
-                     "items: at least one item did not conform to schema"
-                     m2-path m2-doc m1-path m1-doc es)]
-                   [m1-ctx
-                    ;; TODO:
-                    ;; (update m1-ctx :evaluated-items update m1-path (fnil conj #{}) (mapv first i-and-items))
-                    []]))
+               (let [items (drop n m1-doc)
+                     i-and-css (map-indexed (fn [i _] [i cs]) items)]
+                 (check-items
+                  m2-path m2-doc m1-ctx m1-path items bail i-and-css
+                  "items: at least one item did not conform to schema"))
                [m1-ctx []]))))))))
 
 (defmethod check-property-2 "additionalItems" [_property m2-ctx m2-path {is "items" :as m2-doc} [m2-val]]
