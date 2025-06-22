@@ -1125,11 +1125,12 @@
          [m1-ctx []])))))
 
 (defmethod check-property-2 "items" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val :as m2-vals]]
-  (let [bail (if x? concatv bail-on-error)]
+  (let [bail (if x? continue bail-out)]
     (if (true? m2-val) ;; cheeky look-ahead - potentially save lots of unnecessary work...
       (fn [m1-ctx _m1-path _m1-doc]
         [m1-ctx nil])
       (if (json-array? m2-val)
+        ;; TODO: achieve this by looking at m1-ctx ?
         (let [cp (check-property "prefixItems" m2-ctx m2-path {"prefixItems" m2-val} m2-vals)]
           (memo
            (fn [m1-ctx m1-path m1-doc]
@@ -1140,17 +1141,25 @@
               cs (check-schema m2-ctx m2-path m2-val)]
           (memo
            (fn [m1-ctx m1-path m1-doc]
-             [m1-ctx
-              (when (json-array? m1-doc)
-                (make-error-on-failure
-                 "items: at least one item did not conform to schema"
-                 m2-path m2-doc m1-path m1-doc
-                 (reduce
-                  (fn [acc [i sub-document]]
-                    (let [[new-m1-ctx es] (cs m1-ctx (conj m1-path i) sub-document)]
-                      (bail acc es)))
-                  []
-                  (map-indexed vector (drop n m1-doc)))))])))))))
+             (if (json-array? m1-doc)
+               (let [i-and-items (map-indexed vector (drop n m1-doc))
+                     [m1-ctx es]
+                     (reduce
+                      (fn [[c old-es] [i sub-document]]
+                        (let [[c new-es] (cs m1-ctx (conj m1-path i) sub-document)]
+                          (bail c old-es new-es)))
+                      [m1-ctx []]
+                      i-and-items)]
+                 (if (seq es)
+                   [m1-ctx
+                    (make-error-on-failure
+                     "items: at least one item did not conform to schema"
+                     m2-path m2-doc m1-path m1-doc es)]
+                   [m1-ctx
+                    ;; TODO:
+                    ;; (update m1-ctx :evaluated-items update m1-path (fnil conj #{}) (mapv first i-and-items))
+                    []]))
+               [m1-ctx []]))))))))
 
 (defmethod check-property-2 "additionalItems" [_property m2-ctx m2-path {is "items" :as m2-doc} [m2-val]]
   (if (json-array? is)
