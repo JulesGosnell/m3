@@ -1224,11 +1224,12 @@
     (fn [m1-ctx _m1-path _m1-doc]
       [m1-ctx nil])))
 
+;; TODO: merge code with check-items...
 (defn check-of [{x? :exhaustive? :as m2-ctx} m2-path m2-doc m2-val]
   (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema m2-ctx (conj m2-path i) sub-schema)]) m2-val))]
     (fn [m1-ctx m1-path m1-doc message failed? failing?]
       (let [bail (if x? (constantly false) failing?)
-            [_m1-ctx es]
+            [m1-ctx es]
             (reduce
              (fn [[c old-es] [i cs]]
                (let [[c new-es] (cs c m1-path m1-doc)
