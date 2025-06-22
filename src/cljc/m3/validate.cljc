@@ -968,7 +968,6 @@
       [m1-ctx nil])))
 
 ;; TODO
-;; "unevaluatedItems"
 ;; - linked to schema composition
 ;; - see http://json-schema.org/understanding-json-schema/reference/object.html#unevaluated-properties
 
@@ -1108,9 +1107,9 @@
              (bail c old-es new-es)))
          [m1-ctx []]
          (map vector i-and-css m1-doc))]
-    [m1-ctx
-     ;; TODO:
-     ;; (update m1-ctx :evaluated-items update m1-path (fnil conj #{}) (mapv first i-and-css))
+    [;;m1-ctx
+     ;; TODO: only record evaluated-items if unevaluatedItems needed later ?
+     (update m1-ctx :evaluated-items assoc m1-path (first (last i-and-css)))
      (make-error-on-failure message m2-path m2-doc m1-path m1-doc es)]))
 
 (defmethod check-property-2 "prefixItems" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
@@ -1122,7 +1121,7 @@
          (check-items m2-path m2-doc m1-ctx m1-path m1-doc bail i-and-css "prefixItems: at least one item did not conform to respective schema")
          [m1-ctx []])))))
 
-(defmethod check-property-2 "items" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val :as m2-vals]]
+(defmethod check-property-2 "items" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
   (let [bail (if x? continue bail-out)
         n (count (m2-doc "prefixItems")) ;; TODO: achieve this by looking at m1-ctx ?
         [m css] (if (json-array? m2-val)
@@ -1132,7 +1131,7 @@
      (fn [m1-ctx m1-path m1-doc]
        (if (json-array? m1-doc)
          (let [items (drop n m1-doc)
-               i-and-css (mapv (fn [i cs _] [i cs]) (range) css items)]
+               i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
            (check-items m2-path m2-doc m1-ctx m1-path items bail i-and-css (str "items: at least one item did not conform to " m "schema")))
          [m1-ctx []])))))
 
@@ -1149,30 +1148,23 @@
        (fn [m1-ctx m1-path m1-doc]
          (if (json-array? m1-doc)
            (let [items  (drop n m1-doc)
-                 i-and-css (mapv (fn [i cs _] [i cs]) (range) css items)]
+                 i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
              (check-items m2-path m2-doc m1-ctx m1-path items bail i-and-css "additionalItems: at least one item did not conform to schema"))
            [m1-ctx []]))))
     (fn [m1-ctx _m1-path _m1-doc]
       [m1-ctx nil])))
     
-(defmethod check-property-2 "unevaluatedItems" [_property {d :draft :as m2-ctx} m2-path {pis "prefixItems" is "items" ais "additionalItems" :as m2-doc} [m2-val]]
-  (let [uis m2-val
-        [pis is uis] (if (vector? is) [is nil (or ais uis)] [pis is uis]) ;; hack to get through testsuite which mixes drafts
-        n (count pis)
-        is-checker (if (nil? is) (constantly false) (make-checker m2-ctx m2-path is))
-        uis-checker (make-checker m2-ctx m2-path uis)]
+(defmethod check-property-2 "unevaluatedItems" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
+  (let [bail (if x? continue bail-out)
+        css (repeat (check-schema m2-ctx m2-path m2-val))]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       [m1-ctx
-        (when (json-array? m1-doc)
-          (let [bad-items
-                (drop-while
-                 (partial uis-checker m1-ctx m1-path) ;; skip conformant unevaluatedItems
-                 (drop-while
-                  (partial is-checker m1-ctx m1-path) ;; skip conformant items - TODO: m1-path needs index appended
-                  (drop n m1-doc)))] ;; skip prefixItems - if non-conformant they will raise error elsewhere
-            (when (seq bad-items)
-              [(make-error (str "unevaluatedItems: at least 1 non-conformant item present:" (prn-str bad-items)) m2-path m2-doc m1-path m1-doc)])))]))))
+     (fn [{eis :evaluated-items :as m1-ctx} m1-path m1-doc]
+       (if (json-array? m1-doc)
+         (let [n (or (get eis m1-path) 0)
+               items  (drop n m1-doc)
+               i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
+           (check-items m2-path m2-doc m1-ctx m1-path items bail i-and-css "unevaluatedItems: at least one item did not conform to schema"))
+         [m1-ctx []])))))
 
 (defn contains-within-bounds [checks? es lower-bound upper-bound too-low-error too-high-error success]
   (let [count-checked (count (filter checks? es))]
