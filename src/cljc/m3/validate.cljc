@@ -1036,10 +1036,10 @@
     (memo
      (fn [m1-ctx m1-path m1-doc]
        (if (json-object? m1-doc)
-         (let [mps (get (get m1-ctx :matched) (butlast m2-path))
-               aps (apply dissoc m1-doc mps)
+         (let [mps (get (get m1-ctx :matched) (butlast m2-path) #{})
+               aps (remove (fn [[k]] (contains? mps k)) m1-doc) ;; k might be nil
                p-and-css (mapv (fn [[k]] [k cs]) aps)] ; TODO: feels inefficient
-           (check-properties m2-path m2-doc m1-ctx m1-path aps bail p-and-css "additionalProperties: at least one property did not conform to schema"))
+           (check-properties m2-path m2-doc m1-ctx m1-path m1-doc bail p-and-css "additionalProperties: at least one property did not conform to schema"))
          [m1-ctx []])))))
 
 (defmethod check-property-2 "unevaluatedProperties" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
@@ -1048,10 +1048,10 @@
     (memo
      (fn [m1-ctx m1-path m1-doc]
        (if (json-object? m1-doc)
-         (let [eps (get (get m1-ctx :evaluated) m1-path)
-               ups (apply dissoc m1-doc eps)
+         (let [eps (get (get m1-ctx :evaluated) m1-path #{})
+               ups (remove (fn [[k]] (contains? eps k)) m1-doc) ;; k might be nil
                p-and-css (mapv (fn [[k]] [k cs]) ups)] ; TODO: feels inefficient
-           (check-properties m2-path m2-doc m1-ctx m1-path ups bail p-and-css "unevaluatedProperties: at least one property did not conform to schema"))
+           (check-properties m2-path m2-doc m1-ctx m1-path m1-doc bail p-and-css "unevaluatedProperties: at least one property did not conform to schema"))
          [m1-ctx []])))))
 
 ;; TODO: can we move more up into m2 time ?
