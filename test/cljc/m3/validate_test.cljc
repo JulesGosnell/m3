@@ -13,30 +13,8 @@
 ;; limitations under the License.
 
 (ns m3.validate-test
-  (:require 
+  (:require
    #?(:clj  [clojure.test :refer [deftest testing is]]
       :cljs [cljs.test :refer-macros [deftest testing is]])
-   [m3.validate :refer [compile-m2]]))
+   [m3.validate :refer []]))
 
-
-;; compile orders and groups schema pairs ready for validation
-
-;; integrate into validate
-
-;; - change group ids to group itself
-;; change singleton id to [singleton]
-
-;; once we have ordering, with unevaluatedProperties last, we can go back to implementing it...
-
-(deftest compile-m2-test
-  (testing "simple"
-
-    (is (=
-         [[["type"]                                                                          ["object"]]
-          [["required"]                                                                      [[]]]
-          [["properties" "patternProperties" "additionalProperties" "unevaluatedProperties"] [{} :absent false :absent]]]
-         (compile-m2
-          {"type" "object",
-           "properties" {},
-           "additionalProperties" false,
-           "required" []})))))

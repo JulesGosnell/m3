@@ -135,6 +135,8 @@
 ;;------------------------------------------------------------------------------
 ;; utils
 
+(def into-set (fnil into #{}))
+
 (defn concatv [& args]
   (vec (apply concat args)))
 
@@ -950,6 +952,14 @@
 
 ;;------------------------------------------------------------------------------
 
+(defn continue [c old-es new-es]
+  [c (concatv old-es new-es)])
+
+(defn bail-out [c old-es new-es]
+  (if (seq new-es)
+    (reduced [c new-es])
+    [c old-es]))
+
 ;; TODO - return passed m1-ctx
 (defn make-checker [m2-ctx m2-path m2-doc]
   (let [checker (check-schema m2-ctx m2-path m2-doc)]
@@ -981,68 +991,68 @@
   (mapv (fn [[k v]] (check-schema m2-ctx (conj m2-path k) v)) m2-val)
   (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
 
-;; TODO: handle :default-additional-properties here
-(defmethod check-property-2 ["properties" "patternProperties" "additionalProperties" "unevaluatedProperties"] [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [ps pps aps ups]]
-  (let [bail (if x? concatv bail-on-error)
-        cp-and-ks (mapv (fn [[k v]] [(check-schema m2-ctx (conj m2-path k) v) k]) (when (present? ps) ps))
-        named? (if (present? ps) (partial contains? ps) (constantly false))
+(defn check-properties [m2-path m2-doc m1-ctx m1-path m1-doc bail k-and-css message]
+  (let [[m1-ctx es]
+        (reduce
+         (fn [[c old-es] [[k cs] sub-document]]
+           (let [[c new-es] (cs c (conj m1-path k) sub-document)]
+             (bail c old-es new-es)))
+         [m1-ctx []]
+         (map (fn [[k :as k-and-cs]] [k-and-cs (m1-doc k)]) k-and-css))]
+    [(let [ks (map first k-and-css)]
+       (-> m1-ctx
+           ;; TODO: only record matched if additonalProperties needed later ?
+           (update :matched   update (butlast m2-path) into-set ks)
+           ;; TODO: only record evaluated if unevaluatedProperties needed later ?
+           (update :evaluated update m1-path into-set ks)))
+     (make-error-on-failure message m2-path m2-doc m1-path m1-doc es)]))
 
-        cp-and-pattern-and-ks (mapv (fn [[k v]] [(check-schema m2-ctx (conj m2-path k) v) (ecma-pattern k) k]) (when (present? pps) pps))
-        patterns (mapv second cp-and-pattern-and-ks)
-        pattern? (if (seq patterns) (fn [k] (some (fn [pattern] (ecma-match pattern k)) patterns)) (constantly false))
-
-        [em cs] (cond
-                  (present? aps)
-                  ["additionalProperties: at least one additional property failed to conform to schema" (check-schema m2-ctx m2-path aps)]
-                  (present? ups)
-                  ["unevaluatedProperties: at least one unevaluated property failed to conform to schema" (check-schema m2-ctx m2-path ups)]
-                  :else
-                  [nil (fn [c p m] [c []])])]
+(defmethod check-property-2 "properties" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [ps]]
+  (let [bail (if x? continue bail-out)
+        k-and-css (mapv (fn [[k v]] [k (check-schema m2-ctx (conj m2-path k) v)]) (when (present? ps) ps))]
     (memo
      (fn [m1-ctx m1-path m1-doc]
-       [m1-ctx
-        (when (json-object? m1-doc)
-          (or
-           (make-error-on-failure
-            "properties: at least one property failed to conform to the relevant schema"
-            m2-path m2-doc m1-path m1-doc
-            (reduce
-             (fn [acc [cp k]]
-               (let [[new-m1-ctx es] (cp m1-ctx (conj m1-path k) (get m1-doc k absent))]
-                 (bail acc es)))
-             []
-             cp-and-ks))
-          ;; any property (including "named" properties) present in m1 whose key
-          ;; matches a patternProperty key must conform to the corresponding
-          ;; schema
-           (make-error-on-failure
-            "patternProperties: at least one property failed to conform to relevant schema"
-            m2-path m2-doc m1-path m1-doc
-            (reduce
-             (fn [acc1 [cp pattern ps]]
-               (reduce
-                (fn [acc2 [k v]]
-                  (if (ecma-match pattern k)
-                    (let [[new-c1-ctx es] (cp m1-ctx (conj m1-path k) v)]
-                      (bail acc2 es))
-                    acc2))
-                acc1
-                m1-doc))
-             []
-             cp-and-pattern-and-ks))
-          ;; any property present in the m1 that is not a named or a
-          ;; pattern property must conform to the additional
-          ;; properties schema
-           (when-let [additional (seq (remove (fn [[k _v]] (or (named? k) (pattern? k))) m1-doc))]
-             (make-error-on-failure
-              em
-              m2-path m2-doc m1-path m1-doc
-              (reduce
-               (fn [acc [k v]]
-                 (let [[new-m1-ctx es] (cs m1-ctx (conj m1-path k) v)]
-                   (bail acc es)))
-               []
-               additional)))))]))))
+       (if (json-object? m1-doc)
+         (let [k-and-css (filter (fn [[k]] (contains? m1-doc k)) k-and-css)]
+           (check-properties m2-path m2-doc m1-ctx m1-path m1-doc bail k-and-css "properties: at least one property did not conform to respective schema"))
+         [m1-ctx []])))))
+
+;; what is opposite of "additional" - "matched" - used by spec to refer to properties matched by "properties" or "patternProperties"
+
+(defmethod check-property-2 "patternProperties" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [pps]]
+  (let [bail (if x? continue bail-out)
+        cp-and-pattern-and-ks (mapv (fn [[k v]] [(check-schema m2-ctx (conj m2-path k) v) (ecma-pattern k) k]) (when (present? pps) pps))]
+    (memo
+     (fn [m1-ctx m1-path m1-doc]
+       (if (json-object? m1-doc)
+         (let [k-and-css (apply concat (keep (fn [[k]] (keep (fn [[cs p]] (when (ecma-match p k) [k cs])) cp-and-pattern-and-ks)) m1-doc))]
+           (check-properties m2-path m2-doc m1-ctx m1-path m1-doc bail k-and-css "patternProperties: at least one property did not conform to respective schema"))
+         [m1-ctx []])))))
+
+
+(defmethod check-property-2 "additionalProperties" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
+  (let [bail (if x? continue bail-out)
+        cs (check-schema m2-ctx m2-path m2-val)]
+    (memo
+     (fn [m1-ctx m1-path m1-doc]
+       (if (json-object? m1-doc)
+         (let [mps (get (get m1-ctx :matched) (butlast m2-path))
+               aps (apply dissoc m1-doc mps)
+               p-and-css (mapv (fn [[k]] [k cs]) aps)] ; TODO: feels inefficient
+           (check-properties m2-path m2-doc m1-ctx m1-path aps bail p-and-css "additionalProperties: at least one property did not conform to schema"))
+         [m1-ctx []])))))
+
+(defmethod check-property-2 "unevaluatedProperties" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
+  (let [bail (if x? continue bail-out)
+        cs (check-schema m2-ctx m2-path m2-val)]
+    (memo
+     (fn [m1-ctx m1-path m1-doc]
+       (if (json-object? m1-doc)
+         (let [eps (get (get m1-ctx :evaluated) m1-path)
+               ups (apply dissoc m1-doc eps)
+               p-and-css (mapv (fn [[k]] [k cs]) ups)] ; TODO: feels inefficient
+           (check-properties m2-path m2-doc m1-ctx m1-path ups bail p-and-css "unevaluatedProperties: at least one property did not conform to schema"))
+         [m1-ctx []])))))
 
 ;; TODO: can we move more up into m2 time ?
 (defmethod check-property-2 "propertyNames" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
@@ -1091,14 +1101,6 @@
 
 ;; standard array properties
 
-(defn continue [c old-es new-es]
-  [c (concatv old-es new-es)])
-
-(defn bail-out [c old-es new-es]
-  (if (seq new-es)
-    (reduced [c new-es])
-    [c old-es]))
-
 (defn check-items [m2-path m2-doc m1-ctx m1-path m1-doc bail i-and-css message]
   (let [[m1-ctx es]
         (reduce
@@ -1107,9 +1109,13 @@
              (bail c old-es new-es)))
          [m1-ctx []]
          (map vector i-and-css m1-doc))]
-    [;;m1-ctx
-     ;; TODO: only record evaluated-items if unevaluatedItems needed later ?
-     (update m1-ctx :evaluated-items update m1-path (fnil into #{}) (map first i-and-css))
+    [(let [is (map first i-and-css)]
+       (-> m1-ctx
+           ;; TODO: only record matched if additonalItems needed later ?
+           ;; correct way to do it, but I have cheaper short-cut - properties will have to work this way
+           ;; (update :matched   update (butlast m2-path) into-set is)
+           ;; TODO: only record evaluated if unevaluatedItems needed later ?
+           (update :evaluated update m1-path into-set is)))
      (make-error-on-failure message m2-path m2-doc m1-path m1-doc es)]))
 
 (defmethod check-property-2 "prefixItems" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
@@ -1147,7 +1153,10 @@
       (memo
        (fn [m1-ctx m1-path m1-doc]
          (if (json-array? m1-doc)
-           (let [items  (drop n m1-doc)
+           (let [
+                 ;; this is how it should be done, but cheaper to just look at items (must be array for additionalItems to be meaningful) in m2 time
+                 ;; n (count (get (get m1-ctx :matched) (butlast m2-path)))
+                 items  (drop n m1-doc)
                  i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
              (check-items m2-path m2-doc m1-ctx m1-path items bail i-and-css "additionalItems: at least one item did not conform to schema"))
            [m1-ctx []]))))
@@ -1158,7 +1167,7 @@
   (let [bail (if x? continue bail-out)
         css (repeat (check-schema m2-ctx m2-path m2-val))]
     (memo
-     (fn [{p->eis :evaluated-items :as m1-ctx} m1-path m1-doc]
+     (fn [{p->eis :evaluated :as m1-ctx} m1-path m1-doc]
        (if (json-array? m1-doc)
          (let [eis (or (get p->eis m1-path) #{})
                n (count eis)
@@ -1238,7 +1247,10 @@
                  (if (bail i old-es new-es) (reduced [c es]) [c es])))
              [m1-ctx []]
              i-and-css)]
-        [(update m1-ctx :evaluated-items update m1-path (fnil into #{}) (map first i-and-css))
+        [(let [is (map first i-and-css)]
+           (-> m1-ctx
+             (update :matched   update (butlast m2-path) into-set is)
+             (update :evaluated update m1-path into-set is)))
          (make-error-on message m2-path m2-doc m1-path m1-doc failed? es)]))))
 
 (defmethod check-property-2 "oneOf" [_property m2-ctx m2-path m2-doc [m2-val]]
@@ -1379,8 +1391,11 @@
        ;; TODO:
        ;; - ensure ordering of interdependent properties - evaluated MUST come after all relevant siblings
        ;; - push expensive checks to end as we may never need them...
-       
-       ["properties" "patternProperties" "additionalProperties" "unevaluatedProperties"] ;; TODO: what about propertyNames ?
+
+       ["properties"]
+       ["patternProperties"]
+       ["additionalProperties"]
+       ["unevaluatedProperties"]
        ]
       property->ranks-and-group
       (into {} (mapcat (fn [i ps] (map-indexed (fn [j p] [p [[i j] ps]]) ps)) (range) property-groups))]

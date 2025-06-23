@@ -79,9 +79,6 @@
   #{
     ;; difficult - see comment in validate.cljc
     "idn-hostname.json"
-
-    ;; leave these til last - maybe a big job
-    ;;"unevaluatedProperties.json"
     })
 
 (def exclude-test?
@@ -169,52 +166,11 @@
          ["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]])
 
     ["not.json" "collect annotations inside a 'not', even if collection is disabled" "annotations are still collected inside a 'not'"]
-    ["unevaluatedProperties.json" "dependentSchemas with unevaluatedProperties" "unevaluatedProperties sees bar when foo2 is present"]
-    ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "a is valid"]
-    ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "all + foo is valid"]
-    ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "all is valid"]
-    ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "b is valid"]
-    ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "c is valid"]
-    ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "d is valid"]
-    ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "xx + foox is valid"]
-    ["unevaluatedProperties.json" "dynamic evalation inside nested refs" "xx is valid"]
-    ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "a is valid"]
-    ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "all + foo is valid"]
-    ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "all is valid"]
-    ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "b is valid"]
-    ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "c is valid"]
-    ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "d is valid"]
-    ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "xx + foox is valid"]
-    ["unevaluatedProperties.json" "dynamic evaluation inside nested refs" "xx is valid"]
-    ["unevaluatedProperties.json" "nested unevaluatedProperties, outer false, inner true, properties inside" "with nested unevaluated properties"]
-    ["unevaluatedProperties.json" "nested unevaluatedProperties, outer false, inner true, properties inside" "with no nested unevaluated properties"]
-    ["unevaluatedProperties.json" "nested unevaluatedProperties, outer false, inner true, properties outside" "with nested unevaluated properties"]
-    ["unevaluatedProperties.json" "propertyDependencies with unevaluatedProperties" "unevaluatedProperties sees buz when foo2 is present"]
-    ["unevaluatedProperties.json" "unevaluatedProperties + ref inside allOf / oneOf" "a and b and x are valid"]
-    ["unevaluatedProperties.json" "unevaluatedProperties + ref inside allOf / oneOf" "a and b and y are valid"]
-    ["unevaluatedProperties.json" "unevaluatedProperties + ref inside allOf / oneOf" "a and x are valid"]
-    ["unevaluatedProperties.json" "unevaluatedProperties + ref inside allOf / oneOf" "a and y are valid"]
-    ["unevaluatedProperties.json" "unevaluatedProperties can see annotations from if without then and else" "valid in case if is evaluated"]
-    ["unevaluatedProperties.json" "unevaluatedProperties can see inside propertyDependencies" "allows bar if foo = foo1"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with $dynamicRef" "with no unevaluated properties"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with anyOf" "when one matches and has no unevaluated properties"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with anyOf" "when two match and has no unevaluated properties"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with dependentSchemas" "with no unevaluated properties"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with if/then/else" "when if is false and has no unevaluated properties"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with if/then/else" "when if is true and has no unevaluated properties"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with if/then/else, else not defined" "when if is true and has no unevaluated properties"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with if/then/else, then not defined" "when if is false and has no unevaluated properties"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with nested additionalProperties" "with additional properties"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with nested patternProperties" "with no additional properties"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with nested properties" "with no additional properties"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with nested unevaluatedProperties" "with nested unevaluated properties"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with oneOf" "with no unevaluated properties"]
+
 
     ;; added with ordering change ...
     ;; group idea is broken because paths can only have singleton members - we need to unwind the code and build coordination between check methods
     ["ref.json" "Recursive references between schemas" "valid tree"]
-    ["unevaluatedProperties.json" "unevaluatedProperties + single cyclic ref" "Deep nested is valid"]
-    ["unevaluatedProperties.json" "unevaluatedProperties + single cyclic ref" "Nested is valid"]
 
     ["unevaluatedItems.json" "unevaluatedItems with nested items" "with invalid additional item"]
     ["unevaluatedItems.json" "unevaluatedItems with anyOf" "when two schemas match and has no unevaluated items"]
@@ -229,6 +185,25 @@
     ["unevaluatedItems.json" "unevaluatedItems and contains interact to control item dependency relationship" "only a's are valid"]
     ["unevaluatedItems.json" "unevaluatedItems and contains interact to control item dependency relationship" "a's and b's are valid"]
     ["unevaluatedItems.json" "unevaluatedItems and contains interact to control item dependency relationship" "a's, b's and c's are valid"]
+    ["unevaluatedItems.json" "item is evaluated in an uncle schema to unevaluatedItems" "uncle keyword evaluation is not significant"]
+    
+    ["unevaluatedProperties.json" "unevaluatedProperties with anyOf" "when two match and has no unevaluated properties"]
+    ["unevaluatedProperties.json" "unevaluatedProperties with not" "with unevaluated properties"]
+    ["unevaluatedProperties.json" "unevaluatedProperties with if/then/else" "when if is true and has no unevaluated properties"]
+    ["unevaluatedProperties.json" "unevaluatedProperties with if/then/else, else not defined" "when if is true and has no unevaluated properties"]
+    ["unevaluatedProperties.json" "unevaluatedProperties with dependentSchemas" "with no unevaluated properties"]
+    ["unevaluatedProperties.json" "unevaluatedProperties can't see inside cousins" "always fails"]
+    ["unevaluatedProperties.json" "cousin unevaluatedProperties, true and false, true with properties" "with no nested unevaluated properties"]
+    ["unevaluatedProperties.json" "cousin unevaluatedProperties, true and false, true with properties" "with nested unevaluated properties"]
+    ["unevaluatedProperties.json" "cousin unevaluatedProperties, true and false, false with properties" "with nested unevaluated properties"]
+    ["unevaluatedProperties.json" "property is evaluated in an uncle schema to unevaluatedProperties" "uncle keyword evaluation is not significant"]
+    ["unevaluatedProperties.json" "in-place applicator siblings, allOf has unevaluated" "base case: both properties present"]
+    ["unevaluatedProperties.json" "in-place applicator siblings, allOf has unevaluated" "in place applicator siblings, foo is missing"]
+    ["unevaluatedProperties.json" "unevaluatedProperties can see annotations from if without then and else" "valid in case if is evaluated"]
+    ["unevaluatedProperties.json" "dependentSchemas with unevaluatedProperties" "unevaluatedProperties sees bar when foo2 is present"]
+    ["unevaluatedProperties.json" "unevaluatedProperties with $dynamicRef" "with no unevaluated properties"]
+    ["unevaluatedProperties.json" "unevaluatedProperties can see inside propertyDependencies" "allows bar if foo = foo1"]
+    ["unevaluatedProperties.json" "propertyDependencies with unevaluatedProperties" "unevaluatedProperties sees buz when foo2 is present"]
     
     })
 
