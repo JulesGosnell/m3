@@ -1142,23 +1142,23 @@
          [m1-ctx []])))))
 
 (defmethod check-property-2 "additionalItems" [_property {x? :exhaustive? :as m2-ctx} m2-path {is "items" :as m2-doc} [m2-val]]
-  ;; N.B.
-  ;; prefixItems cannot co-occur
-  ;; unevaluatedItems cannot co-occur
   ;; additionalItems is only used when items is a tuple
   (if (json-array? is)
     (let [bail (if x? continue bail-out)
-          n (count is)
-          css (repeat (check-schema m2-ctx m2-path m2-val))]
+          cs (check-schema m2-ctx m2-path m2-val)]
       (memo
        (fn [m1-ctx m1-path m1-doc]
          (if (json-array? m1-doc)
            (let [
                  ;; this is how it should be done, but cheaper to just look at items (must be array for additionalItems to be meaningful) in m2 time
-                 ;; n (count (get (get m1-ctx :matched) (butlast m2-path)))
-                 items  (drop n m1-doc)
-                 i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
-             (check-items m2-path m2-doc m1-ctx m1-path items bail i-and-css "additionalItems: at least one item did not conform to schema"))
+                 mis (get (get m1-ctx :matched) (butlast m2-path) #{})
+                 ;;ais  (remove (fn [[k]] (contains? mis k)) (map-indexed vector m1-doc))
+                 ;;i-and-css (mapv (fn [[k]] [k cs]) ais) ; TODO: feels inefficient
+                 n (count is)
+                 ais (drop n m1-doc)
+                 i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) (repeat cs) ais)
+                 ]
+             (check-items m2-path m2-doc m1-ctx m1-path ais bail i-and-css "additionalItems: at least one item did not conform to schema"))
            [m1-ctx []]))))
     (fn [m1-ctx _m1-path _m1-doc]
       [m1-ctx nil])))
