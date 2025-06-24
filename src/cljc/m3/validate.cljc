@@ -879,13 +879,14 @@
     (memo
      (fn [m1-ctx m1-path m1-doc]
        (if (json-object? m1-doc)
-         (let [es
+         (let [[m1-ctx es]
                (reduce
-                (fn [acc [k v]]
+                (fn [[c old-es] [k v]]
                   (if (contains? m1-doc k)
-                    (concatv acc (second ((property->checker k) m1-ctx m1-path m1-doc)))
-                    acc))
-                []
+                    (let [[c new-es] ((property->checker k) c m1-path m1-doc)]
+                      [c (concatv old-es new-es)])
+                    [c old-es]))
+                [m1-ctx []]
                 m2-val)]
            [m1-ctx
             (when-let [missing (seq es)]
