@@ -848,6 +848,14 @@
   ;; we do this here so that user may override default format checkers...
     (f ((or (cfs m2-val) check-format) m2-val m2-ctx m2-path m2-doc))))
 
+(defn continue [c old-es new-es]
+  [c (concatv old-es new-es)])
+
+(defn bail-out [c old-es new-es]
+  (if (seq new-es)
+    (reduced [c new-es])
+    [c old-es]))
+
 (defmethod check-property-2 "dependencies" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
   (let [bail (if x? conj (fn [_acc r] (reduced [r])))
         property->checker
@@ -909,21 +917,22 @@
          [m1-ctx nil])))))
 
 (defmethod check-property-2 "propertyDependencies" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
-  (let [bail (if x? concatv bail-on-error)
+  (let [bail (if x? continue bail-out)
         checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] (check-schema m2-ctx m2-path s)]) vs)) m2-val))
         ks (keys m2-val)]
     (memo
      (fn [m1-ctx m1-path m1-doc]
-       [m1-ctx
-        (when (json-object? m1-doc)
-          (reduce
-           (fn [acc k]
-             (let [v (m1-doc k)]
-               (if-let [checker (and (json-string? v) (checkers [k v]))]
-                 (bail acc (second (checker m1-ctx m1-path m1-doc))) ;; TODO: thread c1 through...
-                 acc)))
-           []
-           ks))]))))
+       (if (json-object? m1-doc)
+         (reduce
+          (fn [[c old-es] k]
+            (let [v (m1-doc k)]
+              (if-let [checker (and (json-string? v) (checkers [k v]))]
+                (let [[c new-es] (checker c m1-path m1-doc)]
+                  (bail c old-es new-es))
+                [c old-es])))
+          [m1-ctx []]
+          ks)
+         [m1-ctx []])))))
 
 ;; TODO: share more code with dependencies
 (defmethod check-property-2 "dependentRequired" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
@@ -953,14 +962,6 @@
             [(make-error ["dependentRequired: missing properties (at least):" missing] m2-path m2-doc m1-path m1-doc)]))]))))
 
 ;;------------------------------------------------------------------------------
-
-(defn continue [c old-es new-es]
-  [c (concatv old-es new-es)])
-
-(defn bail-out [c old-es new-es]
-  (if (seq new-es)
-    (reduced [c new-es])
-    [c old-es]))
 
 ;; TODO - return passed m1-ctx
 (defn make-checker [m2-ctx m2-path m2-doc]
