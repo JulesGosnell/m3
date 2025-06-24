@@ -133,7 +133,6 @@
     ["recursiveRef.json" "dynamic $recursiveRef destination (not predictable at schema compile time)" "integer node"]
 
     ;; we need unevaluatedProperties/items for these
-    ["not.json" "collect annotations inside a 'not', even if collection is disabled" "unevaluated property"] ;; needs unevaluatedProperties
     ["ref.json" "ref creates new scope when adjacent to keywords" "referenced subschema doesn't see annotations from properties"]  ;; needs unevaluatedProperties
     ["ref.json" "$ref with $recursiveAnchor" "extra items allowed for inner arrays"] ;; needs unevaluatedItems
 
