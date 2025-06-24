@@ -878,8 +878,8 @@
          m2-val)]
     (memo
      (fn [m1-ctx m1-path m1-doc]
-       [m1-ctx
-        (when (json-object? m1-doc)
+       (if (json-object? m1-doc)
+         [m1-ctx
           (when-let [missing
                      (seq
                       (reduce
@@ -889,7 +889,8 @@
                            acc))
                        []
                        m2-val))]
-            [(make-error ["dependencies: missing properties (at least):" missing] m2-path m2-doc m1-path m1-doc)]))]))))
+            [(make-error ["dependencies: missing properties (at least):" missing] m2-path m2-doc m1-path m1-doc)])]
+         [m1-ctx []])))))
 
 (defmethod check-property-2 "dependentSchemas" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
   (let [bail (if x? conj (fn [_acc r] (reduced [r])))
