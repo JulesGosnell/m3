@@ -175,7 +175,6 @@
     ["unevaluatedItems.json" "unevaluatedItems and contains interact to control item dependency relationship" "a's and b's are valid"]
     ["unevaluatedItems.json" "unevaluatedItems and contains interact to control item dependency relationship" "a's, b's and c's are valid"]
     ["unevaluatedItems.json" "unevaluatedItems and contains interact to control item dependency relationship" "only a's are valid"]
-    ["unevaluatedItems.json" "unevaluatedItems can see annotations from if without then and else" "valid in case if is evaluated"]
     ["unevaluatedItems.json" "unevaluatedItems can't see inside cousins" "always fails"]
     ["unevaluatedItems.json" "unevaluatedItems depends on adjacent contains" "second item is evaluated by contains"]
     ["unevaluatedItems.json" "unevaluatedItems depends on multiple nested contains" "5 not evaluated, passes unevaluatedItems"]
@@ -192,12 +191,9 @@
     ["unevaluatedProperties.json" "in-place applicator siblings, allOf has unevaluated" "base case: both properties present"]
     ["unevaluatedProperties.json" "in-place applicator siblings, allOf has unevaluated" "in place applicator siblings, foo is missing"]
     ["unevaluatedProperties.json" "property is evaluated in an uncle schema to unevaluatedProperties" "uncle keyword evaluation is not significant"]
-    ["unevaluatedProperties.json" "unevaluatedProperties can see annotations from if without then and else" "valid in case if is evaluated"]
     ["unevaluatedProperties.json" "unevaluatedProperties can't see inside cousins" "always fails"]
     ["unevaluatedProperties.json" "unevaluatedProperties with $dynamicRef" "with no unevaluated properties"]
     ["unevaluatedProperties.json" "unevaluatedProperties with anyOf" "when two match and has no unevaluated properties"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with if/then/else" "when if is true and has no unevaluated properties"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with if/then/else, else not defined" "when if is true and has no unevaluated properties"]
     ["unevaluatedProperties.json" "unevaluatedProperties with not" "with unevaluated properties"]
     })
 

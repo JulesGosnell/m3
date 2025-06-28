@@ -977,8 +977,10 @@
           then-checker (if (present? then) (check-schema m2-ctx m2-path then) (fn [c2 _p2 _m2] [c2 []]))
           else-checker (if (present? else) (check-schema m2-ctx m2-path else) (fn [c2 _p2 _m2] [c2 []]))]
       (memo
-       (fn [m1-ctx m1-path m1-doc]
-         ((if (empty? (second (if-checker m1-ctx m1-path m1-doc))) then-checker else-checker) m1-ctx m1-path m1-doc))))
+       (fn [old-m1-ctx m1-path m1-doc]
+         (let [[new-m1-ctx es] (if-checker old-m1-ctx m1-path m1-doc)
+               [m1-ctx checker] (if (empty? es) [new-m1-ctx then-checker] [old-m1-ctx else-checker])]
+           (checker m1-ctx m1-path m1-doc)))))
     (fn [m1-ctx _m1-path _m1-doc]
       [m1-ctx nil])))
 
@@ -1645,7 +1647,8 @@
                      :root document
                      :draft draft
                      :melder (:melder m2-ctx))
-             [_ es] (cs m1-ctx [] document)]
+             [c1 es] (cs m1-ctx [] document)]
+         ;;(prn "C1:" (c1 :evaluated))
          {:valid? (empty? es) :errors es})))))
 
 ;; by recursing to top of schema hierarchy and then validating downwards we:
