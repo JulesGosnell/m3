@@ -164,11 +164,6 @@
         [;; javascript treats numbers differently - grrr
          ["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]])
 
-    ["not.json" "collect annotations inside a 'not', even if collection is disabled" "annotations are still collected inside a 'not'"]
-
-
-    ;; added with ordering change ...
-    ;; group idea is broken because paths can only have singleton members - we need to unwind the code and build coordination between check methods
     ["ref.json" "Recursive references between schemas" "valid tree"]
 
     ["unevaluatedItems.json" "unevaluatedItems and contains interact to control item dependency relationship" "a's and b's are valid"]
