@@ -1291,14 +1291,18 @@
         seq
         (fn [_i _acc e] (some? e)))))))
 
-;; TODO: check this working as expected
+;; TODO: share check-of
 (defmethod check-property-2 "not" [_property m2-ctx m2-path m2-doc [m2-val]]
   (let [c (check-schema m2-ctx m2-path m2-val)]
     (memo
      (fn [m1-ctx m1-path m1-doc]
-       (let [[m1-ctx r] (c m1-ctx m1-path m1-doc)]
+       (let [old-local-m1-ctx (update m1-ctx :evaluated dissoc m1-path)
+             [new-local-m1-ctx es] (c old-local-m1-ctx m1-path m1-doc)
+             [m1-ctx failed?] (if (seq es)
+                                [(update m1-ctx :evaluated update m1-path (fnil into #{}) (get (get new-local-m1-ctx :evaluated) m1-path)) true]
+                                [m1-ctx false])]
          [m1-ctx
-          (when-not (seq r)
+          (when-not failed?
             [(make-error "not: document conformed to sub-schema" m2-path m2-doc m1-path m1-doc)])])))))
 
 ;; catch-all
