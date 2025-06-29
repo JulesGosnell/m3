@@ -1251,7 +1251,7 @@
             (reduce
              (fn [[old-c old-es] [i cs]]
                (let [[new-local-m1-ctx new-es] (cs old-local-m1-ctx m1-path m1-doc)
-                     new-c (update old-c :evaluated update m1-path (fnil into #{}) (get (get new-local-m1-ctx :evaluated) m1-path))
+                     new-c (if (empty? new-es) (update old-c :evaluated update m1-path (fnil into #{}) (get (get new-local-m1-ctx :evaluated) m1-path)) old-c)
                      es (concatv old-es new-es)]
                  (if (bail i old-es new-es) (reduced [new-c es]) [new-c es])))
              [m1-ctx []]

@@ -179,7 +179,6 @@
     ["unevaluatedItems.json" "unevaluatedItems with $dynamicRef" "with no unevaluated items"]
     ["unevaluatedItems.json" "unevaluatedItems with $recursiveRef" "with no unevaluated items"]
     ["unevaluatedItems.json" "unevaluatedItems with anyOf" "when two schemas match and has no unevaluated items"]
-    ["unevaluatedItems.json" "unevaluatedItems with nested items" "with invalid additional item"]
     ["unevaluatedItems.json" "unevaluatedItems with not" "with unevaluated items"]
 
     ["unevaluatedProperties.json" "unevaluatedProperties with $dynamicRef" "with no unevaluated properties"]
