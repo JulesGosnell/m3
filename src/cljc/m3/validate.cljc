@@ -1246,18 +1246,17 @@
   (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema m2-ctx (conj m2-path i) sub-schema)]) m2-val))]
     (fn [m1-ctx m1-path m1-doc message failed? failing?]
       (let [bail (if x? (constantly false) failing?)
+            old-local-m1-ctx (update m1-ctx :evaluated dissoc m1-path)
             [m1-ctx es]
             (reduce
-             (fn [[c old-es] [i cs]]
-               (let [[c new-es] (cs c m1-path m1-doc)
+             (fn [[old-c old-es] [i cs]]
+               (let [[new-local-m1-ctx new-es] (cs old-local-m1-ctx m1-path m1-doc)
+                     new-c (update old-c :evaluated update m1-path (fnil into #{}) (get (get new-local-m1-ctx :evaluated) m1-path))
                      es (concatv old-es new-es)]
-                 (if (bail i old-es new-es) (reduced [c es]) [c es])))
+                 (if (bail i old-es new-es) (reduced [new-c es]) [new-c es])))
              [m1-ctx []]
              i-and-css)]
-        [(let [is (map first i-and-css)]
-           (-> m1-ctx
-             (update :matched   update (butlast m2-path) into-set is)
-             (update :evaluated update m1-path into-set is)))
+        [m1-ctx
          (make-error-on message m2-path m2-doc m1-path m1-doc failed? es)]))))
 
 (defmethod check-property-2 "oneOf" [_property m2-ctx m2-path m2-doc [m2-val]]
