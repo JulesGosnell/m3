@@ -1,5 +1,5 @@
 (def polyglot-version "24.2.1")
-(def jackson-version "2.19.0")
+(def jackson-version "2.19.1")
 
 (defproject org.clojars.jules_gosnell/m3 "0.1.0-SNAPSHOT"
   :description "A pure Clojure/ClojureScript JSON validator"
@@ -62,7 +62,7 @@
                                   [pjstadig/humane-test-output "0.11.0"]]
 
                    :source-paths ["env/dev/clj"]
-                   :plugins [[cider/cider-nrepl "0.56.0"]
+                   :plugins [[cider/cider-nrepl "0.57.0"]
                              [org.clojure/tools.namespace "1.5.0" :exclusions [org.clojure/tools.reader]]
                              [refactor-nrepl "3.11.0" :exclusions [org.clojure/clojure]]]
 
