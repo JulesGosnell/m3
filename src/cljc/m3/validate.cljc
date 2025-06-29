@@ -1243,18 +1243,17 @@
       [m1-ctx nil])))
 
 ;; TODO: merge code with check-items...
-(defn check-of [{x? :exhaustive? :as m2-ctx} m2-path m2-doc m2-val]
+(defn check-of [m2-ctx m2-path m2-doc m2-val]
   (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema m2-ctx (conj m2-path i) sub-schema)]) m2-val))]
-    (fn [m1-ctx m1-path m1-doc message failed? failing?]
-      (let [bail (if x? (constantly false) failing?)
-            old-local-m1-ctx (update m1-ctx :evaluated dissoc m1-path)
+    (fn [m1-ctx m1-path m1-doc message failed?]
+      (let [old-local-m1-ctx (update m1-ctx :evaluated dissoc m1-path)
             [m1-ctx es]
             (reduce
              (fn [[old-c old-es] [i cs]]
                (let [[new-local-m1-ctx new-es] (cs old-local-m1-ctx m1-path m1-doc)
                      new-c (if (empty? new-es) (update old-c :evaluated update m1-path (fnil into #{}) (get (get new-local-m1-ctx :evaluated) m1-path)) old-c)
                      es (concatv old-es new-es)]
-                 (if (bail i old-es new-es) (reduced [new-c es]) [new-c es])))
+                 [new-c es]))
              [m1-ctx []]
              i-and-css)]
         [m1-ctx
@@ -1268,8 +1267,7 @@
        (co
         m1-ctx m1-path m1-doc
         "oneOf: document failed to conform to one and only one sub-schema"
-        (fn [es] (not= 1 (- m2-count (count es))))
-        (fn [i acc e] (and (nil? e) (< (count acc) i))))))))
+        (fn [es] (not= 1 (- m2-count (count es)))))))))
 
 (defmethod check-property-2 "anyOf" [_property m2-ctx m2-path m2-doc [m2-val]]
   (let [co (check-of m2-ctx m2-path m2-doc m2-val)
@@ -1279,18 +1277,17 @@
        (co
         m1-ctx m1-path m1-doc
         "anyOf: document failed to conform to at least one sub-schema"
-        (fn [es] (= (count es) m2-count))
-        (fn [_i _acc e] (nil? e)))))))
+        (fn [es] (not (< (count es) m2-count))))))))
          
 (defmethod check-property-2 "allOf" [_property m2-ctx m2-path m2-doc [m2-val]]
-  (let [co (check-of m2-ctx m2-path m2-doc m2-val)]
+  (let [co (check-of m2-ctx m2-path m2-doc m2-val)
+        m2-count (count m2-val)]
     (memo
      (fn [m1-ctx m1-path m1-doc]
        (co
         m1-ctx m1-path m1-doc
         "allOf: document failed to conform to all sub-schemas"
-        seq
-        (fn [_i _acc e] (some? e)))))))
+        seq)))))
 
 ;; TODO: share check-of
 (defmethod check-property-2 "not" [_property m2-ctx m2-path m2-doc [m2-val]]

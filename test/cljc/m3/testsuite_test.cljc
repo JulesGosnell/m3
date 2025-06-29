@@ -178,10 +178,8 @@
     ["unevaluatedItems.json" "unevaluatedItems depends on multiple nested contains" "5 not evaluated, passes unevaluatedItems"]
     ["unevaluatedItems.json" "unevaluatedItems with $dynamicRef" "with no unevaluated items"]
     ["unevaluatedItems.json" "unevaluatedItems with $recursiveRef" "with no unevaluated items"]
-    ["unevaluatedItems.json" "unevaluatedItems with anyOf" "when two schemas match and has no unevaluated items"]
 
     ["unevaluatedProperties.json" "unevaluatedProperties with $dynamicRef" "with no unevaluated properties"]
-    ["unevaluatedProperties.json" "unevaluatedProperties with anyOf" "when two match and has no unevaluated properties"]
     })
 
 (defn load-schema [s]
