@@ -971,6 +971,7 @@
     (fn [m1-ctx m1-path m1-doc]
       (empty? (second (checker m1-ctx m1-path m1-doc))))))
 
+;; TODO: these schema checks might need their own context and to record what they evaluate ...
 (defmethod check-property-2 ["if" "then" "else"] [_property m2-ctx m2-path _m2-doc [if? then else]]
   (if (present? if?)
     (let [if-checker (check-schema m2-ctx m2-path if?)
@@ -1359,7 +1360,6 @@
        ["definitions"]
        ["$defs"]
 
-;; ?
        ["propertyNames"]
        ["propertyDependencies"]
 
@@ -1371,36 +1371,27 @@
        ["oneOf"]
        ["allOf"]
 
-   ;; ["required" "dependentRequired"]                                                  :required
        ["required"]
        ["dependentRequired"]
 
-   ;; ["dependencies" "dependentSchemas" "propertyDependencies"]                        :dependencies
        ["dependencies"]
        ["dependentSchemas"]
        ["dependentRequired"]
 
-       ["contains" "minContains" "maxContains"]  ;; TODO: I think this involves evaluation ?
-       ["minimum" "exclusiveMinimum"]
-       ["maximum" "exclusiveMaximum"]
-       ["contentEncoding" "contentMediaType" "contentSchema"]
-       ["if" "then" "else"]
+       ["contains" "minContains" "maxContains"]   ;; TODO: unpack
+       ["minimum" "exclusiveMinimum"] ;; TODO: unpack
+       ["maximum" "exclusiveMaximum"] ;; TODO: unpack
+       ["contentEncoding" "contentMediaType" "contentSchema"] ;; TODO: unpack
+       ["if" "then" "else"] ;; TODO: unpack
 
-   ;; these should be evaluated last since they need to know about unevaluated properties/items
 
        ["minItems"]
        ["maxItems"]
        ["uniqueItems"]
-   ;; ["prefixItems" "items" "additionalItems" "unevaluateItems"]                       :items ;; TODO: handle :default-additional-items here
        ["prefixItems"]
        ["items"]
        ["additionalItems"]
        ["unevaluatedItems"]
-
-
-       ;; TODO:
-       ;; - ensure ordering of interdependent properties - evaluated MUST come after all relevant siblings
-       ;; - push expensive checks to end as we may never need them...
 
        ["properties"]
        ["patternProperties"]
@@ -1651,7 +1642,6 @@
                      :draft draft
                      :melder (:melder m2-ctx))
              [c1 es] (cs m1-ctx [] document)]
-         ;;(prn "C1:" (c1 :evaluated))
          {:valid? (empty? es) :errors es})))))
 
 ;; by recursing to top of schema hierarchy and then validating downwards we:
