@@ -166,11 +166,9 @@
 
     ["ref.json" "Recursive references between schemas" "valid tree"]
 
-    ["unevaluatedItems.json" "unevaluatedItems and contains interact to control item dependency relationship" "a's and b's are valid"]
-    ["unevaluatedItems.json" "unevaluatedItems and contains interact to control item dependency relationship" "a's, b's and c's are valid"]
-    ["unevaluatedItems.json" "unevaluatedItems and contains interact to control item dependency relationship" "only a's are valid"]
-    ["unevaluatedItems.json" "unevaluatedItems depends on adjacent contains" "second item is evaluated by contains"]
-    ["unevaluatedItems.json" "unevaluatedItems depends on multiple nested contains" "5 not evaluated, passes unevaluatedItems"]
+    ["unevaluatedItems.json" "unevaluatedItems and contains interact to control item dependency relationship" "only a's and c's are invalid"]
+    ["unevaluatedItems.json" "unevaluatedItems depends on adjacent contains" "contains passes, second item is not evaluated"]
+    ["unevaluatedItems.json" "unevaluatedItems depends on multiple nested contains" "7 not evaluated, fails unevaluatedItems"]
     ["unevaluatedItems.json" "unevaluatedItems with $dynamicRef" "with no unevaluated items"]
     ["unevaluatedItems.json" "unevaluatedItems with $recursiveRef" "with no unevaluated items"]
 

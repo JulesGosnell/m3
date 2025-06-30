@@ -1195,20 +1195,20 @@
 (defmethod check-property-2 ["contains" "minContains" "maxContains"] [_property m2-ctx m2-path m2-doc [m2-val mn? mx?]]
   (if-let [checker (and (present? m2-val) (make-checker m2-ctx m2-path m2-val))]
     (let [lower-bound (if (present? mn?) mn? 1)
-          upper-bound (if (present? mx?) mx? long-max-value)]
+          upper-bound (if (present? mx?) mx? long-max-value)
+          cs (check-schema m2-ctx m2-path m2-val)]
       (memo
        (fn [m1-ctx m1-path m1-doc]
-         [m1-ctx
-          (when (json-array? m1-doc)
-            (contains-within-bounds
-             (partial checker m1-ctx m1-path)
-             m1-doc
-             lower-bound
-             upper-bound
-             [(make-error "contains: document does not contain enough conformant elements" m2-path m2-doc m1-path m1-doc)]
-             [(make-error "contains: document contains too many conformant elements" m2-path m2-doc m1-path m1-doc)]
-             []))])))
-           (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil])))
+         (if (json-array? m1-doc)
+           (let [i-and-css (map (fn [i _] [i cs]) (range) m1-doc)
+                 [new-m1-ctx [{es :errors}]]
+                 (check-items m2-path m2-val m1-ctx m1-path m1-doc continue i-and-css "contains: at least one item did not conform to schema")]
+             (let [matches (- (count m1-doc) (count es))]
+               (if (<= lower-bound matches upper-bound)
+                 [new-m1-ctx nil]
+                 [m1-ctx [(make-error "contains: document has too few/many matches" m2-path m2-doc m1-path m1-doc)]]
+                 )))))))
+    (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil])))
 
 (defmethod check-property-2 "minItems" [_property _m2-ctx m2-path m2-doc [m2-val]]
   (memo
