@@ -82,20 +82,7 @@
     })
 
 (def exclude-test?
-  #{;; I think we need $vocabulary working as the remote schema is draft7 but contains a dependentRequired in it...
-
-    ;; [{"type" "object",
-    ;;   "allOf"
-    ;;   [{"properties" {"foo" true}}
-    ;;    {"$ref"
-    ;;     "http://localhost:1234/draft7/ignore-dependentRequired.json"}]}
-    ;;  {"foo" "any value"}]
-
-    ;; {"$id": "http://localhost:1234/draft7/integer.json",
-    ;;  "$schema": "http://json-schema.org/draft-07/schema#",
-    ;;  "dependentRequired": {"foo": ["bar"]}}
-
-    ["cross-draft.json" "refs to historic drafts are processed as historic drafts" "missing bar is valid"]
+  #{    ["cross-draft.json" "refs to historic drafts are processed as historic drafts" "missing bar is valid"]
     ["cross-draft.json" "refs to historic drafts are processed as historic drafts" "first item not a string is valid"]
 
     ["defs.json" "validate definition against metaschema" "invalid definition schema"]
@@ -132,11 +119,10 @@
     ["recursiveRef.json" "multiple dynamic paths to the $recursiveRef keyword" "recurse to integerNode - floats are not allowed"]
     ["recursiveRef.json" "dynamic $recursiveRef destination (not predictable at schema compile time)" "integer node"]
 
-    ;; we need unevaluatedProperties/items for these
     ["ref.json" "ref creates new scope when adjacent to keywords" "referenced subschema doesn't see annotations from properties"]  ;; needs unevaluatedProperties
-    ["ref.json" "$ref with $recursiveAnchor" "extra items allowed for inner arrays"] ;; needs unevaluatedItems
+    ["ref.json" "$ref with $recursiveAnchor" "extra items allowed for inner arrays"]
+    ["ref.json" "Recursive references between schemas" "valid tree"]
 
-    ;; new - after I decided to choose first rather than last $id in a meld
     ["dynamicRef.json" "An $anchor with the same name as a $dynamicAnchor is not used for dynamic scope resolution" "Any array is valid"]
     ["dynamicRef.json" "A $dynamicRef without a matching $dynamicAnchor in the same schema resource behaves like a normal $ref to $anchor" "Any array is valid"]
     ["dynamicRef.json" "A $dynamicRef with a non-matching $dynamicAnchor in the same schema resource behaves like a normal $ref to $anchor" "Any array is valid"]
@@ -164,11 +150,7 @@
         [;; javascript treats numbers differently - grrr
          ["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]])
 
-    ["ref.json" "Recursive references between schemas" "valid tree"]
 
-    ["unevaluatedItems.json" "unevaluatedItems and contains interact to control item dependency relationship" "only a's and c's are invalid"]
-    ["unevaluatedItems.json" "unevaluatedItems depends on adjacent contains" "contains passes, second item is not evaluated"]
-    ["unevaluatedItems.json" "unevaluatedItems depends on multiple nested contains" "7 not evaluated, fails unevaluatedItems"]
     ["unevaluatedItems.json" "unevaluatedItems with $dynamicRef" "with no unevaluated items"]
     ["unevaluatedItems.json" "unevaluatedItems with $recursiveRef" "with no unevaluated items"]
 

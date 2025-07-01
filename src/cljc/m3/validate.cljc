@@ -965,12 +965,6 @@
 
 ;;------------------------------------------------------------------------------
 
-;; TODO - return passed m1-ctx
-(defn make-checker [m2-ctx m2-path m2-doc]
-  (let [checker (check-schema m2-ctx m2-path m2-doc)]
-    (fn [m1-ctx m1-path m1-doc]
-      (empty? (second (checker m1-ctx m1-path m1-doc))))))
-
 ;; TODO: these schema checks might need their own context and to record what they evaluate ...
 (defmethod check-property-2 ["if" "then" "else"] [_property m2-ctx m2-path _m2-doc [if? then else]]
   (if (present? if?)
@@ -1110,20 +1104,23 @@
 ;; standard array properties
 
 (defn check-items [m2-path m2-doc m1-ctx m1-path m1-doc bail i-and-css message]
-  (let [[m1-ctx es]
+  (let [old-local-m1-ctx (update m1-ctx :evaluated dissoc m1-path)
+        [m1-ctx es]
         (reduce
-         (fn [[c old-es] [[i cs] sub-document]]
-           (let [[c new-es] (cs c (conj m1-path i) sub-document)]
-             (bail c old-es new-es)))
+         (fn [[old-c old-es] [[i cs] sub-document]]
+           (let [[_ new-es] (cs old-local-m1-ctx (conj m1-path i) sub-document)
+                 new-c (if (empty? new-es) (update old-c :evaluated update m1-path (fnil conj #{}) i) old-c)]
+             (bail new-c old-es new-es)))
          [m1-ctx []]
          (map vector i-and-css m1-doc))]
-    [(let [is (map first i-and-css)]
-       (-> m1-ctx
-           ;; TODO: only record matched if additonalItems needed later ?
-           ;; correct way to do it, but I have cheaper short-cut - properties will have to work this way
-           ;; (update :matched   update (butlast m2-path) into-set is)
-           ;; TODO: only record evaluated if unevaluatedItems needed later ?
-           (update :evaluated update m1-path into-set is)))
+    [m1-ctx
+       ;; (-> 
+       ;;     ;; TODO: only record matched if additonalItems needed later ?
+       ;;     ;; correct way to do it, but I have cheaper short-cut - properties will have to work this way
+       ;;     ;; (update :matched   update (butlast m2-path) into-set is)
+       ;;     ;; TODO: only record evaluated if unevaluatedItems needed later ?
+       ;;     (update :evaluated update m1-path into-set is))
+
      (make-error-on-failure message m2-path m2-doc m1-path m1-doc es)]))
 
 (defmethod check-property-2 "prefixItems" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
@@ -1178,25 +1175,15 @@
      (fn [{p->eis :evaluated :as m1-ctx} m1-path m1-doc]
        (if (json-array? m1-doc)
          (let [eis (or (get p->eis m1-path) #{})
-               n (count eis)
-               items  (drop n m1-doc) ;; we really need a (drop-while-kv (fn [k v] (n k)) m1-doc)
-               i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
-           (check-items m2-path m2-doc m1-ctx m1-path items bail i-and-css "unevaluatedItems: at least one item did not conform to schema"))
+               index-and-items (filter (fn [[k]] (not (eis k))) (map-indexed (fn [i v] [i v]) m1-doc))
+               i-and-css (mapv (fn [cs [i]] [i cs]) css index-and-items)] ;; TODO: item not used
+           (check-items m2-path m2-doc m1-ctx m1-path (map second index-and-items) bail i-and-css "unevaluatedItems: at least one item did not conform to schema"))
          [m1-ctx []])))))
 
-(defn contains-within-bounds [checks? es lower-bound upper-bound too-low-error too-high-error success]
-  (let [count-checked (count (filter checks? es))]
-    (cond
-      (< count-checked lower-bound) too-low-error
-      (> count-checked upper-bound) too-high-error
-      :else success)))
-
-;; TODO: optimise
 (defmethod check-property-2 ["contains" "minContains" "maxContains"] [_property m2-ctx m2-path m2-doc [m2-val mn? mx?]]
-  (if-let [checker (and (present? m2-val) (make-checker m2-ctx m2-path m2-val))]
+  (if-let [cs (and (present? m2-val) (check-schema m2-ctx m2-path m2-val))]
     (let [lower-bound (if (present? mn?) mn? 1)
-          upper-bound (if (present? mx?) mx? long-max-value)
-          cs (check-schema m2-ctx m2-path m2-val)]
+          upper-bound (if (present? mx?) mx? long-max-value)]
       (memo
        (fn [m1-ctx m1-path m1-doc]
          (if (json-array? m1-doc)
@@ -1639,6 +1626,7 @@
                      :draft draft
                      :melder (:melder m2-ctx))
              [c1 es] (cs m1-ctx [] document)]
+         ;;(prn "C:" (:evaluated c1))
          {:valid? (empty? es) :errors es})))))
 
 ;; by recursing to top of schema hierarchy and then validating downwards we:
