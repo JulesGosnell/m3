@@ -56,10 +56,7 @@
   #?(:clj Long/MAX_VALUE
      :cljs js/Number.MAX_SAFE_INTEGER))
 
-#?(:cljs (def pmap map))
-
 #?(:cljs (def fs (js/require "fs")))
-#?(:cljs (def node-path (js/require "path")))
 
 #?(:cljs (defn slurp [path] (.readFileSync fs path "utf8")))
 
@@ -256,189 +253,189 @@
 
 ;;------------------------------------------------------------------------------
 
-(defmulti check-format-2 (fn [format _m2-ctx _m2-path _m2-doc] format))
+(defmulti check-format-2 (fn [format _c2 _p2 _m2] format))
 
-(defn check-format-keys [[format context m2-path m2-doc]]
-  [format context m2-doc])
+(defn check-format-keys [[format context p2 m2]]
+  [format context m2])
 
 (def check-format (memo check-format-2 check-format-keys))
 
-(defn match [format pattern _m2-ctx m2-path m2-doc m1-path m1-doc]
-  (when-not (re-find pattern m1-doc)
-    [(make-error (str "format: not a valid " format) m2-path m2-doc m1-path m1-doc)]))
+(defn match [format pattern _c2 p2 m2 p1 m1]
+  (when-not (re-find pattern m1)
+    [(make-error (str "format: not a valid " format) p2 m2 p1 m1)]))
 
 ;; standard formats
 
-(defmethod check-format-2 "email" [format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "email" [format c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 p1 m1]
+     (when (string? m1)
        (match
         format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^(?:[^\s@\"\.](?:(?!\.\.)[^\s@\"])*[^\s@\"\.]|\"(?:[^\r\n\\\"]|\\[\s\S])+\")@(?:[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)*|\[IPv6:[a-fA-F0-9:]+\]|\[(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\])$"
-        m2-ctx m2-path m2-doc m1-path m1-doc)))))
+        c2 p2 m2 p1 m1)))))
 
-(defmethod check-format-2 "ipv4" [format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "ipv4" [format c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 p1 m1]
+     (when (string? m1)
        (match
         format
         ;; https://howtodoinjava.com/java/regex/java-regex-validate-email-address/
         #"^(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(\.(?!$)|$)){4}$"
-        m2-ctx m2-path m2-doc m1-path m1-doc)))))
+        c2 p2 m2 p1 m1)))))
 
-(defmethod check-format-2 "ipv6" [format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "ipv6" [format c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 p1 m1]
+     (when (string? m1)
        (match
         format
         ;; adapted from: https://github.com/ajv-validator/ajv-formats/blob/master/src/formats.ts
         #"^((([0-9a-f]{1,4}:){7}([0-9a-f]{1,4}|:))|(([0-9a-f]{1,4}:){6}(:[0-9a-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-f]{1,4}:){5}(((:[0-9a-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-f]{1,4}:){4}(((:[0-9a-f]{1,4}){1,3})|((:[0-9a-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){3}(((:[0-9a-f]{1,4}){1,4})|((:[0-9a-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){2}(((:[0-9a-f]{1,4}){1,5})|((:[0-9a-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){1}(((:[0-9a-f]{1,4}){1,6})|((:[0-9a-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9a-f]{1,4}){1,7})|((:[0-9a-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))$"
-        m2-ctx m2-path m2-doc m1-path m1-doc)))))
+        c2 p2 m2 p1 m1)))))
 
-(defmethod check-format-2 "hostname" [format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "hostname" [format c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 p1 m1]
+     (when (string? m1)
        (match
         format
         ;; adapted from: https://stackoverflow.com/questions/106179/regular-expression-to-match-dns-hostname-or-ip-address
         #"^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]{0,61}[A-Za-z0-9])$"
-        m2-ctx m2-path m2-doc m1-path m1-doc)))))
+        c2 p2 m2 p1 m1)))))
 
-(defmethod check-format-2 "date-time" [_format _m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "date-time" [_format _c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 p1 m1]
+     (when (string? m1)
        (try
-         (odt/parse m1-doc)
+         (odt/parse m1)
          nil
          (catch Exception e
-           [(make-error (str "format: not a valid date-time: " (ex-message e)) m2-path m2-doc m1-path m1-doc)]))))))
+           [(make-error (str "format: not a valid date-time: " (ex-message e)) p2 m2 p1 m1)]))))))
 
-(defmethod check-format-2 "date" [_format _m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "date" [_format _c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 p1 m1]
+     (when (string? m1)
        (try
-         (ld/parse m1-doc)
+         (ld/parse m1)
          nil
          (catch Exception e
-           [(make-error (str "format: not a valid date: " (ex-message e)) m2-path m2-doc m1-path m1-doc)]))))))
+           [(make-error (str "format: not a valid date: " (ex-message e)) p2 m2 p1 m1)]))))))
 
-(defmethod check-format-2 "time" [_format _m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "time" [_format _c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 p1 m1]
+     (when (string? m1)
        (try
-         (ot/parse m1-doc)
+         (ot/parse m1)
          nil
          (catch Exception e
-           [(make-error (str "format: not a valid time: " (ex-message e)) m2-path m2-doc m1-path m1-doc)]))))))
+           [(make-error (str "format: not a valid time: " (ex-message e)) p2 m2 p1 m1)]))))))
 
-(defmethod check-format-2 "json-pointer" [format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "json-pointer" [format c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 p1 m1]
+     (when (string? m1)
        (match
         format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^(?:/(?:[^~/]|~[01])*)*$"
-        m2-ctx m2-path m2-doc m1-path m1-doc)))))
+        c2 p2 m2 p1 m1)))))
 
-(defmethod check-format-2 "relative-json-pointer" [format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "relative-json-pointer" [format c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 p1 m1]
+     (when (string? m1)
        (match
         format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^(?:0|[1-9][0-9]*)(#|(?:/(?:[^~/]|~[01])*)*)$|^#(?:/(?:[^~/]|~[01])*)*$"
-        m2-ctx m2-path m2-doc m1-path m1-doc)))))
+        c2 p2 m2 p1 m1)))))
 
 ;; TODO: this should be shared with uri.cljc
 (def uri-regexp 
   ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
   #"^(?:[A-Za-z][A-Za-z0-9+.\-]*:[^\s]*|#(?:[^\s]*)?)$")
 
-(defmethod check-format-2 "uri" [format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "uri" [format c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
-       (match format uri-regexp m2-ctx m2-path m2-doc m1-path m1-doc)))))
+   (fn [_c1 p1 m1]
+     (when (string? m1)
+       (match format uri-regexp c2 p2 m2 p1 m1)))))
 
-(defmethod check-format-2 "uri-reference" [format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "uri-reference" [format c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 p1 m1]
+     (when (string? m1)
        (match
         format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^[^\s\\]*$"
-        m2-ctx m2-path m2-doc m1-path m1-doc)))))
+        c2 p2 m2 p1 m1)))))
 
-(defmethod check-format-2 "uri-template" [format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "uri-template" [format c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 p1 m1]
+     (when (string? m1)
        (match
         format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^(?:[^\s{}]|(?:\{[^\s{}]*\}))*$"
-        m2-ctx m2-path m2-doc m1-path m1-doc)))))
+        c2 p2 m2 p1 m1)))))
 
-(defmethod check-format-2 "idn-email" [format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "idn-email" [format c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 p1 m1]
+     (when (string? m1)
        (match
         format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^(?:[^\s@\[\]\"(),:;<>\\]+(?:\.[^\s@\[\]\"(),:;<>\\]+)*|\"(?:[^\"\\\r\n]|\\.)+\")@(?:[^\s@\[\]\"(),:;<>\\]+\.)*[^\s@\[\]\"(),:;<>\\]+$"
-        m2-ctx m2-path m2-doc m1-path m1-doc)))))
+        c2 p2 m2 p1 m1)))))
 
 ;; this is really difficult.
 ;; I can't find a java, javascript, clojure or clojurescript library which comes close
 ;; writing my own seems like an unreasable amount of work just to pass this one part of the spec
 ;; wait for someone else to do it or AI to get good enough to generate the code....
-(defmethod check-format-2 "idn-hostname" [_format _m2-ctx _m2-path _m2-doc]
+(defmethod check-format-2 "idn-hostname" [_format _c2 _p2 _m2]
   (memo
-   (fn [_m1-ctx _m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 _p1 m1]
+     (when (string? m1)
        nil))));NYI
 
-(defmethod check-format-2 "iri" [format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "iri" [format c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 p1 m1]
+     (when (string? m1)
        (match
         format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^[A-Za-z][A-Za-z0-9+.\-]*://(?:[^\s/?#@\\]+@)?(?:\[[0-9A-Fa-f:]+\]|[^\s/?#@:]+)(?::\d+)?(?:/[^\s?#\\]*)?(?:\?[^\s#\\]*)?(?:#[^\s\\]*)?$"
-        m2-ctx m2-path m2-doc m1-path m1-doc)))))
+        c2 p2 m2 p1 m1)))))
 
-(defmethod check-format-2 "iri-reference" [format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "iri-reference" [format c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 p1 m1]
+     (when (string? m1)
        (match
         format
         ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
         #"^[^\s\\]*$"
-        m2-ctx m2-path m2-doc m1-path m1-doc)))))
+        c2 p2 m2 p1 m1)))))
 
-(defmethod check-format-2 "uuid" [format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "uuid" [format c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (string? m1-doc)
+   (fn [_c1 p1 m1]
+     (when (string? m1)
        (match
         format
         ;; https://www.jvt.me/posts/2022/01/14/java-uuid-regex/
         #"^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"
-        m2-ctx m2-path m2-doc m1-path m1-doc)))))
+        c2 p2 m2 p1 m1)))))
 
 ;; ISO 8601 duration
 ;; https://en.wikipedia.org/wiki/ISO_8601#Durations
@@ -472,38 +469,38 @@
 
 (defn json-duration? [s]
   (boolean
-   (when-let [[p-t-or-w ymdthms-or-w ymd _y _m _d thms _h _m _s w] (re-find json-duration-pattern s)]
+   (when-let [[_p-t-or-w _ymdthms-or-w ymd _y _m _d thms _h _m _s w] (re-find json-duration-pattern s)]
      (not
       (or
        (and (empty? ymd) (empty? thms) (empty? w))
        (= "T" thms))))))
 
-(defmethod check-format-2 "duration" [_format m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "duration" [_format _c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
-     (when (and (string? m1-doc) (not (json-duration? m1-doc)))
-       [(make-error "format: not a valid duration:" m2-path m2-doc m1-path m1-doc)]))))
+   (fn [_c1 p1 m1]
+     (when (and (string? m1) (not (json-duration? m1)))
+       [(make-error "format: not a valid duration:" p2 m2 p1 m1)]))))
 
-(defmethod check-format-2 "regex" [_format _m2-ctx m2-path m2-doc]
+(defmethod check-format-2 "regex" [_format _c2 p2 m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
+   (fn [_c1 p1 m1]
      (try
-       (when (string? m1-doc)
-         (ecma-pattern m1-doc)
+       (when (string? m1)
+         (ecma-pattern m1)
          [])
        (catch Exception e
-         [(make-error (str "format: not a valid regex: " (ex-message e)) m2-path m2-doc m1-path m1-doc)])))))
+         [(make-error (str "format: not a valid regex: " (ex-message e)) p2 m2 p1 m1)])))))
 
-(defmethod check-format-2 "unknown" [_format _m2-ctx _m2-path _m2-doc]
+(defmethod check-format-2 "unknown" [_format _c2 _p2 _m2]
   (memo
-   (fn [_m1-ctx _m1-path _m1-doc]
+   (fn [_c1 _p1 _m1]
      nil)))
 
 ;; see: https://github.com/juxt/jinx/blob/master/src/juxt/jinx/alpha/patterns.clj
 
-(defmethod check-format-2 :default [f _m2-ctx m2-path m2-doc]
+(defmethod check-format-2 :default [f _c2 _p2 _m2]
   (memo
-   (fn [_m1-ctx m1-path m1-doc]
+   (fn [_c1 _p1 _m1]
      (log/warn "format: not recognised:" (pr-str f))
      nil)))
 
@@ -511,52 +508,52 @@
 
 (declare check-schema)
 
-(defmulti check-type-2 (fn [type _m2-ctx _m2-path _m2-doc]
+(defmulti check-type-2 (fn [type _c2 _p2 _m2]
                        ;;(println "check-type-2" type document)
                          type))
 
 (def check-type (memo check-type-2))
 
-(defmethod check-type-2 "object" [_type _m2-ctx m2-path m2-doc]
+(defmethod check-type-2 "object" [_type _c2 p2 m2]
   (memo
-   (fn [m1-ctx m1-path m1-doc]
-     [m1-ctx (when-not (map? m1-doc) [(make-error "type: not an object" m2-path m2-doc m1-path m1-doc)])])))
+   (fn [c1 p1 m1]
+     [c1 (when-not (map? m1) [(make-error "type: not an object" p2 m2 p1 m1)])])))
 
-(defmethod check-type-2 "array" [_type _m2-ctx m2-path m2-doc]
+(defmethod check-type-2 "array" [_type _c2 p2 m2]
   (memo
-   (fn [m1-ctx m1-path m1-doc]
-     [m1-ctx (when-not (vector? m1-doc) [(make-error "type: not an array" m2-path m2-doc m1-path m1-doc)])])))
+   (fn [c1 p1 m1]
+     [c1 (when-not (vector? m1) [(make-error "type: not an array" p2 m2 p1 m1)])])))
 
-(defmethod check-type-2 "string" [_type _m2-ctx m2-path m2-doc]
+(defmethod check-type-2 "string" [_type _c2 p2 m2]
   (memo
-   (fn [m1-ctx m1-path m1-doc]
-     [m1-ctx (when-not (string? m1-doc) [(make-error "type: not a string" m2-path m2-doc m1-path m1-doc)])])))
+   (fn [c1 p1 m1]
+     [c1 (when-not (string? m1) [(make-error "type: not a string" p2 m2 p1 m1)])])))
 
-(defmethod check-type-2 "integer" [_type {si? :strict-integer? :as c2} m2-path m2-doc]
+(defmethod check-type-2 "integer" [_type {si? :strict-integer?} p2 m2]
   (let [check (if si? integer? json-integer?)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       [m1-ctx (when-not (check m1-doc) [(make-error "type: not an integer" m2-path m2-doc m1-path m1-doc)])]))))
+     (fn [c1 p1 m1]
+       [c1 (when-not (check m1) [(make-error "type: not an integer" p2 m2 p1 m1)])]))))
 
-(defmethod check-type-2 "number" [_type _m2-ctx m2-path m2-doc]
+(defmethod check-type-2 "number" [_type _c2 p2 m2]
   (memo
-   (fn [m1-ctx m1-path m1-doc]
-     [m1-ctx (when-not (json-number? m1-doc) [(make-error "type: not a number" m2-path m2-doc m1-path m1-doc)])])))
+   (fn [c1 p1 m1]
+     [c1 (when-not (json-number? m1) [(make-error "type: not a number" p2 m2 p1 m1)])])))
 
-(defmethod check-type-2 "boolean" [_type _m2-ctx m2-path m2-doc]
+(defmethod check-type-2 "boolean" [_type _c2 p2 m2]
   (memo
-   (fn [m1-ctx m1-path m1-doc]
-     [m1-ctx (when-not (boolean? m1-doc) [(make-error "type: not a boolean" m2-path m2-doc m1-path m1-doc)])])))
+   (fn [c1 p1 m1]
+     [c1 (when-not (boolean? m1) [(make-error "type: not a boolean" p2 m2 p1 m1)])])))
 
-(defmethod check-type-2 "null" [_type _m2-ctx m2-path m2-doc]
+(defmethod check-type-2 "null" [_type _c2 p2 m2]
   (memo
-   (fn [m1-ctx m1-path m1-doc]
-     [m1-ctx (when-not (nil? m1-doc) [(make-error "type: non null" m2-path m2-doc m1-path m1-doc)])])))
+   (fn [c1 p1 m1]
+     [c1 (when-not (nil? m1) [(make-error "type: non null" p2 m2 p1 m1)])])))
 
-(defmethod check-type-2 "any" [_type _m2-ctx m2-path m2-doc]
-  (fn [m1-ctx m1-path m1-doc] [m1-ctx nil]))
+(defmethod check-type-2 "any" [_type _c2 _p2 _m2]
+  (fn [c1 p1 m1] [c1 nil]))
 
-(defmethod check-type-2 :default [ts m2-ctx m2-path m2-doc]
+(defmethod check-type-2 :default [ts c2 p2 m2]
   (if (json-array? ts)
     ;; it could be an array of elements that are:
     ;; - either a string type
@@ -567,81 +564,81 @@
             (fn [i t]
               (cond
                 (json-string? t)
-                (check-type t m2-ctx (conj m2-path i) t)
+                (check-type t c2 (conj p2 i) t)
                 (json-object? t)
-                (check-schema m2-ctx (conj m2-path i) t)
+                (check-schema c2 (conj p2 i) t)
                 :else
                 (throw (ex-info "hmmm" {:types ts :type t}))))
             ts))]
       (memo
-       (fn [m1-ctx m1-path m1-doc]
+       (fn [c1 p1 m1]
          ;; TODO: we should report all the errors...
-         [m1-ctx
-          (when-not (some (fn [checker] (nil? (second (checker m1-ctx m1-path m1-doc)))) checkers)
-            [(make-error (format "type: none matched: %s" ts) m2-path m2-doc m1-path m1-doc)])])))
+         [c1
+          (when-not (some (fn [checker] (nil? (second (checker c1 p1 m1)))) checkers)
+            [(make-error (format "type: none matched: %s" ts) p2 m2 p1 m1)])])))
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       [m1-ctx [(make-error (format "type: unrecognised: %s" ts) m2-path m2-doc m1-path m1-doc)]]))))
+     (fn [c1 p1 m1]
+       [c1 [(make-error (format "type: unrecognised: %s" ts) p2 m2 p1 m1)]]))))
 
 ;;------------------------------------------------------------------------------
 
-(defmulti check-property-2 (fn [property _m2-ctx _m2-path _m2-doc _m2-vals]
-                           ;;(println "check-property-2:" m2-path m1-path)
+(defmulti check-property-2 (fn [property _c2 _p2 _m2 _v2s]
+                           ;;(println "check-property-2:" p2 p1)
                            property))
 
 (def check-property (memo check-property-2))
 
 ;; standard common properties
 
-(defmethod check-property-2 "type" [_property m2-ctx m2-path m2-doc [m2-val]]
-  (check-type m2-val m2-ctx m2-path m2-doc))
+(defmethod check-property-2 "type" [_property c2 p2 m2 [v2]]
+  (check-type v2 c2 p2 m2))
 
-(defmethod check-property-2 "const" [_property _m2-ctx m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "const" [_property _c2 p2 m2 [v2]]
   (memo
-   (fn [m1-ctx m1-path m1-doc]
-     [m1-ctx
-      (when (not (json-= m2-val m1-doc))
-        [(make-error (format "const: document does not contain schema value: %s != %s" m1-doc m2-val) m2-path m2-doc m1-path m1-doc)])])))
+   (fn [c1 p1 m1]
+     [c1
+      (when (not (json-= v2 m1))
+        [(make-error (format "const: document does not contain schema value: %s != %s" m1 v2) p2 m2 p1 m1)])])))
 
-(defmethod check-property-2 "enum" [_property _m2-ctx m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "enum" [_property _c2 p2 m2 [v2]]
   ;; N.B.
   ;; we can't use a memoised hash-set here because comparison is done by json-= not '='... - set-by ?
   (memo
-   (fn [m1-ctx m1-path m1-doc]
+   (fn [c1 p1 m1]
      ;; we could check that the m2's enum contained any const or default
      ;; value here - but thus should be done somehow during validation of
      ;; the m2 as an m1 and not waste time whilst we are validating all
      ;; it's m1s...
      ;; TODO: how about some injectable consistency checking fns which can be used when validating m2s ?
-     [m1-ctx
-      (when-not (seq-contains? m2-val m1-doc)
-        [(make-error "enum: does not contain value" m2-path m2-doc m1-path m1-doc)])])))
+     [c1
+      (when-not (seq-contains? v2 m1)
+        [(make-error "enum: does not contain value" p2 m2 p1 m1)])])))
 
-(defmethod check-property-2 "$comment"         [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
-(defmethod check-property-2 "id"               [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
-(defmethod check-property-2 "$id"              [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
-(defmethod check-property-2 "description"      [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
-(defmethod check-property-2 "title"            [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
-(defmethod check-property-2 "readOnly"         [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
-(defmethod check-property-2 "writeOnly"        [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
+(defmethod check-property-2 "$comment"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property-2 "id"               [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property-2 "$id"              [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property-2 "description"      [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property-2 "title"            [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property-2 "readOnly"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property-2 "writeOnly"        [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
 
-(defmethod check-property-2 "default"          [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
-(defmethod check-property-2 "$schema"          [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil])) ;; TODO: switch drafts in context...
-(defmethod check-property-2 "examples"         [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
-(defmethod check-property-2 "$anchor"          [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
-(defmethod check-property-2 "$recursiveAnchor" [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
-(defmethod check-property-2 "$vocabulary"      [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
+(defmethod check-property-2 "default"          [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property-2 "$schema"          [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil])) ;; TODO: switch drafts in context...
+(defmethod check-property-2 "examples"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property-2 "$anchor"          [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property-2 "$recursiveAnchor" [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property-2 "$vocabulary"      [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
 
 ;; NYI
-(defmethod check-property-2 "$dynamicAnchor"   [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
+(defmethod check-property-2 "$dynamicAnchor"   [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
 
 ;; TODO: issue a warning somehow
-(defmethod check-property-2 "deprecated"  [_property _m2-ctx _m2-path _m2-doc _m2-vals] (fn [_m1-ctx _m1-path _m1-doc])) ;; TODO: issue a warning or error ?
+(defmethod check-property-2 "deprecated"  [_property _c2 _p2 _m2 _v2s] (fn [_c1 _p1 _m1])) ;; TODO: issue a warning or error ?
 
 ;; standard number properties
 
 (defn check-m??imum [p p= e1 e2 e3]
-  (fn [{d :draft} m2-path m2-doc [m??imum exclusive?]]
+  (fn [{d :draft} p2 m2 [m??imum exclusive?]]
     (if (= "draft4" d)
       ;; exclusiveM??imum is a boolean that modifies m??imum
       (if (present? m??imum)
@@ -650,65 +647,65 @@
                 [p e1]
                 [p= e2])]
           (memoize
-           (fn [m1-ctx m1-path m1-doc]
-             [m1-ctx
-              (when (json-number? m1-doc)
-                (when-not (p m1-doc m??imum)
-                  [(make-error e m2-path m2-doc m1-path m1-doc)]))])))
+           (fn [c1 p1 m1]
+             [c1
+              (when (json-number? m1)
+                (when-not (p m1 m??imum)
+                  [(make-error e p2 m2 p1 m1)]))])))
         (constantly []))
       ;; m??imum and exclusiveM??imum are both numbers and treated separately
       (let [check-m??imum
             (if (present? m??imum)
-              (fn [m1-path m1-doc]
+              (fn [p1 m1]
                 (fn [acc]
-                  (if (p= m1-doc m??imum)
+                  (if (p= m1 m??imum)
                     acc
-                    (conj acc [(make-error e2 m2-path m2-doc m1-path m1-doc)]))))
-              (fn [m1-path m1-doc] identity))
+                    (conj acc [(make-error e2 p2 m2 p1 m1)]))))
+              (fn [_p1 _m1] identity))
             check-exclusive
             (if (present? exclusive?)
-              (fn [m1-path m1-doc]
+              (fn [p1 m1]
                 (fn [acc]
-                  (if (p m1-doc exclusive?)
+                  (if (p m1 exclusive?)
                     acc
-                    (conj acc [(make-error e3 m2-path m2-doc m1-path m1-doc)]))))
-              (fn [m1-path m1-doc] identity))]
+                    (conj acc [(make-error e3 p2 m2 p1 m1)]))))
+              (fn [_p1 _m1] identity))]
         (memoize
-         (fn [m1-ctx m1-path m1-doc]
-           [m1-ctx
-            (when (json-number? m1-doc)
-              (let [cm (check-m??imum m1-path m1-doc)
-                    ce (check-exclusive m1-path m1-doc)]
+         (fn [c1 p1 m1]
+           [c1
+            (when (json-number? m1)
+              (let [cm (check-m??imum p1 m1)
+                    ce (check-exclusive p1 m1)]
                 (-> [] (cm) (ce))))]))))))
 
-(defmethod check-property-2 ["minimum" "exclusiveMinimum"] [_property m2-ctx m2-path m2-doc m2-vals]
+(defmethod check-property-2 ["minimum" "exclusiveMinimum"] [_property c2 p2 m2 v2s]
   ((check-m??imum
     >
     >=
     "minimum & exclusiveMinimum: value is not above"
     "minimum: value is not equal to or above"
     "exclusiveMinimum: value is not above")
-   m2-ctx m2-path m2-doc m2-vals))
+   c2 p2 m2 v2s))
 
 ;; TODO: optimise
-(defmethod check-property-2 ["maximum" "exclusiveMaximum"] [_property m2-ctx m2-path m2-doc m2-vals]
+(defmethod check-property-2 ["maximum" "exclusiveMaximum"] [_property c2 p2 m2 v2s]
   ((check-m??imum
     <
     <=
     "maximum & exclusiveMaximum: value is not below"
     "maximum: value is not equal to or below"
     "exclusiveMaximum: value is not below")
-   m2-ctx m2-path m2-doc m2-vals))
+   c2 p2 m2 v2s))
 
-(defmethod check-property-2 "multipleOf" [_property _m2-ctx m2-path m2-doc [m2-val]]
-  (let [m2-val-bd (bigdec m2-val)]
+(defmethod check-property-2 "multipleOf" [_property _c2 p2 m2 [v2]]
+  (let [v2-bd (bigdec v2)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       [m1-ctx
+     (fn [c1 p1 m1]
+       [c1
         (when (and
-               (json-number? m1-doc)
-               (not (big-zero? (big-mod (bigdec m1-doc) m2-val-bd))))
-          [(make-error (format "%s is not a multiple of %s" m1-doc m2-val) m2-path m2-doc m1-path m1-doc)])]))))
+               (json-number? m1)
+               (not (big-zero? (big-mod (bigdec m1) v2-bd))))
+          [(make-error (format "%s is not a multiple of %s" m1 v2) p2 m2 p1 m1)])]))))
 
 ;; standard string properties
 
@@ -730,45 +727,45 @@
       (if (<= 0xD800 (int (char-code-at s i)) 0xDBFF) (+ i 2) (inc i))
       (inc acc)))))
 
-(defmethod check-property-2 "minLength" [_property _m2-ctx m2-path m2-doc [m2-val]]
-  (let [ml2 (quot m2-val 2)]
+(defmethod check-property-2 "minLength" [_property _c2 p2 m2 [v2]]
+  (let [ml2 (quot v2 2)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       [m1-ctx
+     (fn [c1 p1 m1]
+       [c1
         (when (and
-               (string? m1-doc)
+               (string? m1)
                (or
-                (< (count m1-doc) ml2) ;; precheck before using expensive json-length
-                (< (json-length m1-doc) m2-val)))
-          [(make-error "minLength: string too short" m2-path m2-doc m1-path m1-doc)])]))))
+                (< (count m1) ml2) ;; precheck before using expensive json-length
+                (< (json-length m1) v2)))
+          [(make-error "minLength: string too short" p2 m2 p1 m1)])]))))
 
-(defmethod check-property-2 "maxLength" [_property _m2-ctx m2-path m2-doc [m2-val]]
-  (let [ml2 (* m2-val 2)]
+(defmethod check-property-2 "maxLength" [_property _c2 p2 m2 [v2]]
+  (let [ml2 (* v2 2)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       [m1-ctx
+     (fn [c1 p1 m1]
+       [c1
         (when (and
-               (string? m1-doc)
+               (string? m1)
                (or
-                (> (count m1-doc) ml2) ;; precheck before using expensive json-length
-                (> (json-length m1-doc) m2-val)))
-          [(make-error "maxLength: string too long" m2-path m2-doc m1-path m1-doc)])]))))
+                (> (count m1) ml2) ;; precheck before using expensive json-length
+                (> (json-length m1) v2)))
+          [(make-error "maxLength: string too long" p2 m2 p1 m1)])]))))
 
-(defmethod check-property-2 "pattern" [_property m2-ctx m2-path m2-doc [m2-val]]
-  (if (starts-with? m2-val "$format:")
+(defmethod check-property-2 "pattern" [_property c2 p2 m2 [v2]]
+  (if (starts-with? v2 "$format:")
     ;; N.B.
     ;; this is an extension to allow patternProperties to
     ;; leverage formats since the spec does not provide a
     ;; formatProperties...
-    (check-property "format" m2-ctx m2-path m2-doc [(subs m2-val (count "$format:"))])
-    (let [p (ecma-pattern m2-val)]
+    (check-property "format" c2 p2 m2 [(subs v2 (count "$format:"))])
+    (let [p (ecma-pattern v2)]
       (memo
-       (fn [m1-ctx m1-path m1-doc]
-         [m1-ctx
+       (fn [c1 p1 m1]
+         [c1
           (when (and
-                 (json-string? m1-doc)
-                 (false? (ecma-match p m1-doc)))
-            [(make-error "pattern: doesn't match" m2-path m2-doc m1-path m1-doc)])])))))
+                 (json-string? m1)
+                 (false? (ecma-match p m1)))
+            [(make-error "pattern: doesn't match" p2 m2 p1 m1)])])))))
 
 #?(:clj
    (let [^java.util.Base64 decoder (java.util.Base64/getDecoder)]
@@ -790,45 +787,45 @@
    "application/json" json-decode
    })
 
-(defmethod check-property-2 ["contentEncoding" "contentMediaType" "contentSchema"] [_property {d :draft :as m2-ctx} m2-path m2-doc [ce cmt cs]]
+(defmethod check-property-2 ["contentEncoding" "contentMediaType" "contentSchema"] [_property {d :draft :as c2} p2 m2 [ce cmt cs]]
   (let [ce-decoder (ce->decoder ce)
         cmt (if (present? cmt) cmt "application/json")
         cmt-decoder (cmt->decoder cmt)
         strict? (#{"draft7"} d) ;; check a context flag aswell
-        checker (if (present? cs) (check-schema m2-ctx m2-path cs) (constantly []))]
+        checker (if (present? cs) (check-schema c2 p2 cs) (constantly []))]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       [m1-ctx
-        (when (json-string? m1-doc)
+     (fn [c1 p1 m1]
+       [c1
+        (when (json-string? m1)
           (try
             (let [{es :errors :as v}
                   (checker
-                   m1-ctx
-                   m1-path
-                   (let [new-m1-doc
+                   c1
+                   p1
+                   (let [new-m1
                          (try
-                           (ce-decoder m1-doc)
+                           (ce-decoder m1)
                            (catch Exception e
                              (throw
                               (ex-info
                                nil
                                {:errors
-                                (let [m (str "contentEncoding: could not " ce " decode: " (pr-str m1-doc) " - " (ex-message e))]
+                                (let [m (str "contentEncoding: could not " ce " decode: " (pr-str m1) " - " (ex-message e))]
                                   (if strict?
-                                    [(make-error m m2-path m2-doc m1-path m1-doc)]
+                                    [(make-error m p2 m2 p1 m1)]
                                     (do
                                       (log/warn (string-replace m #"\n" " - "))
                                       [])))}))))]
                      (try
-                       (cmt-decoder new-m1-doc)
+                       (cmt-decoder new-m1)
                        (catch Exception e
                          (throw
                           (ex-info
                            nil
                            {:errors
-                            (let [m (str "contentMediaType: could not " cmt " decode: " (pr-str new-m1-doc) (if (present? ce) (str " (from " ce " encoded " (pr-str m1-doc) ")") "") " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
+                            (let [m (str "contentMediaType: could not " cmt " decode: " (pr-str new-m1) (if (present? ce) (str " (from " ce " encoded " (pr-str m1) ")") "") " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
                               (if strict?
-                                [(make-error m m2-path m2-doc m1-path m1-doc)]
+                                [(make-error m p2 m2 p1 m1)]
                                 (do
                                   (log/warn m
                                            ;;
@@ -842,12 +839,12 @@
               (:errors (ex-data e)))))]))))
 
 ;; HERE
-(defmethod check-property-2 "format" [_property {strict? :strict-format? cfs :check-format :or {cfs {}} :as m2-ctx} m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "format" [_property {strict? :strict-format? cfs :check-format :or {cfs {}} :as c2} p2 m2 [v2]]
   (let [f (if strict?
             (fn [f2] (fn [c p m] [c (f2 c p m)]))
             (fn [f2] (fn [c p m] (when-let [[{m :message}] (f2 c p m)] [c (log/warn m)]))))]
   ;; we do this here so that user may override default format checkers...
-    (f ((or (cfs m2-val) check-format) m2-val m2-ctx m2-path m2-doc))))
+    (f ((or (cfs v2) check-format) v2 c2 p2 m2))))
 
 (defn continue [c old-es new-es]
   [c (concatv old-es new-es)])
@@ -857,7 +854,7 @@
     (reduced [c new-es])
     [c old-es]))
 
-(defmethod check-property-2 "dependencies" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "dependencies" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
   (let [bail (if x? conj (fn [_acc r] (reduced [r])))
         property->checker
         (reduce
@@ -867,78 +864,78 @@
             k
             (cond
               (json-string? v) ;; a single property dependency
-              (fn [m1-ctx m1-path m1-doc] [m1-ctx (when (not (contains? m1-doc v)) [v v])])
+              (fn [c1 p1 m1] [c1 (when (not (contains? m1 v)) [v v])])
               (json-array? v) ;; a multiple property dependency
               ;; TODO: this looks very suspect
-              (fn [m1-ctx m1-path m1-doc] [m1-ctx (reduce (fn [acc2 k2] (if (contains? m1-doc k2) acc2 (bail acc2 [k k2]))) [] v)])
+              (fn [c1 p1 m1] [c1 (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (bail acc2 [k k2]))) [] v)])
               (or (json-object? v) (boolean? v)) ;; a schema dependency
-              (check-schema m2-ctx m2-path v)
+              (check-schema c2 p2 v)
               ;; we should not need to check other cases as m2 should have been validated against m3
               )))
          {}
-         m2-val)]
+         v2)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       (if (json-object? m1-doc)
-         (let [[m1-ctx es]
+     (fn [c1 p1 m1]
+       (if (json-object? m1)
+         (let [[c1 es]
                (reduce
                 (fn [[c old-es] [k v]]
-                  (if (contains? m1-doc k)
-                    (let [[c new-es] ((property->checker k) c m1-path m1-doc)]
+                  (if (contains? m1 k)
+                    (let [[c new-es] ((property->checker k) c p1 m1)]
                       [c (concatv old-es new-es)])
                     [c old-es]))
-                [m1-ctx []]
-                m2-val)]
-           [m1-ctx
+                [c1 []]
+                v2)]
+           [c1
             (when-let [missing (seq es)]
-              [(make-error ["dependencies: missing properties (at least):" missing] m2-path m2-doc m1-path m1-doc)])])
-         [m1-ctx []])))))
+              [(make-error ["dependencies: missing properties (at least):" missing] p2 m2 p1 m1)])])
+         [c1 []])))))
 
-(defmethod check-property-2 "dependentSchemas" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "dependentSchemas" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
   (let [bail (if x? conj (fn [_acc r] (reduced [r])))
         property->checker
         (reduce
          (fn [acc [k v]]
-           (assoc acc k (check-schema m2-ctx m2-path v)))
+           (assoc acc k (check-schema c2 p2 v)))
          {}
-         m2-val)]
+         v2)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       (if (json-object? m1-doc)
-         (let [[m1-ctx es]
+     (fn [c1 p1 m1]
+       (if (json-object? m1)
+         (let [[c1 es]
                (reduce
                 (fn [[c old-es] [k v]]
-                  (if (contains? m1-doc k)
-                    (let [[c new-es] ((property->checker k) c m1-path m1-doc)]
+                  (if (contains? m1 k)
+                    (let [[c new-es] ((property->checker k) c p1 m1)]
                       [c (concatv old-es new-es)])
                     [c old-es]))
-                [m1-ctx []]
-                m2-val)]
-           [m1-ctx
+                [c1 []]
+                v2)]
+           [c1
             (when-let [missing (seq es)]
-              [(make-error ["dependentSchemas: missing properties (at least):" missing] m2-path m2-doc m1-path m1-doc)])])
-         [m1-ctx nil])))))
+              [(make-error ["dependentSchemas: missing properties (at least):" missing] p2 m2 p1 m1)])])
+         [c1 nil])))))
 
-(defmethod check-property-2 "propertyDependencies" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "propertyDependencies" [_property {x? :exhaustive? :as c2} p2 _m2 [v2]]
   (let [bail (if x? continue bail-out)
-        checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] (check-schema m2-ctx m2-path s)]) vs)) m2-val))
-        ks (keys m2-val)]
+        checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] (check-schema c2 p2 s)]) vs)) v2))
+        ks (keys v2)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       (if (json-object? m1-doc)
+     (fn [c1 p1 m1]
+       (if (json-object? m1)
          (reduce
           (fn [[c old-es] k]
-            (let [v (m1-doc k)]
+            (let [v (m1 k)]
               (if-let [checker (and (json-string? v) (checkers [k v]))]
-                (let [[c new-es] (checker c m1-path m1-doc)]
+                (let [[c new-es] (checker c p1 m1)]
                   (bail c old-es new-es))
                 [c old-es])))
-          [m1-ctx []]
+          [c1 []]
           ks)
-         [m1-ctx []])))))
+         [c1 []])))))
 
 ;; TODO: share more code with dependencies
-(defmethod check-property-2 "dependentRequired" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "dependentRequired" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
   (let [bail (if x? conj (fn [_acc r] (reduced [r])))
         property->checker
         (reduce
@@ -946,39 +943,39 @@
            (assoc
             acc
             k
-            (fn [m1-ctx m1-path m1-doc] (reduce (fn [acc2 k2] (if (contains? m1-doc k2) acc2 (bail acc2 [k k2]))) [] v))))
+            (fn [c1 p1 m1] (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (bail acc2 [k k2]))) [] v))))
          {}
-         m2-val)]
+         v2)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       [m1-ctx
-        (when (json-object? m1-doc)
+     (fn [c1 p1 m1]
+       [c1
+        (when (json-object? m1)
           (when-let [missing
                      (seq
                       (reduce
                        (fn [acc [k v]]
-                         (if (contains? m1-doc k)
-                           (concatv acc ((property->checker k) m1-ctx m1-path m1-doc))
+                         (if (contains? m1 k)
+                           (concatv acc ((property->checker k) c1 p1 m1))
                            acc))
                        []
-                       m2-val))]
-            [(make-error ["dependentRequired: missing properties (at least):" missing] m2-path m2-doc m1-path m1-doc)]))]))))
+                       v2))]
+            [(make-error ["dependentRequired: missing properties (at least):" missing] p2 m2 p1 m1)]))]))))
 
 ;;------------------------------------------------------------------------------
 
 ;; TODO: these schema checks might need their own context and to record what they evaluate ...
-(defmethod check-property-2 ["if" "then" "else"] [_property m2-ctx m2-path _m2-doc [if? then else]]
+(defmethod check-property-2 ["if" "then" "else"] [_property c2 p2 _m2 [if? then else]]
   (if (present? if?)
-    (let [if-checker (check-schema m2-ctx m2-path if?)
-          then-checker (if (present? then) (check-schema m2-ctx m2-path then) (fn [c2 _p2 _m2] [c2 []]))
-          else-checker (if (present? else) (check-schema m2-ctx m2-path else) (fn [c2 _p2 _m2] [c2 []]))]
+    (let [if-checker (check-schema c2 p2 if?)
+          then-checker (if (present? then) (check-schema c2 p2 then) (fn [c2 _p2 _m2] [c2 []]))
+          else-checker (if (present? else) (check-schema c2 p2 else) (fn [c2 _p2 _m2] [c2 []]))]
       (memo
-       (fn [old-m1-ctx m1-path m1-doc]
-         (let [[new-m1-ctx es] (if-checker old-m1-ctx m1-path m1-doc)
-               [m1-ctx checker] (if (empty? es) [new-m1-ctx then-checker] [old-m1-ctx else-checker])]
-           (checker m1-ctx m1-path m1-doc)))))
-    (fn [m1-ctx _m1-path _m1-doc]
-      [m1-ctx nil])))
+       (fn [old-c1 p1 m1]
+         (let [[new-c1 es] (if-checker old-c1 p1 m1)
+               [c1 checker] (if (empty? es) [new-c1 then-checker] [old-c1 else-checker])]
+           (checker c1 p1 m1)))))
+    (fn [c1 _p1 _m1]
+      [c1 nil])))
 
 ;; TODO
 ;; - linked to schema composition
@@ -986,354 +983,347 @@
 
 ;; http://json-schema.org/understanding-json-schema/reference/object.html
 
-(defmethod check-property-2 "definitions" [_property m2-ctx m2-path _m2-doc [m2-val]]
-  (mapv (fn [[k v]] (check-schema m2-ctx (conj m2-path k) v)) m2-val)
-  (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
+(defmethod check-property-2 "definitions" [_property c2 p2 _m2 [v2]]
+  (mapv (fn [[k v]] (check-schema c2 (conj p2 k) v)) v2)
+  (fn [c1 _p1 _m1] [c1 nil]))
 
-(defmethod check-property-2 "$defs" [_property m2-ctx m2-path _m2-doc [m2-val]]
-  (mapv (fn [[k v]] (check-schema m2-ctx (conj m2-path k) v)) m2-val)
-  (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil]))
+(defmethod check-property-2 "$defs" [_property c2 p2 _m2 [v2]]
+  (mapv (fn [[k v]] (check-schema c2 (conj p2 k) v)) v2)
+  (fn [c1 _p1 _m1] [c1 nil]))
 
-(defn check-properties [m2-path m2-doc m1-ctx m1-path m1-doc bail k-and-css message]
-  (let [[m1-ctx es]
+(defn check-properties [p2 m2 c1 p1 m1 bail k-and-css message]
+  (let [[c1 es]
         (reduce
          (fn [[c old-es] [[k cs] sub-document]]
-           (let [[c new-es] (cs c (conj m1-path k) sub-document)]
+           (let [[c new-es] (cs c (conj p1 k) sub-document)]
              (bail c old-es new-es)))
-         [m1-ctx []]
-         (map (fn [[k :as k-and-cs]] [k-and-cs (m1-doc k)]) k-and-css))]
+         [c1 []]
+         (map (fn [[k :as k-and-cs]] [k-and-cs (m1 k)]) k-and-css))]
     [(let [ks (map first k-and-css)]
-       (-> m1-ctx
+       (-> c1
            ;; TODO: only record matched if additonalProperties needed later ?
-           (update :matched   update (butlast m2-path) into-set ks)
+           (update :matched   update (butlast p2) into-set ks)
            ;; TODO: only record evaluated if unevaluatedProperties needed later ?
-           (update :evaluated update m1-path into-set ks)))
-     (make-error-on-failure message m2-path m2-doc m1-path m1-doc es)]))
+           (update :evaluated update p1 into-set ks)))
+     (make-error-on-failure message p2 m2 p1 m1 es)]))
 
-(defmethod check-property-2 "properties" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [ps]]
+(defmethod check-property-2 "properties" [_property {x? :exhaustive? :as c2} p2 m2 [ps]]
   (let [bail (if x? continue bail-out)
-        k-and-css (mapv (fn [[k v]] [k (check-schema m2-ctx (conj m2-path k) v)]) (when (present? ps) ps))]
+        k-and-css (mapv (fn [[k v]] [k (check-schema c2 (conj p2 k) v)]) (when (present? ps) ps))]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       (if (json-object? m1-doc)
-         (let [k-and-css (filter (fn [[k]] (contains? m1-doc k)) k-and-css)]
-           (check-properties m2-path m2-doc m1-ctx m1-path m1-doc bail k-and-css "properties: at least one property did not conform to respective schema"))
-         [m1-ctx []])))))
+     (fn [c1 p1 m1]
+       (if (json-object? m1)
+         (let [k-and-css (filter (fn [[k]] (contains? m1 k)) k-and-css)]
+           (check-properties p2 m2 c1 p1 m1 bail k-and-css "properties: at least one property did not conform to respective schema"))
+         [c1 []])))))
 
 ;; what is opposite of "additional" - "matched" - used by spec to refer to properties matched by "properties" or "patternProperties"
 
-(defmethod check-property-2 "patternProperties" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [pps]]
+(defmethod check-property-2 "patternProperties" [_property {x? :exhaustive? :as c2} p2 m2 [pps]]
   (let [bail (if x? continue bail-out)
-        cp-and-pattern-and-ks (mapv (fn [[k v]] [(check-schema m2-ctx (conj m2-path k) v) (ecma-pattern k) k]) (when (present? pps) pps))]
+        cp-and-pattern-and-ks (mapv (fn [[k v]] [(check-schema c2 (conj p2 k) v) (ecma-pattern k) k]) (when (present? pps) pps))]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       (if (json-object? m1-doc)
-         (let [k-and-css (apply concat (keep (fn [[k]] (keep (fn [[cs p]] (when (ecma-match p k) [k cs])) cp-and-pattern-and-ks)) m1-doc))]
-           (check-properties m2-path m2-doc m1-ctx m1-path m1-doc bail k-and-css "patternProperties: at least one property did not conform to respective schema"))
-         [m1-ctx []])))))
+     (fn [c1 p1 m1]
+       (if (json-object? m1)
+         (let [k-and-css (apply concat (keep (fn [[k]] (keep (fn [[cs p]] (when (ecma-match p k) [k cs])) cp-and-pattern-and-ks)) m1))]
+           (check-properties p2 m2 c1 p1 m1 bail k-and-css "patternProperties: at least one property did not conform to respective schema"))
+         [c1 []])))))
 
 
-(defmethod check-property-2 "additionalProperties" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "additionalProperties" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
   (let [bail (if x? continue bail-out)
-        cs (check-schema m2-ctx m2-path m2-val)]
+        cs (check-schema c2 p2 v2)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       (if (json-object? m1-doc)
-         (let [mps (get (get m1-ctx :matched) (butlast m2-path) #{})
-               aps (remove (fn [[k]] (contains? mps k)) m1-doc) ;; k might be nil
+     (fn [c1 p1 m1]
+       (if (json-object? m1)
+         (let [mps (get (get c1 :matched) (butlast p2) #{})
+               aps (remove (fn [[k]] (contains? mps k)) m1) ;; k might be nil
                p-and-css (mapv (fn [[k]] [k cs]) aps)] ; TODO: feels inefficient
-           (check-properties m2-path m2-doc m1-ctx m1-path m1-doc bail p-and-css "additionalProperties: at least one property did not conform to schema"))
-         [m1-ctx []])))))
+           (check-properties p2 m2 c1 p1 m1 bail p-and-css "additionalProperties: at least one property did not conform to schema"))
+         [c1 []])))))
 
-(defmethod check-property-2 "unevaluatedProperties" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "unevaluatedProperties" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
   (let [bail (if x? continue bail-out)
-        cs (check-schema m2-ctx m2-path m2-val)]
+        cs (check-schema c2 p2 v2)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       (if (json-object? m1-doc)
-         (let [eps (get (get m1-ctx :evaluated) m1-path #{})
-               ups (remove (fn [[k]] (contains? eps k)) m1-doc) ;; k might be nil
+     (fn [c1 p1 m1]
+       (if (json-object? m1)
+         (let [eps (get (get c1 :evaluated) p1 #{})
+               ups (remove (fn [[k]] (contains? eps k)) m1) ;; k might be nil
                p-and-css (mapv (fn [[k]] [k cs]) ups)] ; TODO: feels inefficient
-           (check-properties m2-path m2-doc m1-ctx m1-path m1-doc bail p-and-css "unevaluatedProperties: at least one property did not conform to schema"))
-         [m1-ctx []])))))
+           (check-properties p2 m2 c1 p1 m1 bail p-and-css "unevaluatedProperties: at least one property did not conform to schema"))
+         [c1 []])))))
 
 ;; TODO: can we move more up into m2 time ?
-(defmethod check-property-2 "propertyNames" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "propertyNames" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
   (let [bail (if x? concatv bail-on-error)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       [m1-ctx
-        (when (json-object? m1-doc)
+     (fn [c1 p1 m1]
+       [c1
+        (when (json-object? m1)
           (make-error-on-failure
            "propertyNames: at least one property's name failed to conform to relevant schema"
-           m2-path m2-doc m1-path m1-doc
+           p2 m2 p1 m1
            (reduce
             (fn [acc [k]]
-              (let [[new-m1-ctx es] ((check-schema m2-ctx (conj m2-path k) m2-val) m1-ctx (conj m1-path k) k)]
+              (let [[new-c1 es] ((check-schema c2 (conj p2 k) v2) c1 (conj p1 k) k)]
                 (bail acc es)))
             []
-            m1-doc)))]))))
+            m1)))]))))
 
 ;; N.B. by default, this will bail on detection of first missing property - this may not be what is expected
-(defmethod check-property-2 "required" [_property {x? :exhaustive?} m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "required" [_property {x? :exhaustive?} p2 m2 [v2]]
   (let [bail (if x? conj (fn [_acc r] (reduced [r])))]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       [m1-ctx
-        (when (json-object? m1-doc)
-          (when-let [missing (seq (reduce (fn [acc k] (if (contains? m1-doc k) acc (bail acc k))) [] m2-val))]
-            [(make-error ["required: missing properties (at least):" missing] m2-path m2-doc m1-path m1-doc)]))]))))
+     (fn [c1 p1 m1]
+       [c1
+        (when (json-object? m1)
+          (when-let [missing (seq (reduce (fn [acc k] (if (contains? m1 k) acc (bail acc k))) [] v2))]
+            [(make-error ["required: missing properties (at least):" missing] p2 m2 p1 m1)]))]))))
 
-(defmethod check-property-2 "minProperties" [_property _m2-ctx m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "minProperties" [_property _c2 p2 m2 [v2]]
   (memo
-   (fn [m1-ctx m1-path m1-doc]
-     [m1-ctx
+   (fn [c1 p1 m1]
+     [c1
       (when (and
-             (json-object? m1-doc)
-             (< (count m1-doc) m2-val))
-        [(make-error "minProperties: document contains too few properties" m2-path m2-doc m1-path m1-doc)])])))
+             (json-object? m1)
+             (< (count m1) v2))
+        [(make-error "minProperties: document contains too few properties" p2 m2 p1 m1)])])))
 
-(defmethod check-property-2 "maxProperties" [_property _m2-ctx m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "maxProperties" [_property _c2 p2 m2 [v2]]
   (memo
-   (fn [m1-ctx m1-path m1-doc]
-     [m1-ctx
+   (fn [c1 p1 m1]
+     [c1
       (when (and
-             (json-object? m1-doc)
-             (> (count m1-doc) m2-val))
-        [(make-error "maxProperties: document has too many properties" m2-path m2-doc m1-path m1-doc)])])))
+             (json-object? m1)
+             (> (count m1) v2))
+        [(make-error "maxProperties: document has too many properties" p2 m2 p1 m1)])])))
 
 ;; standard array properties
 
 ;; we could save time by only maintaining :matched and :evaluated
 ;; context if required (additional and evaluated items)...
 ;; if we split this function we could do m2-parent-path at m2 time
-(defn check-items [m2-path m2-doc m1-ctx m1-path m1-doc bail i-and-css message]
-  (let [m2-parent-path (butlast m2-path)
-        old-local-m1-ctx
-        (-> m1-ctx
+(defn check-items [p2 m2 c1 p1 m1 bail i-and-css message]
+  (let [m2-parent-path (butlast p2)
+        old-local-c1
+        (-> c1
             (update :matched assoc m2-parent-path #{})
-            (update :evaluated assoc m1-path #{}))
-        [m1-ctx es]
+            (update :evaluated assoc p1 #{}))
+        [c1 es]
         (reduce
          (fn [[old-c old-es] [[i cs] sub-document]]
-           (let [[_ new-es] (cs old-local-m1-ctx (conj m1-path i) sub-document)
+           (let [[_ new-es] (cs old-local-c1 (conj p1 i) sub-document)
                  new-c (if (empty? new-es)
                          (-> old-c
                              (update :matched update m2-parent-path conj-set i)
-                             (update :evaluated update m1-path conj-set i))
+                             (update :evaluated update p1 conj-set i))
                          old-c)]
              (bail new-c old-es new-es)))
-         [m1-ctx []]
-         (map vector i-and-css m1-doc))]
-    [m1-ctx (make-error-on-failure message m2-path m2-doc m1-path m1-doc es)]))
+         [c1 []]
+         (map vector i-and-css m1))]
+    [c1 (make-error-on-failure message p2 m2 p1 m1 es)]))
 
-(defmethod check-property-2 "prefixItems" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "prefixItems" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
   (let [bail (if x? continue bail-out)
-        i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema m2-ctx (conj m2-path i) sub-schema)]) m2-val))]
+        i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema c2 (conj p2 i) sub-schema)]) v2))]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       (if (json-array? m1-doc)
-         (check-items m2-path m2-doc m1-ctx m1-path m1-doc bail i-and-css "prefixItems: at least one item did not conform to respective schema")
-         [m1-ctx []])))))
+     (fn [c1 p1 m1]
+       (if (json-array? m1)
+         (check-items p2 m2 c1 p1 m1 bail i-and-css "prefixItems: at least one item did not conform to respective schema")
+         [c1 []])))))
 
-(defmethod check-property-2 "items" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "items" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
   (let [bail (if x? continue bail-out)
-        n (count (m2-doc "prefixItems")) ;; TODO: achieve this by looking at m1-ctx ?
-        [m css] (if (json-array? m2-val)
-              ["respective " (map-indexed (fn [i v] (check-schema m2-ctx (conj m2-path i) v)) m2-val)]
-              ["" (repeat (check-schema m2-ctx m2-path m2-val))])]
+        n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
+        [m css] (if (json-array? v2)
+              ["respective " (map-indexed (fn [i v] (check-schema c2 (conj p2 i) v)) v2)]
+              ["" (repeat (check-schema c2 p2 v2))])]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       (if (json-array? m1-doc)
-         (let [items (drop n m1-doc)
+     (fn [c1 p1 m1]
+       (if (json-array? m1)
+         (let [items (drop n m1)
                i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
-           (check-items m2-path m2-doc m1-ctx m1-path items bail i-and-css (str "items: at least one item did not conform to " m "schema")))
-         [m1-ctx []])))))
+           (check-items p2 m2 c1 p1 items bail i-and-css (str "items: at least one item did not conform to " m "schema")))
+         [c1 []])))))
 
-(defmethod check-property-2 "additionalItems" [_property {x? :exhaustive? :as m2-ctx} m2-path {is "items" :as m2-doc} [m2-val]]
+(defmethod check-property-2 "additionalItems" [_property {x? :exhaustive? :as c2} p2 {is "items" :as m2} [v2]]
   ;; additionalItems is only used when items is a tuple
   (if (json-array? is)
     (let [bail (if x? continue bail-out)
-          cs (check-schema m2-ctx m2-path m2-val)]
+          cs (check-schema c2 p2 v2)]
       (memo
-       (fn [m1-ctx m1-path m1-doc]
-         (if (json-array? m1-doc)
+       (fn [c1 p1 m1]
+         (if (json-array? m1)
            (let [
                  ;; this is how it should be done, but cheaper to just look at items (must be array for additionalItems to be meaningful) in m2 time
-                 mis (get (get m1-ctx :matched) (butlast m2-path) #{})
-                 ;;ais  (remove (fn [[k]] (contains? mis k)) (map-indexed vector m1-doc))
+                 mis (get (get c1 :matched) (butlast p2) #{})
+                 ;;ais  (remove (fn [[k]] (contains? mis k)) (map-indexed vector m1))
                  ;;i-and-css (mapv (fn [[k]] [k cs]) ais) ; TODO: feels inefficient
                  n (count is)
-                 ais (drop n m1-doc)
+                 ais (drop n m1)
                  i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) (repeat cs) ais)
                  ]
-             (check-items m2-path m2-doc m1-ctx m1-path ais bail i-and-css "additionalItems: at least one item did not conform to schema"))
-           [m1-ctx []]))))
-    (fn [m1-ctx _m1-path _m1-doc]
-      [m1-ctx nil])))
+             (check-items p2 m2 c1 p1 ais bail i-and-css "additionalItems: at least one item did not conform to schema"))
+           [c1 []]))))
+    (fn [c1 _p1 _m1]
+      [c1 nil])))
     
-(defmethod check-property-2 "unevaluatedItems" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "unevaluatedItems" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
   (let [bail (if x? continue bail-out)
-        css (repeat (check-schema m2-ctx m2-path m2-val))]
+        css (repeat (check-schema c2 p2 v2))]
     (memo
-     (fn [{p->eis :evaluated :as m1-ctx} m1-path m1-doc]
-       (if (json-array? m1-doc)
-         (let [eis (or (get p->eis m1-path) #{})
-               index-and-items (filter (fn [[k]] (not (eis k))) (map-indexed (fn [i v] [i v]) m1-doc))
+     (fn [{p->eis :evaluated :as c1} p1 m1]
+       (if (json-array? m1)
+         (let [eis (or (get p->eis p1) #{})
+               index-and-items (filter (fn [[k]] (not (eis k))) (map-indexed (fn [i v] [i v]) m1))
                i-and-css (mapv (fn [cs [i]] [i cs]) css index-and-items)] ;; TODO: item not used
-           (check-items m2-path m2-doc m1-ctx m1-path (map second index-and-items) bail i-and-css "unevaluatedItems: at least one item did not conform to schema"))
-         [m1-ctx []])))))
+           (check-items p2 m2 c1 p1 (map second index-and-items) bail i-and-css "unevaluatedItems: at least one item did not conform to schema"))
+         [c1 []])))))
 
-(defmethod check-property-2 "contains" [_property m2-ctx m2-path {mn "minContains" :as m2-doc} [m2-val]]
-  (let [cs (check-schema m2-ctx m2-path m2-val)
+(defmethod check-property-2 "contains" [_property c2 p2 {mn "minContains" :as m2} [v2]]
+  (let [cs (check-schema c2 p2 v2)
         base (if mn mn 1)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       (if (json-array? m1-doc)
-         (let [i-and-css (map (fn [i _] [i cs]) (range) m1-doc)
-               [new-m1-ctx [{es :errors}]]
-               (check-items m2-path m2-val m1-ctx m1-path m1-doc continue i-and-css "contains: at least one item did not conform to schema")
-               matches (- (count m1-doc) (count es))]
+     (fn [c1 p1 m1]
+       (if (json-array? m1)
+         (let [i-and-css (map (fn [i _] [i cs]) (range) m1)
+               [new-c1 [{es :errors}]]
+               (check-items p2 v2 c1 p1 m1 continue i-and-css "contains: at least one item did not conform to schema")
+               matches (- (count m1) (count es))]
            (if (<= (min base 1) matches)
-             [new-m1-ctx nil]
-             [m1-ctx [(make-error "contains: document has no matches" m2-path m2-doc m1-path m1-doc)]])))))))
+             [new-c1 nil]
+             [c1 [(make-error "contains: document has no matches" p2 m2 p1 m1)]])))))))
 
-(defmethod check-property-2 "minContains" [_property _m2-ctx m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "minContains" [_property _c2 p2 m2 [v2]]
   (memo
-   (fn [{matched :matched :as m1-ctx} m1-path m1-doc]
-     (if-let [matches (and (json-array? m1-doc) (get matched (butlast m2-path)))]
+   (fn [{matched :matched :as c1} p1 m1]
+     (if-let [matches (and (json-array? m1) (get matched (butlast p2)))]
        (let [n (count matches)]
          (if (and
               matches
-              (json-array? m1-doc)
-              (<= m2-val n))
-           [m1-ctx nil]
-           [m1-ctx [(make-error (str "minContains: document has too few matches - " n) m2-path m2-doc m1-path m1-doc)]]))
-       [m1-ctx nil]))))
+              (json-array? m1)
+              (<= v2 n))
+           [c1 nil]
+           [c1 [(make-error (str "minContains: document has too few matches - " n) p2 m2 p1 m1)]]))
+       [c1 nil]))))
 
-(defmethod check-property-2 "maxContains" [_property _m2-ctx m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "maxContains" [_property _c2 p2 m2 [v2]]
   (memo
-   (fn [{matched :matched :as m1-ctx} m1-path m1-doc]
-     (if-let [matches (and (json-array? m1-doc) (get matched (butlast m2-path)))]
+   (fn [{matched :matched :as c1} p1 m1]
+     (if-let [matches (and (json-array? m1) (get matched (butlast p2)))]
        (let [n (count matches)]
-         (if (<= n m2-val)
-           [m1-ctx nil]
-           [m1-ctx [(make-error (str "maxContains: document has too many matches - " n) m2-path m2-doc m1-path m1-doc)]]))
-       [m1-ctx nil]))))
+         (if (<= n v2)
+           [c1 nil]
+           [c1 [(make-error (str "maxContains: document has too many matches - " n) p2 m2 p1 m1)]]))
+       [c1 nil]))))
 
-(defmethod check-property-2 "minItems" [_property _m2-ctx m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "minItems" [_property _c2 p2 m2 [v2]]
   (memo
-   (fn [m1-ctx m1-path m1-doc]
-     [m1-ctx
+   (fn [c1 p1 m1]
+     [c1
       (when (and
-             (json-array? m1-doc)
-             (< (count m1-doc) m2-val))
-        [(make-error "minItems: document contains too few items" m2-path m2-doc m1-path m1-doc)])])))
+             (json-array? m1)
+             (< (count m1) v2))
+        [(make-error "minItems: document contains too few items" p2 m2 p1 m1)])])))
 
-(defmethod check-property-2 "maxItems" [_property _m2-ctx m2-path m2-doc [m2-val]]
+(defmethod check-property-2 "maxItems" [_property _c2 p2 m2 [v2]]
   (memo
-   (fn [m1-ctx m1-path m1-doc]
-     [m1-ctx
+   (fn [c1 p1 m1]
+     [c1
       (when (and
-             (json-array? m1-doc)
-             (> (count m1-doc) m2-val))
-        [(make-error "maxItems: document contains too many items" m2-path m2-doc m1-path m1-doc)])])))
+             (json-array? m1)
+             (> (count m1) v2))
+        [(make-error "maxItems: document contains too many items" p2 m2 p1 m1)])])))
 
 ;; TODO: should be unique according to json equality
 ;; TODO: could be more efficient - only needs to find one duplicate before it bails..
 ;; TODO: use sorted-set-by and put items in 1 at a time until one is rejected then bail - reduced
-(defmethod check-property-2 "uniqueItems" [_property _m2-ctx m2-path m2-doc [m2-val]]
-  (if m2-val
+(defmethod check-property-2 "uniqueItems" [_property _c2 p2 m2 [v2]]
+  (if v2
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       [m1-ctx
-        (when (json-array? m1-doc)
-          (when (not (= (count m1-doc) (count (distinct m1-doc))))
-            [(make-error "uniqueItems: document contains duplicate items" m2-path m2-doc m1-path m1-doc)]))]))
-    (fn [m1-ctx _m1-path _m1-doc]
-      [m1-ctx nil])))
+     (fn [c1 p1 m1]
+       [c1
+        (when (json-array? m1)
+          (when (not (= (count m1) (count (distinct m1))))
+            [(make-error "uniqueItems: document contains duplicate items" p2 m2 p1 m1)]))]))
+    (fn [c1 _p1 _m1]
+      [c1 nil])))
 
 ;; TODO: merge code with check-items...
-(defn check-of [m2-ctx m2-path m2-doc m2-val]
-  (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema m2-ctx (conj m2-path i) sub-schema)]) m2-val))]
-    (fn [m1-ctx m1-path m1-doc message failed?]
-      (let [old-local-m1-ctx (update m1-ctx :evaluated dissoc m1-path)
-            [m1-ctx es]
+(defn check-of [c2 p2 m2 v2]
+  (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema c2 (conj p2 i) sub-schema)]) v2))]
+    (fn [c1 p1 m1 message failed?]
+      (let [old-local-c1 (update c1 :evaluated dissoc p1)
+            [c1 es]
             (reduce
              (fn [[old-c old-es] [i cs]]
-               (let [[new-local-m1-ctx new-es] (cs old-local-m1-ctx m1-path m1-doc)
-                     new-c (if (empty? new-es) (update old-c :evaluated update m1-path into-set (get (get new-local-m1-ctx :evaluated) m1-path)) old-c)
+               (let [[new-local-c1 new-es] (cs old-local-c1 p1 m1)
+                     new-c (if (empty? new-es) (update old-c :evaluated update p1 into-set (get (get new-local-c1 :evaluated) p1)) old-c)
                      es (concatv old-es new-es)]
                  [new-c es]))
-             [m1-ctx []]
+             [c1 []]
              i-and-css)]
-        [m1-ctx
-         (make-error-on message m2-path m2-doc m1-path m1-doc failed? es)]))))
+        [c1
+         (make-error-on message p2 m2 p1 m1 failed? es)]))))
 
-(defmethod check-property-2 "oneOf" [_property m2-ctx m2-path m2-doc [m2-val]]
-  (let [co (check-of m2-ctx m2-path m2-doc m2-val)
-        m2-count (count m2-val)]
+(defmethod check-property-2 "oneOf" [_property c2 p2 m2 [v2]]
+  (let [co (check-of c2 p2 m2 v2)
+        m2-count (count v2)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
+     (fn [c1 p1 m1]
        (co
-        m1-ctx m1-path m1-doc
+        c1 p1 m1
         "oneOf: document failed to conform to one and only one sub-schema"
         (fn [es] (not= 1 (- m2-count (count es)))))))))
 
-(defmethod check-property-2 "anyOf" [_property m2-ctx m2-path m2-doc [m2-val]]
-  (let [co (check-of m2-ctx m2-path m2-doc m2-val)
-        m2-count (count m2-val)]
+(defmethod check-property-2 "anyOf" [_property c2 p2 m2 [v2]]
+  (let [co (check-of c2 p2 m2 v2)
+        m2-count (count v2)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
+     (fn [c1 p1 m1]
        (co
-        m1-ctx m1-path m1-doc
+        c1 p1 m1
         "anyOf: document failed to conform to at least one sub-schema"
         (fn [es] (not (< (count es) m2-count))))))))
          
-(defmethod check-property-2 "allOf" [_property m2-ctx m2-path m2-doc [m2-val]]
-  (let [co (check-of m2-ctx m2-path m2-doc m2-val)
-        m2-count (count m2-val)]
+(defmethod check-property-2 "allOf" [_property c2 p2 m2 [v2]]
+  (let [co (check-of c2 p2 m2 v2)
+        m2-count (count v2)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
+     (fn [c1 p1 m1]
        (co
-        m1-ctx m1-path m1-doc
+        c1 p1 m1
         "allOf: document failed to conform to all sub-schemas"
         seq)))))
 
 ;; TODO: share check-of
-(defmethod check-property-2 "not" [_property m2-ctx m2-path m2-doc [m2-val]]
-  (let [c (check-schema m2-ctx m2-path m2-val)]
+(defmethod check-property-2 "not" [_property c2 p2 m2 [v2]]
+  (let [c (check-schema c2 p2 v2)]
     (memo
-     (fn [m1-ctx m1-path m1-doc]
-       (let [old-local-m1-ctx (update m1-ctx :evaluated dissoc m1-path)
-             [new-local-m1-ctx es] (c old-local-m1-ctx m1-path m1-doc)
-             [m1-ctx failed?] (if (seq es)
-                                [(update m1-ctx :evaluated update m1-path into-set (get (get new-local-m1-ctx :evaluated) m1-path)) true]
-                                [m1-ctx false])]
-         [m1-ctx
+     (fn [c1 p1 m1]
+       (let [old-local-c1 (update c1 :evaluated dissoc p1)
+             [new-local-c1 es] (c old-local-c1 p1 m1)
+             [c1 failed?] (if (seq es)
+                                [(update c1 :evaluated update p1 into-set (get (get new-local-c1 :evaluated) p1)) true]
+                                [c1 false])]
+         [c1
           (when-not failed?
-            [(make-error "not: document conformed to sub-schema" m2-path m2-doc m1-path m1-doc)])])))))
+            [(make-error "not: document conformed to sub-schema" p2 m2 p1 m1)])])))))
 
 ;; catch-all
 
-(defmethod check-property-2 :default [property {{checker property} :validators :as m2-ctx} m2-path m2-doc [m2-val :as m2-vals]]
+(defmethod check-property-2 :default [property {{checker property} :validators :as c2} p2 m2 v2s]
   (if checker
-    (let [cp (checker property m2-ctx m2-path m2-doc m2-vals)]
+    (let [cp (checker property c2 p2 m2 v2s)]
       (memo
-       (fn [m1-ctx m1-path m1-doc]
-         [m1-ctx (cp m1-path m1-doc)])))
+       (fn [c1 p1 m1]
+         [c1 (cp p1 m1)])))
     (let [m (str "property: unexpected property encountered: " (pr-str property))]
-      (fn [m1-ctx _m1-path _m1-doc]
-        [m1-ctx (log/warn m)]))))
+      (fn [c1 _p1 _m1]
+        [c1 (log/warn m)]))))
 
 ;;------------------------------------------------------------------------------
-
-(defn path-extends?
-  "does the second path extend the first - equality is treated as extension."
-  [l r]
-  (every? (partial apply =) (map vector l r)))
-
-
 
 (let [property-groups
       [;; TODO: push quick wins towards lower ranks - type, format etc...
@@ -1429,52 +1419,52 @@
        {}
        m2)))))
 
-(defn do-bail-on-error [m1-ctx acc es]
+(defn do-bail-on-error [c1 acc es]
   (if (seq es)
-    (reduced [m1-ctx es])
-    [m1-ctx acc]))
+    (reduced [c1 es])
+    [c1 acc]))
 
-(defn dont-bail-on-error [m1-ctx acc es]
-  [m1-ctx (concatv acc es)])
+(defn dont-bail-on-error [c1 acc es]
+  [c1 (concatv acc es)])
 
 (defn get-bail [{x? :exhaustive?}]
   (if x? dont-bail-on-error do-bail-on-error))
 
-(defn check-schema-2 [{t? :trace? :as m2-ctx} m2-path m2-doc]
+(defn check-schema-2 [{t? :trace? :as c2} p2 m2]
   ;; TODO; this needs to be simplified
-  (let [bail (get-bail m2-ctx)]
+  (let [bail (get-bail c2)]
     (cond
-      (true? m2-doc)
-      (fn [m1-ctx _m1-path _m1-doc]
-        [m1-ctx nil])
+      (true? m2)
+      (fn [c1 _p1 _m1]
+        [c1 nil])
 
-      (false? m2-doc)
-      (fn [m1-ctx m1-path m1-doc]
-        [m1-ctx
-         (when (present? m1-doc)
-           [(make-error "schema is false: nothing will match" m2-path m2-doc m1-path m1-doc)])])
+      (false? m2)
+      (fn [c1 p1 m1]
+        [c1
+         (when (present? m1)
+           [(make-error "schema is false: nothing will match" p2 m2 p1 m1)])])
 
       :else
-      (let [m2-path-and-cps
+      (let [p2-and-cps
             (mapv
              (fn [[ks vs]]
                (let [ks (if (= 1 (count ks)) (first ks) ks) ;; hack - lose later
-                     new-m2-path (conj m2-path ks)]
-                 [new-m2-path (check-property ks m2-ctx new-m2-path m2-doc vs)]))
-             (compile-m2 m2-doc))]
-        (fn [m1-ctx m1-path m1-doc]
-          (if (present? m1-doc)
-            (let [[new-m1-ctx es]
+                     new-p2 (conj p2 ks)]
+                 [new-p2 (check-property ks c2 new-p2 m2 vs)]))
+             (compile-m2 m2))]
+        (fn [c1 p1 m1]
+          (if (present? m1)
+            (let [[new-c1 es]
                   (reduce
-                   (fn [[old-m1-ctx acc] [new-m2-path cp]]
-                     (let [[new-m1-ctx [{m :message} :as es]] (cp old-m1-ctx m1-path m1-doc)]
-                       (when t? (println (pr-str new-m2-path) (pr-str m1-path) (if (seq es) ["❌" m] "✅")))
-                       (bail new-m1-ctx acc es)))
-                   [m1-ctx []]
-                   m2-path-and-cps)]
-              [new-m1-ctx
-               (make-error-on-failure "schema: document did not conform" m2-path m2-doc m1-path m1-doc es)])
-            [m1-ctx []]))))))
+                   (fn [[old-c1 acc] [new-p2 cp]]
+                     (let [[new-c1 [{m :message} :as es]] (cp old-c1 p1 m1)]
+                       (when t? (println (pr-str new-p2) (pr-str p1) (if (seq es) ["❌" m] "✅")))
+                       (bail new-c1 acc es)))
+                   [c1 []]
+                   p2-and-cps)]
+              [new-c1
+               (make-error-on-failure "schema: document did not conform" p2 m2 p1 m1 es)])
+            [c1 []]))))))
 
 ;; quicker than actual 'apply' [?]
 (defn apply3 [f [c p m]]
@@ -1535,11 +1525,6 @@
        (if id? (assoc stuff :id-uri anchor-uri) stuff)])
     x))
 
-(defn stash-reference [[acc {id-uri :id-uri :as stuff} :as x] path $ref]
-  (if (string? $ref)
-    [(update acc :path->uri assoc path (inherit-uri id-uri (parse-uri $ref))) stuff]
-    x))
-
 (defn stash [{id-key :id-key :as acc} stuff {id id-key a "$anchor" da "$dynamicAnchor"} path]
   (-> [acc stuff]
       ((fn [[acc {id-uri :id-uri :as stuff}]] [(update acc :path->uri assoc path id-uri) stuff]))
@@ -1564,18 +1549,6 @@
 
 (def $schema-uri->draft
   (reduce-kv (fn [acc k v] (conj acc [(parse-uri k) v])) {} $schema->draft))
-
-;; TODO: merge with above somehow... - grow into jump table for entire codebase
-(def $schema->draft-info
-  {
-   "http://json-schema.org/draft-03/schema"       ["draft3"       "id" ]
-   "http://json-schema.org/draft-04/schema"       ["draft4"       "id" ]
-   "http://json-schema.org/draft-06/schema"       ["draft6"       "$id"]
-   "http://json-schema.org/draft-07/schema"       ["draft7"       "$id"]
-   "https://json-schema.org/draft/2019-09/schema" ["draft2019-09" "$id"]
-   "https://json-schema.org/draft/2020-12/schema" ["draft2020-12" "$id"]
-   "https://json-schema.org/draft/next/schema"    ["draft-next"   "$id"]
-   })
 
 ;;------------------------------------------------------------------------------
 
@@ -1633,26 +1606,26 @@
      )))  
 
 ;; TODO: rename :root to ?:expanded?
-(defn validate-2 [m2-ctx schema]
-  (let [{draft :draft id-key :id-key :as m2-ctx} (make-context m2-ctx schema)
+(defn validate-2 [c2 schema]
+  (let [{draft :draft id-key :id-key :as c2} (make-context c2 schema)
         sid (get schema id-key)
-        cs (check-schema m2-ctx [] schema)]
+        cs (check-schema c2 [] schema)]
     (memo
-     (fn [m1-ctx {did id-key dsid "$schema" :as document}]
+     (fn [c1 {did id-key _dsid "$schema" :as document}]
         ;;(log/info "validate:" sid "/" did)
         ;;(when (and dsid (not (= sid dsid))) (log/warn (format "document schema id not consistent with schema id: %s != %s" dsid sid)))
-       (let [m1-ctx (assoc m1-ctx :id-key id-key  :uri->path {}) ;; docs must be of same draft as their schemas... ?
-             m1-ctx (json-walk stash m1-ctx {} [] schema)
-             m1-ctx (assoc
-                     m1-ctx
+       (let [c1 (assoc c1 :id-key id-key  :uri->path {}) ;; docs must be of same draft as their schemas... ?
+             c1 (json-walk stash c1 {} [] schema)
+             c1 (assoc
+                     c1
                      :id-key id-key
                      :id-uri (when did (parse-uri did))
                      :original-root document
                      :recursive-anchor []
                      :root document
                      :draft draft
-                     :melder (:melder m2-ctx))
-             [c1 es] (cs m1-ctx [] document)]
+                     :melder (:melder c2))
+             [c1 es] (cs c1 [] document)]
          ;;(prn "C:" (:evaluated c1))
          {:valid? (empty? es) :errors es})))))
 
@@ -1674,6 +1647,6 @@
      [{:errors "no $schema given"}]))
   ;; but some m1s are not objects (e.g. string) and thus have nowhere
   ;; to carry $schema property - in which case use this entry point...
-  ([m2-ctx schema m1-ctx document]
-   (validate m2-ctx schema)
-   ((validate-2 m2-ctx schema) m1-ctx document)))
+  ([c2 schema c1 document]
+   (validate c2 schema)
+   ((validate-2 c2 schema) c1 document)))
