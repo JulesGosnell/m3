@@ -1103,25 +1103,28 @@
 
 ;; standard array properties
 
+(def conj-set (fnil conj #{}))
+
+;; we could save time by only maintaining :matched and :evaluated
+;; context if required (additional and evaluated items)...
 (defn check-items [m2-path m2-doc m1-ctx m1-path m1-doc bail i-and-css message]
-  (let [old-local-m1-ctx (update m1-ctx :evaluated dissoc m1-path)
+  (let [old-local-m1-ctx
+        (-> m1-ctx
+            (update :matched dissoc m2-path)
+            (update :evaluated dissoc m1-path))
         [m1-ctx es]
         (reduce
          (fn [[old-c old-es] [[i cs] sub-document]]
            (let [[_ new-es] (cs old-local-m1-ctx (conj m1-path i) sub-document)
-                 new-c (if (empty? new-es) (update old-c :evaluated update m1-path (fnil conj #{}) i) old-c)]
+                 new-c (if (empty? new-es)
+                         (-> old-c
+                             (update :matched   update m2-path conj-set i)
+                             (update :evaluated update m1-path conj-set i))
+                         old-c)]
              (bail new-c old-es new-es)))
          [m1-ctx []]
          (map vector i-and-css m1-doc))]
-    [m1-ctx
-       ;; (-> 
-       ;;     ;; TODO: only record matched if additonalItems needed later ?
-       ;;     ;; correct way to do it, but I have cheaper short-cut - properties will have to work this way
-       ;;     ;; (update :matched   update (butlast m2-path) into-set is)
-       ;;     ;; TODO: only record evaluated if unevaluatedItems needed later ?
-       ;;     (update :evaluated update m1-path into-set is))
-
-     (make-error-on-failure message m2-path m2-doc m1-path m1-doc es)]))
+    [m1-ctx (make-error-on-failure message m2-path m2-doc m1-path m1-doc es)]))
 
 (defmethod check-property-2 "prefixItems" [_property {x? :exhaustive? :as m2-ctx} m2-path m2-doc [m2-val]]
   (let [bail (if x? continue bail-out)
