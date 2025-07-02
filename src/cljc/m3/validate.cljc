@@ -136,6 +136,7 @@
 ;; utils
 
 (def into-set (fnil into #{}))
+(def conj-set (fnil conj #{}))
 
 (defn concatv [& args]
   (vec (apply concat args)))
@@ -1103,22 +1104,22 @@
 
 ;; standard array properties
 
-(def conj-set (fnil conj #{}))
-
 ;; we could save time by only maintaining :matched and :evaluated
 ;; context if required (additional and evaluated items)...
+;; if we split this function we could do m2-parent-path at m2 time
 (defn check-items [m2-path m2-doc m1-ctx m1-path m1-doc bail i-and-css message]
-  (let [old-local-m1-ctx
+  (let [m2-parent-path (butlast m2-path)
+        old-local-m1-ctx
         (-> m1-ctx
-            (update :matched dissoc m2-path)
-            (update :evaluated dissoc m1-path))
+            (update :matched assoc m2-parent-path #{})
+            (update :evaluated assoc m1-path #{}))
         [m1-ctx es]
         (reduce
          (fn [[old-c old-es] [[i cs] sub-document]]
            (let [[_ new-es] (cs old-local-m1-ctx (conj m1-path i) sub-document)
                  new-c (if (empty? new-es)
                          (-> old-c
-                             (update :matched   update m2-path conj-set i)
+                             (update :matched update m2-parent-path conj-set i)
                              (update :evaluated update m1-path conj-set i))
                          old-c)]
              (bail new-c old-es new-es)))
@@ -1183,22 +1184,42 @@
            (check-items m2-path m2-doc m1-ctx m1-path (map second index-and-items) bail i-and-css "unevaluatedItems: at least one item did not conform to schema"))
          [m1-ctx []])))))
 
-(defmethod check-property-2 ["contains" "minContains" "maxContains"] [_property m2-ctx m2-path m2-doc [m2-val mn? mx?]]
-  (if-let [cs (and (present? m2-val) (check-schema m2-ctx m2-path m2-val))]
-    (let [lower-bound (if (present? mn?) mn? 1)
-          upper-bound (if (present? mx?) mx? long-max-value)]
-      (memo
-       (fn [m1-ctx m1-path m1-doc]
-         (if (json-array? m1-doc)
-           (let [i-and-css (map (fn [i _] [i cs]) (range) m1-doc)
-                 [new-m1-ctx [{es :errors}]]
-                 (check-items m2-path m2-val m1-ctx m1-path m1-doc continue i-and-css "contains: at least one item did not conform to schema")]
-             (let [matches (- (count m1-doc) (count es))]
-               (if (<= lower-bound matches upper-bound)
-                 [new-m1-ctx nil]
-                 [m1-ctx [(make-error "contains: document has too few/many matches" m2-path m2-doc m1-path m1-doc)]]
-                 )))))))
-    (fn [m1-ctx _m1-path _m1-doc] [m1-ctx nil])))
+(defmethod check-property-2 "contains" [_property m2-ctx m2-path {mn "minContains" :as m2-doc} [m2-val]]
+  (let [cs (check-schema m2-ctx m2-path m2-val)
+        base (if mn mn 1)]
+    (memo
+     (fn [m1-ctx m1-path m1-doc]
+       (if (json-array? m1-doc)
+         (let [i-and-css (map (fn [i _] [i cs]) (range) m1-doc)
+               [new-m1-ctx [{es :errors}]]
+               (check-items m2-path m2-val m1-ctx m1-path m1-doc continue i-and-css "contains: at least one item did not conform to schema")
+               matches (- (count m1-doc) (count es))]
+           (if (<= (min base 1) matches)
+             [new-m1-ctx nil]
+             [m1-ctx [(make-error "contains: document has no matches" m2-path m2-doc m1-path m1-doc)]])))))))
+
+(defmethod check-property-2 "minContains" [_property _m2-ctx m2-path m2-doc [m2-val]]
+  (memo
+   (fn [{matched :matched :as m1-ctx} m1-path m1-doc]
+     (if-let [matches (and (json-array? m1-doc) (get matched (butlast m2-path)))]
+       (let [n (count matches)]
+         (if (and
+              matches
+              (json-array? m1-doc)
+              (<= m2-val n))
+           [m1-ctx nil]
+           [m1-ctx [(make-error (str "minContains: document has too few matches - " n) m2-path m2-doc m1-path m1-doc)]]))
+       [m1-ctx nil]))))
+
+(defmethod check-property-2 "maxContains" [_property _m2-ctx m2-path m2-doc [m2-val]]
+  (memo
+   (fn [{matched :matched :as m1-ctx} m1-path m1-doc]
+     (if-let [matches (and (json-array? m1-doc) (get matched (butlast m2-path)))]
+       (let [n (count matches)]
+         (if (<= n m2-val)
+           [m1-ctx nil]
+           [m1-ctx [(make-error (str "maxContains: document has too many matches - " n) m2-path m2-doc m1-path m1-doc)]]))
+       [m1-ctx nil]))))
 
 (defmethod check-property-2 "minItems" [_property _m2-ctx m2-path m2-doc [m2-val]]
   (memo
@@ -1241,7 +1262,7 @@
             (reduce
              (fn [[old-c old-es] [i cs]]
                (let [[new-local-m1-ctx new-es] (cs old-local-m1-ctx m1-path m1-doc)
-                     new-c (if (empty? new-es) (update old-c :evaluated update m1-path (fnil into #{}) (get (get new-local-m1-ctx :evaluated) m1-path)) old-c)
+                     new-c (if (empty? new-es) (update old-c :evaluated update m1-path into-set (get (get new-local-m1-ctx :evaluated) m1-path)) old-c)
                      es (concatv old-es new-es)]
                  [new-c es]))
              [m1-ctx []]
@@ -1287,7 +1308,7 @@
        (let [old-local-m1-ctx (update m1-ctx :evaluated dissoc m1-path)
              [new-local-m1-ctx es] (c old-local-m1-ctx m1-path m1-doc)
              [m1-ctx failed?] (if (seq es)
-                                [(update m1-ctx :evaluated update m1-path (fnil into #{}) (get (get new-local-m1-ctx :evaluated) m1-path)) true]
+                                [(update m1-ctx :evaluated update m1-path into-set (get (get new-local-m1-ctx :evaluated) m1-path)) true]
                                 [m1-ctx false])]
          [m1-ctx
           (when-not failed?
@@ -1365,7 +1386,10 @@
        ["dependentSchemas"]
        ["dependentRequired"]
 
-       ["contains" "minContains" "maxContains"]   ;; TODO: unpack
+       ["contains"]
+       ["minContains"]
+       ["maxContains"]
+       
        ["minimum" "exclusiveMinimum"] ;; TODO: unpack
        ["maximum" "exclusiveMaximum"] ;; TODO: unpack
        ["contentEncoding" "contentMediaType" "contentSchema"] ;; TODO: unpack
