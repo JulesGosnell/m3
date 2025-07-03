@@ -637,65 +637,81 @@
 
 ;; standard number properties
 
-(defn check-m??imum [p p= e1 e2 e3]
-  (fn [{d :draft} p2 m2 [m??imum exclusive?]]
-    (if (= "draft4" d)
-      ;; exclusiveM??imum is a boolean that modifies m??imum
-      (if (present? m??imum)
-        (let [[p e]
-              (if (and (present? exclusive?) exclusive?)
-                [p e1]
-                [p= e2])]
-          (memoize
-           (fn [c1 p1 m1]
-             [c1
-              (when (json-number? m1)
-                (when-not (p m1 m??imum)
-                  [(make-error e p2 m2 p1 m1)]))])))
-        (constantly []))
-      ;; m??imum and exclusiveM??imum are both numbers and treated separately
-      (let [check-m??imum
-            (if (present? m??imum)
-              (fn [p1 m1]
-                (fn [acc]
-                  (if (p= m1 m??imum)
-                    acc
-                    (conj acc [(make-error e2 p2 m2 p1 m1)]))))
-              (fn [_p1 _m1] identity))
-            check-exclusive
-            (if (present? exclusive?)
-              (fn [p1 m1]
-                (fn [acc]
-                  (if (p m1 exclusive?)
-                    acc
-                    (conj acc [(make-error e3 p2 m2 p1 m1)]))))
-              (fn [_p1 _m1] identity))]
-        (memoize
-         (fn [c1 p1 m1]
-           [c1
-            (when (json-number? m1)
-              (let [cm (check-m??imum p1 m1)
-                    ce (check-exclusive p1 m1)]
-                (-> [] (cm) (ce))))]))))))
+(defmethod check-property-2 "minimum" [_property {d :draft} p2 m2 [v2]]
+  (memo
+   (case d
+     ("draft3" "draft4")
+     (let [e? (m2 "exclusiveMinimum")
+           p? (if e? < <=)]
+       (fn [c1 p1 m1]
+         [c1
+          (if (or
+               (not (number? m1))
+               (p? v2 m1))
+            []
+            [(make-error (str "minimum" (when e? "(with exclusiveMinimum)") ": value to low") p2 m2 p1 m1)])]))
+   ;; default
+     (fn [c1 p1 m1]
+       [c1
+        (if (or
+             (not (number? m1))
+             (<= v2 m1))
+          []
+          [(make-error "minimum: value to low" p2 m2 p1 m1)])]))))
 
-(defmethod check-property-2 ["minimum" "exclusiveMinimum"] [_property c2 p2 m2 v2s]
-  ((check-m??imum
-    >
-    >=
-    "minimum & exclusiveMinimum: value is not above"
-    "minimum: value is not equal to or above"
-    "exclusiveMinimum: value is not above")
-   c2 p2 m2 v2s))
+(defmethod check-property-2 "exclusiveMinimum" [_property {d :draft} p2 {m "minimum" :as m2} [v2]]
+  (memo
+   (case d
+     ("draft3" "draft4")
+     (fn [c1 _p1 _m1]
+       (when-not m (log/warn "exclusiveMinimum: no minimum present to modify"))
+       [c1 []])
+     ;; default
+     (fn [c1 p1 m1]
+       [c1
+        (if (or
+             (not (number? m1))
+             (< v2 m1))
+          []
+          [(make-error "minimum: value to low" p2 m2 p1 m1)])]))))
 
-;; TODO: optimise
-(defmethod check-property-2 ["maximum" "exclusiveMaximum"] [_property c2 p2 m2 v2s]
-  ((check-m??imum
-    <
-    <=
-    "maximum & exclusiveMaximum: value is not below"
-    "maximum: value is not equal to or below"
-    "exclusiveMaximum: value is not below")
-   c2 p2 m2 v2s))
+(defmethod check-property-2 "maximum" [_property {d :draft} p2 m2 [v2]]
+  (memo
+   (case d
+     ("draft3" "draft4")
+     (let [e? (m2 "exclusiveMaximum")
+           p? (if e? > >=)]
+       (fn [c1 p1 m1]
+         [c1
+          (if (or
+               (not (number? m1))
+               (p? v2 m1))
+            []
+            [(make-error (str "maximum" (when e? "(with exclusiveMaximum)") ": value too high") p2 m2 p1 m1)])]))
+   ;; default
+     (fn [c1 p1 m1]
+       [c1
+        (if (or
+             (not (number? m1))
+             (>= v2 m1))
+          []
+          [(make-error "maximum: value too high" p2 m2 p1 m1)])]))))
+
+(defmethod check-property-2 "exclusiveMaximum" [_property {d :draft} p2 {m "maximum" :as m2} [v2]]
+  (memo
+   (case d
+     ("draft3" "draft4")
+     (fn [c1 _p1 _m1]
+       (when-not m (log/warn "exclusiveMaximum: no maximum present to modify"))
+       [c1 []])
+     ;; default
+     (fn [c1 p1 m1]
+       [c1
+        (if (or
+             (not (number? m1))
+             (> v2 m1))
+          []
+          [(make-error "maximum: value too high" p2 m2 p1 m1)])]))))
 
 (defmethod check-property-2 "multipleOf" [_property _c2 p2 m2 [v2]]
   (let [v2-bd (bigdec v2)]
@@ -1380,8 +1396,11 @@
        ["minContains"]
        ["maxContains"]
        
-       ["minimum" "exclusiveMinimum"] ;; TODO: unpack
-       ["maximum" "exclusiveMaximum"] ;; TODO: unpack
+       ["minimum"]
+       ["exclusiveMinimum"]
+       
+       ["maximum"]
+       ["exclusiveMaximum"]
        ["contentEncoding" "contentMediaType" "contentSchema"] ;; TODO: unpack
        ["if" "then" "else"] ;; TODO: unpack
 
