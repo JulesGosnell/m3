@@ -803,12 +803,35 @@
    "application/json" json-decode
    })
 
-(defmethod check-property-2 ["contentEncoding" "contentMediaType" "contentSchema"] [_property {d :draft :as c2} p2 m2 [ce cmt cs]]
-  (let [ce-decoder (ce->decoder ce)
-        cmt (if (present? cmt) cmt "application/json")
+(defmethod check-property-2 "contentEncoding" [_property {d :draft} p2 m2 [v2]]
+  (let [strict? (#{"draft7"} d) ;; TODO: check a context flag aswell
+        ce-decoder (ce->decoder v2)
+        pp2 (butlast p2)]
+    (memo
+     (fn [c1 p1 old-m1]
+       (if (string? old-m1)
+         (let [[new-m1 es]
+               (try
+                 [(ce-decoder old-m1) nil]
+                 (catch Exception e
+                   [nil
+                    (let [m (str "contentEncoding: could not " v2 " decode: " (pr-str old-m1) " - " (ex-message e))]
+                      (if strict?
+                        [(make-error m p2 m2 p1 old-m1)]
+                        (do
+                          (log/warn (string-replace m #"\n" " - "))
+                          [])))]))]
+           (if new-m1
+             [(update c1 :content assoc pp2 new-m1) nil]
+             [c1 es]))
+         [old-m1 nil])))))
+
+(defmethod check-property-2 ["contentMediaType" "contentSchema"] [_property {d :draft :as c2} p2 m2 [cmt cs]]
+  (let [cmt (if (present? cmt) cmt "application/json")
         cmt-decoder (cmt->decoder cmt)
         strict? (#{"draft7"} d) ;; check a context flag aswell
-        checker (if (present? cs) (check-schema c2 p2 cs) (constantly []))]
+        checker (if (present? cs) (check-schema c2 p2 cs) (constantly []))
+        pp2 (butlast p2)]
     (memo
      (fn [c1 p1 m1]
        [c1
@@ -818,20 +841,7 @@
                   (checker
                    c1
                    p1
-                   (let [new-m1
-                         (try
-                           (ce-decoder m1)
-                           (catch Exception e
-                             (throw
-                              (ex-info
-                               nil
-                               {:errors
-                                (let [m (str "contentEncoding: could not " ce " decode: " (pr-str m1) " - " (ex-message e))]
-                                  (if strict?
-                                    [(make-error m p2 m2 p1 m1)]
-                                    (do
-                                      (log/warn (string-replace m #"\n" " - "))
-                                      [])))}))))]
+                   (let [new-m1 (or (get (get c1 :content) pp2) m1)]
                      (try
                        (cmt-decoder new-m1)
                        (catch Exception e
@@ -839,7 +849,7 @@
                           (ex-info
                            nil
                            {:errors
-                            (let [m (str "contentMediaType: could not " cmt " decode: " (pr-str new-m1) (if (present? ce) (str " (from " ce " encoded " (pr-str m1) ")") "") " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
+                            (let [m (str "contentMediaType: could not " cmt " decode: " (pr-str new-m1) " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
                               (if strict?
                                 [(make-error m p2 m2 p1 m1)]
                                 (do
@@ -1421,7 +1431,9 @@
        
        ["maximum"]
        ["exclusiveMaximum"]
-       ["contentEncoding" "contentMediaType" "contentSchema"] ;; TODO: unpack
+
+       ["contentEncoding"]
+       ["contentMediaType" "contentSchema"] ;; TODO: unpack
 
        ["if"]
        ["then"]
