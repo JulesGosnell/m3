@@ -851,7 +851,7 @@
              [c1 es]))
          [old-m1 nil]))))))
 
-(defmethod check-property-2 ["contentSchema"] [_property {d :draft :as c2} p2 {cmt "contentMediaType"} [v2]]
+(defmethod check-property-2 "contentSchema" [_property {d :draft :as c2} p2 {cmt "contentMediaType"} [v2]]
   (let [strict? (#{"draft7"} d) ;; TODO: check a context flag aswell
         checker (check-schema c2 p2 v2)
         pp2 (butlast p2)]
@@ -1048,7 +1048,7 @@
 
 (defmethod check-property-2 "properties" [_property {x? :exhaustive? :as c2} p2 m2 [ps]]
   (let [bail (if x? continue bail-out)
-        k-and-css (mapv (fn [[k v]] [k (check-schema c2 (conj p2 k) v)]) (when (present? ps) ps))
+        k-and-css (mapv (fn [[k v]] [k (check-schema c2 (conj p2 k) v)]) ps)
         cp (check-properties c2 p2 m2)]
     (memo
      (fn [c1 p1 m1]
@@ -1061,7 +1061,7 @@
 
 (defmethod check-property-2 "patternProperties" [_property {x? :exhaustive? :as c2} p2 m2 [pps]]
   (let [bail (if x? continue bail-out)
-        cp-and-pattern-and-ks (mapv (fn [[k v]] [(check-schema c2 (conj p2 k) v) (ecma-pattern k) k]) (when (present? pps) pps))
+        cp-and-pattern-and-ks (mapv (fn [[k v]] [(check-schema c2 (conj p2 k) v) (ecma-pattern k) k]) pps)
         cp (check-properties c2 p2 m2)]
     (memo
      (fn [c1 p1 m1]
