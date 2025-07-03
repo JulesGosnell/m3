@@ -1014,69 +1014,74 @@
   (mapv (fn [[k v]] (check-schema c2 (conj p2 k) v)) v2)
   (fn [c1 _p1 _m1] [c1 nil]))
 
-;; TODO: split into m2 and m1 time...
-(defn check-properties [p2 m2 c1 p1 m1 bail k-and-css message]
-  (let [[c1 es]
-        (reduce
-         (fn [[c old-es] [[k cs] sub-document]]
-           (let [[c new-es] (cs c (conj p1 k) sub-document)]
-             (bail c old-es new-es)))
-         [c1 []]
-         (map (fn [[k :as k-and-cs]] [k-and-cs (m1 k)]) k-and-css))]
-    [(let [ks (map first k-and-css)]
-       (-> c1
+(defn check-properties [_c2 p2 m2]
+  (let [pp2 (butlast p2)]
+    (fn [c1 p1 m1 bail k-and-css message]
+      (let [[c1 es]
+            (reduce
+             (fn [[c old-es] [[k cs] sub-document]]
+               (let [[c new-es] (cs c (conj p1 k) sub-document)]
+                 (bail c old-es new-es)))
+             [c1 []]
+             (map (fn [[k :as k-and-cs]] [k-and-cs (m1 k)]) k-and-css))]
+        [(let [ks (map first k-and-css)]
+           (-> c1
            ;; TODO: only record matched if additonalProperties needed later ?
-           (update :matched   update (butlast p2) into-set ks)
+               (update :matched   update pp2 into-set ks)
            ;; TODO: only record evaluated if unevaluatedProperties needed later ?
-           (update :evaluated update p1 into-set ks)))
-     (make-error-on-failure message p2 m2 p1 m1 es)]))
+               (update :evaluated update p1 into-set ks)))
+         (make-error-on-failure message p2 m2 p1 m1 es)]))))
 
 (defmethod check-property-2 "properties" [_property {x? :exhaustive? :as c2} p2 m2 [ps]]
   (let [bail (if x? continue bail-out)
-        k-and-css (mapv (fn [[k v]] [k (check-schema c2 (conj p2 k) v)]) (when (present? ps) ps))]
+        k-and-css (mapv (fn [[k v]] [k (check-schema c2 (conj p2 k) v)]) (when (present? ps) ps))
+        cp (check-properties c2 p2 m2)]
     (memo
      (fn [c1 p1 m1]
        (if (json-object? m1)
          (let [k-and-css (filter (fn [[k]] (contains? m1 k)) k-and-css)]
-           (check-properties p2 m2 c1 p1 m1 bail k-and-css "properties: at least one property did not conform to respective schema"))
+           (cp c1 p1 m1 bail k-and-css "properties: at least one property did not conform to respective schema"))
          [c1 []])))))
 
 ;; what is opposite of "additional" - "matched" - used by spec to refer to properties matched by "properties" or "patternProperties"
 
 (defmethod check-property-2 "patternProperties" [_property {x? :exhaustive? :as c2} p2 m2 [pps]]
   (let [bail (if x? continue bail-out)
-        cp-and-pattern-and-ks (mapv (fn [[k v]] [(check-schema c2 (conj p2 k) v) (ecma-pattern k) k]) (when (present? pps) pps))]
+        cp-and-pattern-and-ks (mapv (fn [[k v]] [(check-schema c2 (conj p2 k) v) (ecma-pattern k) k]) (when (present? pps) pps))
+        cp (check-properties c2 p2 m2)]
     (memo
      (fn [c1 p1 m1]
        (if (json-object? m1)
          (let [k-and-css (apply concat (keep (fn [[k]] (keep (fn [[cs p]] (when (ecma-match p k) [k cs])) cp-and-pattern-and-ks)) m1))]
-           (check-properties p2 m2 c1 p1 m1 bail k-and-css "patternProperties: at least one property did not conform to respective schema"))
+           (cp c1 p1 m1 bail k-and-css "patternProperties: at least one property did not conform to respective schema"))
          [c1 []])))))
 
 
 (defmethod check-property-2 "additionalProperties" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
   (let [bail (if x? continue bail-out)
         cs (check-schema c2 p2 v2)
-        pp2 (butlast p2)]
+        pp2 (butlast p2)
+        cp (check-properties c2 p2 m2)]
     (memo
      (fn [c1 p1 m1]
        (if (json-object? m1)
          (let [mps (get (get c1 :matched) pp2 #{})
                aps (remove (fn [[k]] (contains? mps k)) m1) ;; k might be nil
                p-and-css (mapv (fn [[k]] [k cs]) aps)] ; TODO: feels inefficient
-           (check-properties p2 m2 c1 p1 m1 bail p-and-css "additionalProperties: at least one property did not conform to schema"))
+           (cp c1 p1 m1 bail p-and-css "additionalProperties: at least one property did not conform to schema"))
          [c1 []])))))
 
 (defmethod check-property-2 "unevaluatedProperties" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
   (let [bail (if x? continue bail-out)
-        cs (check-schema c2 p2 v2)]
+        cs (check-schema c2 p2 v2)
+        cp (check-properties c2 p2 m2)]
     (memo
      (fn [c1 p1 m1]
        (if (json-object? m1)
          (let [eps (get (get c1 :evaluated) p1 #{})
                ups (remove (fn [[k]] (contains? eps k)) m1) ;; k might be nil
                p-and-css (mapv (fn [[k]] [k cs]) ups)] ; TODO: feels inefficient
-           (check-properties p2 m2 c1 p1 m1 bail p-and-css "unevaluatedProperties: at least one property did not conform to schema"))
+           (cp c1 p1 m1 bail p-and-css "unevaluatedProperties: at least one property did not conform to schema"))
          [c1 []])))))
 
 ;; TODO: can we move more up into m2 time ?
@@ -1091,7 +1096,7 @@
            p2 m2 p1 m1
            (reduce
             (fn [acc [k]]
-              (let [[new-c1 es] ((check-schema c2 (conj p2 k) v2) c1 (conj p1 k) k)]
+              (let [[_new-c1 es] ((check-schema c2 (conj p2 k) v2) c1 (conj p1 k) k)]
                 (bail acc es)))
             []
             m1)))]))))
