@@ -1014,6 +1014,7 @@
   (mapv (fn [[k v]] (check-schema c2 (conj p2 k) v)) v2)
   (fn [c1 _p1 _m1] [c1 nil]))
 
+;; TODO: split into m2 and m1 time...
 (defn check-properties [p2 m2 c1 p1 m1 bail k-and-css message]
   (let [[c1 es]
         (reduce
@@ -1055,11 +1056,12 @@
 
 (defmethod check-property-2 "additionalProperties" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
   (let [bail (if x? continue bail-out)
-        cs (check-schema c2 p2 v2)]
+        cs (check-schema c2 p2 v2)
+        pp2 (butlast p2)]
     (memo
      (fn [c1 p1 m1]
        (if (json-object? m1)
-         (let [mps (get (get c1 :matched) (butlast p2) #{})
+         (let [mps (get (get c1 :matched) pp2 #{})
                aps (remove (fn [[k]] (contains? mps k)) m1) ;; k might be nil
                p-and-css (mapv (fn [[k]] [k cs]) aps)] ; TODO: feels inefficient
            (check-properties p2 m2 c1 p1 m1 bail p-and-css "additionalProperties: at least one property did not conform to schema"))
@@ -1128,10 +1130,10 @@
 ;; context if required (additional and evaluated items)...
 ;; if we split this function we could do m2-parent-path at m2 time
 (defn check-items [p2 m2 c1 p1 m1 bail i-and-css message]
-  (let [m2-parent-path (butlast p2)
+  (let [pp2 (butlast p2)
         old-local-c1
         (-> c1
-            (update :matched assoc m2-parent-path #{})
+            (update :matched assoc pp2 #{})
             (update :evaluated assoc p1 #{}))
         [c1 es]
         (reduce
@@ -1139,7 +1141,7 @@
            (let [[_ new-es] (cs old-local-c1 (conj p1 i) sub-document)
                  new-c (if (empty? new-es)
                          (-> old-c
-                             (update :matched update m2-parent-path conj-set i)
+                             (update :matched update pp2 conj-set i)
                              (update :evaluated update p1 conj-set i))
                          old-c)]
              (bail new-c old-es new-es)))
@@ -1174,13 +1176,14 @@
   ;; additionalItems is only used when items is a tuple
   (if (json-array? is)
     (let [bail (if x? continue bail-out)
-          cs (check-schema c2 p2 v2)]
+          cs (check-schema c2 p2 v2)
+          pp2 (butlast p2)]
       (memo
        (fn [c1 p1 m1]
          (if (json-array? m1)
            (let [
                  ;; this is how it should be done, but cheaper to just look at items (must be array for additionalItems to be meaningful) in m2 time
-                 mis (get (get c1 :matched) (butlast p2) #{})
+                 mis (get (get c1 :matched) pp2 #{})
                  ;;ais  (remove (fn [[k]] (contains? mis k)) (map-indexed vector m1))
                  ;;i-and-css (mapv (fn [[k]] [k cs]) ais) ; TODO: feels inefficient
                  n (count is)
@@ -1219,27 +1222,29 @@
              [c1 [(make-error "contains: document has no matches" p2 m2 p1 m1)]])))))))
 
 (defmethod check-property-2 "minContains" [_property _c2 p2 m2 [v2]]
-  (memo
-   (fn [{matched :matched :as c1} p1 m1]
-     (if-let [matches (and (json-array? m1) (get matched (butlast p2)))]
-       (let [n (count matches)]
-         (if (and
-              matches
-              (json-array? m1)
-              (<= v2 n))
-           [c1 nil]
-           [c1 [(make-error (str "minContains: document has too few matches - " n) p2 m2 p1 m1)]]))
-       [c1 nil]))))
+  (let [pp2 (butlast p2)]
+    (memo
+     (fn [{matched :matched :as c1} p1 m1]
+       (if-let [matches (and (json-array? m1) (get matched pp2))]
+         (let [n (count matches)]
+           (if (and
+                matches
+                (json-array? m1)
+                (<= v2 n))
+             [c1 nil]
+             [c1 [(make-error (str "minContains: document has too few matches - " n) p2 m2 p1 m1)]]))
+         [c1 nil])))))
 
 (defmethod check-property-2 "maxContains" [_property _c2 p2 m2 [v2]]
-  (memo
-   (fn [{matched :matched :as c1} p1 m1]
-     (if-let [matches (and (json-array? m1) (get matched (butlast p2)))]
-       (let [n (count matches)]
-         (if (<= n v2)
-           [c1 nil]
-           [c1 [(make-error (str "maxContains: document has too many matches - " n) p2 m2 p1 m1)]]))
-       [c1 nil]))))
+  (let [pp2 (butlast p2)]
+    (memo
+     (fn [{matched :matched :as c1} p1 m1]
+       (if-let [matches (and (json-array? m1) (get matched pp2))]
+         (let [n (count matches)]
+           (if (<= n v2)
+             [c1 nil]
+             [c1 [(make-error (str "maxContains: document has too many matches - " n) p2 m2 p1 m1)]]))
+         [c1 nil])))))
 
 (defmethod check-property-2 "minItems" [_property _c2 p2 m2 [v2]]
   (memo
