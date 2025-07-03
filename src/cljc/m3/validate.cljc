@@ -979,25 +979,32 @@
 
 ;;------------------------------------------------------------------------------
 
-;; TODO: these schema checks might need their own context and to record what they evaluate ...
-(defmethod check-property-2 ["if" "then" "else"] [_property c2 p2 _m2 [if? then else]]
-  (if (present? if?)
-    (let [if-checker (check-schema c2 p2 if?)
-          then-checker (if (present? then) (check-schema c2 p2 then) (fn [c2 _p2 _m2] [c2 []]))
-          else-checker (if (present? else) (check-schema c2 p2 else) (fn [c2 _p2 _m2] [c2 []]))]
-      (memo
-       (fn [old-c1 p1 m1]
-         (let [[new-c1 es] (if-checker old-c1 p1 m1)
-               [c1 checker] (if (empty? es) [new-c1 then-checker] [old-c1 else-checker])]
-           (checker c1 p1 m1)))))
-    (fn [c1 _p1 _m1]
-      [c1 nil])))
+(defmethod check-property-2 "if" [_property c2 p2 _m2 [v2]]
+  (let [checker (check-schema c2 p2 v2)
+        pp2 (butlast p2)]
+    (memo
+     (fn [old-c1 p1 m1]
+       (let [[new-c1 es] (checker old-c1 p1 m1)
+             success? (empty? es)]
+         [(update (if success? new-c1 old-c1) :if assoc pp2 success?) []])))))
 
-;; TODO
-;; - linked to schema composition
-;; - see http://json-schema.org/understanding-json-schema/reference/object.html#unevaluated-properties
+(defmethod check-property-2 "then" [_property c2 p2 _m2 [v2]]
+  (let [checker (check-schema c2 p2 v2)
+        pp2 (butlast p2)]
+    (memo
+     (fn [c1 p1 m1]
+       (if (true? (get (get c1 :if) pp2))
+         (checker c1 p1 m1)
+         [c1 []])))))
 
-;; http://json-schema.org/understanding-json-schema/reference/object.html
+(defmethod check-property-2 "else" [_property c2 p2 _m2 [v2]]
+  (let [checker (check-schema c2 p2 v2)
+        pp2 (butlast p2)]
+    (memo
+     (fn [c1 p1 m1]
+       (if (false? (get (get c1 :if) pp2))
+         (checker c1 p1 m1)
+         [c1 []])))))
 
 (defmethod check-property-2 "definitions" [_property c2 p2 _m2 [v2]]
   (mapv (fn [[k v]] (check-schema c2 (conj p2 k) v)) v2)
@@ -1402,8 +1409,10 @@
        ["maximum"]
        ["exclusiveMaximum"]
        ["contentEncoding" "contentMediaType" "contentSchema"] ;; TODO: unpack
-       ["if" "then" "else"] ;; TODO: unpack
 
+       ["if"]
+       ["then"]
+       ["else"]
 
        ["minItems"]
        ["maxItems"]
