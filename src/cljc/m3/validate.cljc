@@ -826,45 +826,49 @@
              [c1 es]))
          [old-m1 nil])))))
 
-(defmethod check-property-2 ["contentMediaType" "contentSchema"] [_property {d :draft :as c2} p2 m2 [cmt cs]]
-  (let [cmt (if (present? cmt) cmt "application/json")
+(defmethod check-property-2 "contentMediaType" [_property {d :draft} p2 m2 [v2]]
+  (let [strict? (#{"draft7"} d) ;; TODO: check a context flag aswell
+        cmt v2
         cmt-decoder (cmt->decoder cmt)
-        strict? (#{"draft7"} d) ;; check a context flag aswell
-        checker (if (present? cs) (check-schema c2 p2 cs) (constantly []))
         pp2 (butlast p2)]
     (memo
      (fn [c1 p1 m1]
-       [c1
-        (when (json-string? m1)
+       (let [old-m1 (or (get (get c1 :content) pp2) m1)]
+       (if (string? old-m1)
+         (let [[new-m1 es]
+               (try
+                 [(cmt-decoder old-m1) nil]
+                 (catch Exception e
+                   [nil
+                    (let [m (str "contentMediaType: could not " v2 " decode: " (pr-str old-m1) " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
+                      (if strict?
+                        [(make-error m p2 m2 p1 old-m1)]
+                        (do
+                          (log/warn (string-replace m #"\n" " - "))
+                          [])))]))]
+           (if new-m1
+             [(update c1 :content assoc pp2 new-m1) nil]
+             [c1 es]))
+         [old-m1 nil]))))))
+
+(defmethod check-property-2 ["contentSchema"] [_property {d :draft :as c2} p2 {cmt "contentMediaType"} [v2]]
+  (let [strict? (#{"draft7"} d) ;; TODO: check a context flag aswell
+        checker (check-schema c2 p2 v2)
+        pp2 (butlast p2)]
+    (memo
+     (fn [c1 p1 m1]
+       (let [old-m1 (or (get (get c1 :content) pp2) m1)
+             old-m1 (if cmt old-m1 (json-decode old-m1))] ;; TODO: error handling
+         [c1
           (try
-            (let [{es :errors :as v}
-                  (checker
-                   c1
-                   p1
-                   (let [new-m1 (or (get (get c1 :content) pp2) m1)]
-                     (try
-                       (cmt-decoder new-m1)
-                       (catch Exception e
-                         (throw
-                          (ex-info
-                           nil
-                           {:errors
-                            (let [m (str "contentMediaType: could not " cmt " decode: " (pr-str new-m1) " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
-                              (if strict?
-                                [(make-error m p2 m2 p1 m1)]
-                                (do
-                                  (log/warn m
-                                           ;;
-                                            )
-                                  [])))}))))))]
+            (let [{es :errors :as v} (checker c1 p1 old-m1)]
               (when (seq es)
                 (if strict?
                   es
                   (log/warn "contentSchema: failed validation - " (prn-str v)))))
             (catch Exception e
-              (:errors (ex-data e)))))]))))
+              (:errors (ex-data e))))])))))
 
-;; HERE
 (defmethod check-property-2 "format" [_property {strict? :strict-format? cfs :check-format :or {cfs {}} :as c2} p2 m2 [v2]]
   (let [f (if strict?
             (fn [f2] (fn [c p m] [c (f2 c p m)]))
@@ -1433,7 +1437,8 @@
        ["exclusiveMaximum"]
 
        ["contentEncoding"]
-       ["contentMediaType" "contentSchema"] ;; TODO: unpack
+       ["contentMediaType"]
+       ["contentSchema"] ;; TODO: unpack
 
        ["if"]
        ["then"]
