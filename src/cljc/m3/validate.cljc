@@ -1133,34 +1133,35 @@
 
 ;; we could save time by only maintaining :matched and :evaluated
 ;; context if required (additional and evaluated items)...
-;; if we split this function we could do m2-parent-path at m2 time
-(defn check-items [p2 m2 c1 p1 m1 bail i-and-css message]
-  (let [pp2 (butlast p2)
-        old-local-c1
-        (-> c1
-            (update :matched assoc pp2 #{})
-            (update :evaluated assoc p1 #{}))
-        [c1 es]
-        (reduce
-         (fn [[old-c old-es] [[i cs] sub-document]]
-           (let [[_ new-es] (cs old-local-c1 (conj p1 i) sub-document)
-                 new-c (if (empty? new-es)
-                         (-> old-c
-                             (update :matched update pp2 conj-set i)
-                             (update :evaluated update p1 conj-set i))
-                         old-c)]
-             (bail new-c old-es new-es)))
-         [c1 []]
-         (map vector i-and-css m1))]
-    [c1 (make-error-on-failure message p2 m2 p1 m1 es)]))
+(defn check-items [_c2 p2 m2]
+  (let [pp2 (butlast p2)]
+    (fn [c1 p1 m1 bail i-and-css message]
+      (let [old-local-c1
+            (-> c1
+                (update :matched assoc pp2 #{})
+                (update :evaluated assoc p1 #{}))
+            [c1 es]
+            (reduce
+             (fn [[old-c old-es] [[i cs] sub-document]]
+               (let [[_ new-es] (cs old-local-c1 (conj p1 i) sub-document)
+                     new-c (if (empty? new-es)
+                             (-> old-c
+                                 (update :matched update pp2 conj-set i)
+                                 (update :evaluated update p1 conj-set i))
+                             old-c)]
+                 (bail new-c old-es new-es)))
+             [c1 []]
+             (map vector i-and-css m1))]
+        [c1 (make-error-on-failure message p2 m2 p1 m1 es)]))))
 
 (defmethod check-property-2 "prefixItems" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
   (let [bail (if x? continue bail-out)
-        i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema c2 (conj p2 i) sub-schema)]) v2))]
+        i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema c2 (conj p2 i) sub-schema)]) v2))
+        ci (check-items c2 p2 m2)]
     (memo
      (fn [c1 p1 m1]
        (if (json-array? m1)
-         (check-items p2 m2 c1 p1 m1 bail i-and-css "prefixItems: at least one item did not conform to respective schema")
+         (ci c1 p1 m1 bail i-and-css "prefixItems: at least one item did not conform to respective schema")
          [c1 []])))))
 
 (defmethod check-property-2 "items" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
@@ -1168,59 +1169,62 @@
         n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
         [m css] (if (json-array? v2)
               ["respective " (map-indexed (fn [i v] (check-schema c2 (conj p2 i) v)) v2)]
-              ["" (repeat (check-schema c2 p2 v2))])]
+              ["" (repeat (check-schema c2 p2 v2))])
+        ci (check-items c2 p2 m2)]
     (memo
      (fn [c1 p1 m1]
        (if (json-array? m1)
          (let [items (drop n m1)
                i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
-           (check-items p2 m2 c1 p1 items bail i-and-css (str "items: at least one item did not conform to " m "schema")))
+           (ci c1 p1 items bail i-and-css (str "items: at least one item did not conform to " m "schema")))
          [c1 []])))))
 
 (defmethod check-property-2 "additionalItems" [_property {x? :exhaustive? :as c2} p2 {is "items" :as m2} [v2]]
-  ;; additionalItems is only used when items is a tuple
-  (if (json-array? is)
+  (if (json-array? is) ;; additionalItems is only used when items is a tuple
     (let [bail (if x? continue bail-out)
           cs (check-schema c2 p2 v2)
-          pp2 (butlast p2)]
+          ;;pp2 (butlast p2)
+          ci (check-items c2 p2 m2)]
       (memo
        (fn [c1 p1 m1]
          (if (json-array? m1)
            (let [
                  ;; this is how it should be done, but cheaper to just look at items (must be array for additionalItems to be meaningful) in m2 time
-                 mis (get (get c1 :matched) pp2 #{})
+                 ;;mis (get (get c1 :matched) pp2 #{})
                  ;;ais  (remove (fn [[k]] (contains? mis k)) (map-indexed vector m1))
                  ;;i-and-css (mapv (fn [[k]] [k cs]) ais) ; TODO: feels inefficient
                  n (count is)
                  ais (drop n m1)
                  i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) (repeat cs) ais)
                  ]
-             (check-items p2 m2 c1 p1 ais bail i-and-css "additionalItems: at least one item did not conform to schema"))
+             (ci c1 p1 ais bail i-and-css "additionalItems: at least one item did not conform to schema"))
            [c1 []]))))
     (fn [c1 _p1 _m1]
       [c1 nil])))
     
 (defmethod check-property-2 "unevaluatedItems" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
   (let [bail (if x? continue bail-out)
-        css (repeat (check-schema c2 p2 v2))]
+        css (repeat (check-schema c2 p2 v2))
+        ci (check-items c2 p2 m2)]
     (memo
      (fn [{p->eis :evaluated :as c1} p1 m1]
        (if (json-array? m1)
          (let [eis (or (get p->eis p1) #{})
                index-and-items (filter (fn [[k]] (not (eis k))) (map-indexed (fn [i v] [i v]) m1))
                i-and-css (mapv (fn [cs [i]] [i cs]) css index-and-items)] ;; TODO: item not used
-           (check-items p2 m2 c1 p1 (map second index-and-items) bail i-and-css "unevaluatedItems: at least one item did not conform to schema"))
+           (ci c1 p1 (map second index-and-items) bail i-and-css "unevaluatedItems: at least one item did not conform to schema"))
          [c1 []])))))
 
 (defmethod check-property-2 "contains" [_property c2 p2 {mn "minContains" :as m2} [v2]]
   (let [cs (check-schema c2 p2 v2)
-        base (if mn mn 1)]
+        base (if mn mn 1)
+        ci (check-items c2 p2 v2)]
     (memo
      (fn [c1 p1 m1]
        (if (json-array? m1)
          (let [i-and-css (map (fn [i _] [i cs]) (range) m1)
                [new-c1 [{es :errors}]]
-               (check-items p2 v2 c1 p1 m1 continue i-and-css "contains: at least one item did not conform to schema")
+               (ci c1 p1 m1 continue i-and-css "contains: at least one item did not conform to schema")
                matches (- (count m1) (count es))]
            (if (<= (min base 1) matches)
              [new-c1 nil]
@@ -1321,8 +1325,7 @@
         (fn [es] (not (< (count es) m2-count))))))))
          
 (defmethod check-property-2 "allOf" [_property c2 p2 m2 [v2]]
-  (let [co (check-of c2 p2 m2 v2)
-        m2-count (count v2)]
+  (let [co (check-of c2 p2 m2 v2)]
     (memo
      (fn [c1 p1 m1]
        (co
