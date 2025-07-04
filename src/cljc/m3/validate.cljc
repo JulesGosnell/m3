@@ -715,9 +715,6 @@
   ;; we do this here so that user may override default format checkers...
     (f ((or (cfs v2) check-format) v2 c2 p2 m2))))
 
-(defn continue [c old-es new-es]
-  [c (concatv old-es new-es)])
-
 (defmethod check-property-2 "dependencies" [_property c2 p2 m2 [v2]]
   (let [property->checker
         (reduce
@@ -789,7 +786,7 @@
             (let [v (m1 k)]
               (if-let [checker (and (json-string? v) (checkers [k v]))]
                 (let [[c new-es] (checker c p1 m1)]
-                  (continue c old-es new-es))
+                  [c (concatv old-es new-es)])
                 [c old-es])))
           [c1 []]
           ks)
@@ -865,7 +862,7 @@
             (reduce
              (fn [[c old-es] [[k cs] sub-document]]
                (let [[c new-es] (cs c (conj p1 k) sub-document)]
-                 (continue c old-es new-es)))
+                 [c (concatv old-es new-es)]))
              [c1 []]
              (map (fn [[k :as k-and-cs]] [k-and-cs (m1 k)]) k-and-css))]
         [(let [ks (map first k-and-css)]
@@ -985,7 +982,7 @@
                                  (update :matched update pp2 conj-set i)
                                  (update :evaluated update p1 conj-set i))
                              old-c)]
-                 (continue new-c old-es new-es)))
+                 [new-c (concatv old-es new-es)]))
              [c1 []]
              (map vector i-and-css m1))]
         [c1 (make-error-on-failure message p2 m2 p1 m1 es)]))))
