@@ -251,7 +251,7 @@
   (when-not (re-find pattern m1)
     [(make-error (str "format: not a valid " format) p2 m2 p1 m1)]))
 
-(defn check-pattern [format pattern c2 p2 m2]
+(defn check-pattern [pattern format c2 p2 m2]
   (memo
    (fn [_c1 p1 m1]
      (when (string? m1)
@@ -270,16 +270,16 @@
 ;; standard formats
 
 (defmethod check-format-2 "email" [f c2 p2 m2]
-  (check-pattern f email-pattern c2 p2 m2))
+  (check-pattern email-pattern f c2 p2 m2))
 
 (defmethod check-format-2 "ipv4" [f c2 p2 m2]
-  (check-pattern f ipv4-pattern c2 p2 m2))
+  (check-pattern ipv4-pattern f c2 p2 m2))
 
 (defmethod check-format-2 "ipv6" [f c2 p2 m2]
-  (check-pattern f ipv6-pattern c2 p2 m2))
+  (check-pattern ipv6-pattern f c2 p2 m2))
 
 (defmethod check-format-2 "hostname" [f c2 p2 m2]
-  (check-pattern f hostname-pattern c2 p2 m2))
+  (check-pattern hostname-pattern f c2 p2 m2))
 
 (defmethod check-format-2 "date-time" [f c2 p2 m2]
   (check-parse offset-date-time-parse f c2 p2 m2))
@@ -291,22 +291,22 @@
   (check-parse offset-time-parse f c2 p2 m2))
 
 (defmethod check-format-2 "json-pointer" [f c2 p2 m2]
-  (check-pattern f json-pointer-pattern c2 p2 m2))
+  (check-pattern json-pointer-pattern f c2 p2 m2))
 
 (defmethod check-format-2 "relative-json-pointer" [f c2 p2 m2]
-  (check-pattern f relative-pointer-pattern c2 p2 m2))
+  (check-pattern relative-pointer-pattern f c2 p2 m2))
 
 (defmethod check-format-2 "uri" [f c2 p2 m2]
-  (check-pattern f uri-pattern c2 p2 m2))
+  (check-pattern uri-pattern f c2 p2 m2))
 
 (defmethod check-format-2 "uri-reference" [f c2 p2 m2]
-  (check-pattern f uri-reference-pattern c2 p2 m2))
+  (check-pattern uri-reference-pattern f c2 p2 m2))
 
 (defmethod check-format-2 "uri-template" [f c2 p2 m2]
-  (check-pattern f uri-template-pattern c2 p2 m2))
+  (check-pattern uri-template-pattern f c2 p2 m2))
 
 (defmethod check-format-2 "idn-email" [f c2 p2 m2]
-  (check-pattern f idn-email-pattern c2 p2 m2))
+  (check-pattern idn-email-pattern f c2 p2 m2))
 
 ;; this is really difficult.
 ;; I can't find a java, javascript, clojure or clojurescript library which comes close
@@ -319,13 +319,13 @@
        nil))));NYI
 
 (defmethod check-format-2 "iri" [f c2 p2 m2]
-  (check-pattern f iri-pattern c2 p2 m2))
+  (check-pattern iri-pattern f c2 p2 m2))
 
 (defmethod check-format-2 "iri-reference" [f c2 p2 m2]
-  (check-pattern f iri-reference-pattern c2 p2 m2))
+  (check-pattern iri-reference-pattern f c2 p2 m2))
 
 (defmethod check-format-2 "uuid" [f c2 p2 m2]
-  (check-pattern f uuid-pattern c2 p2 m2))
+  (check-pattern uuid-pattern f c2 p2 m2))
 
 (defn json-duration? [s]
   (boolean
