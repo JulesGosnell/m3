@@ -23,7 +23,7 @@
    [cljc.java-time.offset-time :as ot]
    [clojure.string :refer [starts-with? ends-with? replace] :rename {replace string-replace}]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
-   [m3.util :refer [absent present?]]
+   [m3.util :refer [absent present? concatv into-set conj-set seq-contains?]]
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.ref :refer [meld resolve-uri try-path]]
    )
@@ -132,12 +132,6 @@
 ;;------------------------------------------------------------------------------
 ;; utils
 
-(def into-set (fnil into #{}))
-(def conj-set (fnil conj #{}))
-
-(defn concatv [& args]
-  (vec (apply concat args)))
-
 (defn json-integer? [i]
   (or
    (integer? i)
@@ -243,9 +237,6 @@
     :else
     (= l r)))
 
-(defn seq-contains? [s v]
-  (boolean (some (partial json-= v) s)))
-
 (defn bail-on-error [acc e]
   (if (seq e)
     (reduced e)
@@ -264,47 +255,37 @@
   (when-not (re-find pattern m1)
     [(make-error (str "format: not a valid " format) p2 m2 p1 m1)]))
 
+(defn check-format-3 [format pattern c2 p2 m2]
+  (memo
+   (fn [_c1 p1 m1]
+     (when (string? m1)
+       (match format pattern c2 p2 m2 p1 m1)))))
+
 ;; standard formats
 
-(defmethod check-format-2 "email" [format c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (match
-        format
-        ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-        #"^(?:[^\s@\"\.](?:(?!\.\.)[^\s@\"])*[^\s@\"\.]|\"(?:[^\r\n\\\"]|\\[\s\S])+\")@(?:[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)*|\[IPv6:[a-fA-F0-9:]+\]|\[(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\])$"
-        c2 p2 m2 p1 m1)))))
+;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
+(def email-pattern #"^(?:[^\s@\"\.](?:(?!\.\.)[^\s@\"])*[^\s@\"\.]|\"(?:[^\r\n\\\"]|\\[\s\S])+\")@(?:[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)*|\[IPv6:[a-fA-F0-9:]+\]|\[(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\])$")
 
-(defmethod check-format-2 "ipv4" [format c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (match
-        format
-        ;; https://howtodoinjava.com/java/regex/java-regex-validate-email-address/
-        #"^(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(\.(?!$)|$)){4}$"
-        c2 p2 m2 p1 m1)))))
+(defmethod check-format-2 "email" [f c2 p2 m2]
+  (check-format-3 f email-pattern c2 p2 m2))
 
-(defmethod check-format-2 "ipv6" [format c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (match
-        format
+;; https://howtodoinjava.com/java/regex/java-regex-validate-email-address/
+(def ipv4-pattern #"^(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(\.(?!$)|$)){4}$")
+
+(defmethod check-format-2 "ipv4" [f c2 p2 m2]
+  (check-format-3 f ipv4-pattern c2 p2 m2))
+
         ;; adapted from: https://github.com/ajv-validator/ajv-formats/blob/master/src/formats.ts
-        #"^((([0-9a-f]{1,4}:){7}([0-9a-f]{1,4}|:))|(([0-9a-f]{1,4}:){6}(:[0-9a-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-f]{1,4}:){5}(((:[0-9a-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-f]{1,4}:){4}(((:[0-9a-f]{1,4}){1,3})|((:[0-9a-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){3}(((:[0-9a-f]{1,4}){1,4})|((:[0-9a-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){2}(((:[0-9a-f]{1,4}){1,5})|((:[0-9a-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){1}(((:[0-9a-f]{1,4}){1,6})|((:[0-9a-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9a-f]{1,4}){1,7})|((:[0-9a-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))$"
-        c2 p2 m2 p1 m1)))))
+(def ipv6-pattern #"^((([0-9a-f]{1,4}:){7}([0-9a-f]{1,4}|:))|(([0-9a-f]{1,4}:){6}(:[0-9a-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-f]{1,4}:){5}(((:[0-9a-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-f]{1,4}:){4}(((:[0-9a-f]{1,4}){1,3})|((:[0-9a-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){3}(((:[0-9a-f]{1,4}){1,4})|((:[0-9a-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){2}(((:[0-9a-f]{1,4}){1,5})|((:[0-9a-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){1}(((:[0-9a-f]{1,4}){1,6})|((:[0-9a-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9a-f]{1,4}){1,7})|((:[0-9a-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))$")
 
-(defmethod check-format-2 "hostname" [format c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (match
-        format
-        ;; adapted from: https://stackoverflow.com/questions/106179/regular-expression-to-match-dns-hostname-or-ip-address
-        #"^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]{0,61}[A-Za-z0-9])$"
-        c2 p2 m2 p1 m1)))))
+(defmethod check-format-2 "ipv6" [f c2 p2 m2]
+  (check-format-3 f ipv6-pattern c2 p2 m2))
+
+;; adapted from: https://stackoverflow.com/questions/106179/regular-expression-to-match-dns-hostname-or-ip-address
+(def hostname-pattern #"^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]{0,61}[A-Za-z0-9])$")
+
+(defmethod check-format-2 "hostname" [f c2 p2 m2]
+  (check-format-3 f hostname-pattern c2 p2 m2))
 
 (defmethod check-format-2 "date-time" [_format _c2 p2 m2]
   (memo
@@ -336,66 +317,43 @@
          (catch Exception e
            [(make-error (str "format: not a valid time: " (ex-message e)) p2 m2 p1 m1)]))))))
 
-(defmethod check-format-2 "json-pointer" [format c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (match
-        format
-        ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-        #"^(?:/(?:[^~/]|~[01])*)*$"
-        c2 p2 m2 p1 m1)))))
+;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
+(def json-pointer-pattern #"^(?:/(?:[^~/]|~[01])*)*$")
 
-(defmethod check-format-2 "relative-json-pointer" [format c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (match
-        format
-        ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-        #"^(?:0|[1-9][0-9]*)(#|(?:/(?:[^~/]|~[01])*)*)$|^#(?:/(?:[^~/]|~[01])*)*$"
-        c2 p2 m2 p1 m1)))))
+(defmethod check-format-2 "json-pointer" [f c2 p2 m2]
+  (check-format-3 f json-pointer-pattern c2 p2 m2))
+
+;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
+(def relative-pointer-pattern #"^(?:0|[1-9][0-9]*)(#|(?:/(?:[^~/]|~[01])*)*)$|^#(?:/(?:[^~/]|~[01])*)*$")
+
+(defmethod check-format-2 "relative-json-pointer" [f c2 p2 m2]
+  (check-format-3 f relative-pointer-pattern c2 p2 m2))
 
 ;; TODO: this should be shared with uri.cljc
-(def uri-regexp 
-  ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-  #"^(?:[A-Za-z][A-Za-z0-9+.\-]*:[^\s]*|#(?:[^\s]*)?)$")
 
-(defmethod check-format-2 "uri" [format c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (match format uri-regexp c2 p2 m2 p1 m1)))))
+;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
+(def uri-pattern #"^(?:[A-Za-z][A-Za-z0-9+.\-]*:[^\s]*|#(?:[^\s]*)?)$")
 
-(defmethod check-format-2 "uri-reference" [format c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (match
-        format
-        ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-        #"^[^\s\\]*$"
-        c2 p2 m2 p1 m1)))))
+(defmethod check-format-2 "uri" [f c2 p2 m2]
+  (check-format-3 f uri-pattern c2 p2 m2))
 
-(defmethod check-format-2 "uri-template" [format c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (match
-        format
-        ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-        #"^(?:[^\s{}]|(?:\{[^\s{}]*\}))*$"
-        c2 p2 m2 p1 m1)))))
+;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
+(def uri-reference-pattern #"^[^\s\\]*$")
 
-(defmethod check-format-2 "idn-email" [format c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (match
-        format
-        ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-        #"^(?:[^\s@\[\]\"(),:;<>\\]+(?:\.[^\s@\[\]\"(),:;<>\\]+)*|\"(?:[^\"\\\r\n]|\\.)+\")@(?:[^\s@\[\]\"(),:;<>\\]+\.)*[^\s@\[\]\"(),:;<>\\]+$"
-        c2 p2 m2 p1 m1)))))
+(defmethod check-format-2 "uri-reference" [f c2 p2 m2]
+  (check-format-3 f uri-reference-pattern c2 p2 m2))
+
+;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
+(def uri-template-pattern #"^(?:[^\s{}]|(?:\{[^\s{}]*\}))*$")
+
+(defmethod check-format-2 "uri-template" [f c2 p2 m2]
+  (check-format-3 f uri-template-pattern c2 p2 m2))
+
+;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
+(def idn-email-pattern #"^(?:[^\s@\[\]\"(),:;<>\\]+(?:\.[^\s@\[\]\"(),:;<>\\]+)*|\"(?:[^\"\\\r\n]|\\.)+\")@(?:[^\s@\[\]\"(),:;<>\\]+\.)*[^\s@\[\]\"(),:;<>\\]+$")
+
+(defmethod check-format-2 "idn-email" [f c2 p2 m2]
+  (check-format-3 f idn-email-pattern c2 p2 m2))
 
 ;; this is really difficult.
 ;; I can't find a java, javascript, clojure or clojurescript library which comes close
@@ -407,35 +365,23 @@
      (when (string? m1)
        nil))));NYI
 
-(defmethod check-format-2 "iri" [format c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (match
-        format
-        ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-        #"^[A-Za-z][A-Za-z0-9+.\-]*://(?:[^\s/?#@\\]+@)?(?:\[[0-9A-Fa-f:]+\]|[^\s/?#@:]+)(?::\d+)?(?:/[^\s?#\\]*)?(?:\?[^\s#\\]*)?(?:#[^\s\\]*)?$"
-        c2 p2 m2 p1 m1)))))
+;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
+(def iri-pattern #"^[A-Za-z][A-Za-z0-9+.\-]*://(?:[^\s/?#@\\]+@)?(?:\[[0-9A-Fa-f:]+\]|[^\s/?#@:]+)(?::\d+)?(?:/[^\s?#\\]*)?(?:\?[^\s#\\]*)?(?:#[^\s\\]*)?$")
 
-(defmethod check-format-2 "iri-reference" [format c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (match
-        format
-        ;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-        #"^[^\s\\]*$"
-        c2 p2 m2 p1 m1)))))
+(defmethod check-format-2 "iri" [f c2 p2 m2]
+  (check-format-3 f iri-pattern c2 p2 m2))
 
-(defmethod check-format-2 "uuid" [format c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (match
-        format
-        ;; https://www.jvt.me/posts/2022/01/14/java-uuid-regex/
-        #"^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$"
-        c2 p2 m2 p1 m1)))))
+;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
+(def iri-reference-pattern #"^[^\s\\]*$")
+
+(defmethod check-format-2 "iri-reference" [f c2 p2 m2]
+  (check-format-3 f iri-reference-pattern c2 p2 m2))
+
+;; https://www.jvt.me/posts/2022/01/14/java-uuid-regex/
+(def uuid-pattern #"^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$")
+
+(defmethod check-format-2 "uuid" [f c2 p2 m2]
+  (check-format-3 f uuid-pattern c2 p2 m2))
 
 ;; ISO 8601 duration
 ;; https://en.wikipedia.org/wiki/ISO_8601#Durations
@@ -551,7 +497,7 @@
      [c1 (when-not (nil? m1) [(make-error "type: non null" p2 m2 p1 m1)])])))
 
 (defmethod check-type-2 "any" [_type _c2 _p2 _m2]
-  (fn [c1 p1 m1] [c1 nil]))
+  (fn [c1 _p1 _m1] [c1 nil]))
 
 (defmethod check-type-2 :default [ts c2 p2 m2]
   (if (json-array? ts)
@@ -611,7 +557,7 @@
      ;; it's m1s...
      ;; TODO: how about some injectable consistency checking fns which can be used when validating m2s ?
      [c1
-      (when-not (seq-contains? v2 m1)
+      (when-not (seq-contains? v2 json-= m1)
         [(make-error "enum: does not contain value" p2 m2 p1 m1)])])))
 
 (defmethod check-property-2 "$comment"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
