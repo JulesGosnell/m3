@@ -728,11 +728,6 @@
 (defn continue [c old-es new-es]
   [c (concatv old-es new-es)])
 
-(defn bail-out [c old-es new-es]
-  (if (seq new-es)
-    (reduced [c new-es])
-    [c old-es]))
-
 (defmethod check-property-2 "dependencies" [_property c2 p2 m2 [v2]]
   (let [property->checker
         (reduce
@@ -875,12 +870,12 @@
 
 (defn check-properties [_c2 p2 m2]
   (let [pp2 (butlast p2)]
-    (fn [c1 p1 m1 bail k-and-css message]
+    (fn [c1 p1 m1 k-and-css message]
       (let [[c1 es]
             (reduce
              (fn [[c old-es] [[k cs] sub-document]]
                (let [[c new-es] (cs c (conj p1 k) sub-document)]
-                 (bail c old-es new-es)))
+                 (continue c old-es new-es)))
              [c1 []]
              (map (fn [[k :as k-and-cs]] [k-and-cs (m1 k)]) k-and-css))]
         [(let [ks (map first k-and-css)]
@@ -898,7 +893,7 @@
      (fn [c1 p1 m1]
        (if (json-object? m1)
          (let [k-and-css (filter (fn [[k]] (contains? m1 k)) k-and-css)]
-           (cp c1 p1 m1 continue k-and-css "properties: at least one property did not conform to respective schema"))
+           (cp c1 p1 m1 k-and-css "properties: at least one property did not conform to respective schema"))
          [c1 []])))))
 
 ;; what is opposite of "additional" - "matched" - used by spec to refer to properties matched by "properties" or "patternProperties"
@@ -910,7 +905,7 @@
      (fn [c1 p1 m1]
        (if (json-object? m1)
          (let [k-and-css (apply concat (keep (fn [[k]] (keep (fn [[cs p]] (when (ecma-match p k) [k cs])) cp-and-pattern-and-ks)) m1))]
-           (cp c1 p1 m1 continue k-and-css "patternProperties: at least one property did not conform to respective schema"))
+           (cp c1 p1 m1 k-and-css "patternProperties: at least one property did not conform to respective schema"))
          [c1 []])))))
 
 
@@ -924,7 +919,7 @@
          (let [mps (get (get c1 :matched) pp2 #{})
                aps (remove (fn [[k]] (contains? mps k)) m1) ;; k might be nil
                p-and-css (mapv (fn [[k]] [k cs]) aps)] ; TODO: feels inefficient
-           (cp c1 p1 m1 continue p-and-css "additionalProperties: at least one property did not conform to schema"))
+           (cp c1 p1 m1 p-and-css "additionalProperties: at least one property did not conform to schema"))
          [c1 []])))))
 
 (defmethod check-property-2 "unevaluatedProperties" [_property c2 p2 m2 [v2]]
@@ -936,7 +931,7 @@
          (let [eps (get (get c1 :evaluated) p1 #{})
                ups (remove (fn [[k]] (contains? eps k)) m1) ;; k might be nil
                p-and-css (mapv (fn [[k]] [k cs]) ups)] ; TODO: feels inefficient
-           (cp c1 p1 m1 continue p-and-css "unevaluatedProperties: at least one property did not conform to schema"))
+           (cp c1 p1 m1 p-and-css "unevaluatedProperties: at least one property did not conform to schema"))
          [c1 []])))))
 
 (defmethod check-property-2 "propertyNames" [_property c2 p2 m2 [v2]]
@@ -986,7 +981,7 @@
 ;; context if required (additional and evaluated items)...
 (defn check-items [_c2 p2 m2]
   (let [pp2 (butlast p2)]
-    (fn [c1 p1 m1 bail i-and-css message]
+    (fn [c1 p1 m1 i-and-css message]
       (let [old-local-c1
             (-> c1
                 (update :matched assoc pp2 #{})
@@ -1000,7 +995,7 @@
                                  (update :matched update pp2 conj-set i)
                                  (update :evaluated update p1 conj-set i))
                              old-c)]
-                 (bail new-c old-es new-es)))
+                 (continue new-c old-es new-es)))
              [c1 []]
              (map vector i-and-css m1))]
         [c1 (make-error-on-failure message p2 m2 p1 m1 es)]))))
@@ -1011,7 +1006,7 @@
     (memo
      (fn [c1 p1 m1]
        (if (json-array? m1)
-         (ci c1 p1 m1 continue i-and-css "prefixItems: at least one item did not conform to respective schema")
+         (ci c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")
          [c1 []])))))
 
 (defmethod check-property-2 "items" [_property c2 p2 m2 [v2]]
@@ -1025,7 +1020,7 @@
        (if (json-array? m1)
          (let [items (drop n m1)
                i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
-           (ci c1 p1 items continue i-and-css (str "items: at least one item did not conform to " m "schema")))
+           (ci c1 p1 items i-and-css (str "items: at least one item did not conform to " m "schema")))
          [c1 []])))))
 
 (defmethod check-property-2 "additionalItems" [_property c2 p2 {is "items" :as m2} [v2]]
@@ -1045,7 +1040,7 @@
                  ais (drop n m1)
                  i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) (repeat cs) ais)
                  ]
-             (ci c1 p1 ais continue i-and-css "additionalItems: at least one item did not conform to schema"))
+             (ci c1 p1 ais i-and-css "additionalItems: at least one item did not conform to schema"))
            [c1 []]))))
     (fn [c1 _p1 _m1]
       [c1 nil])))
@@ -1059,7 +1054,7 @@
          (let [eis (or (get p->eis p1) #{})
                index-and-items (filter (fn [[k]] (not (eis k))) (map-indexed (fn [i v] [i v]) m1))
                i-and-css (mapv (fn [cs [i]] [i cs]) css index-and-items)] ;; TODO: item not used
-           (ci c1 p1 (map second index-and-items) continue i-and-css "unevaluatedItems: at least one item did not conform to schema"))
+           (ci c1 p1 (map second index-and-items) i-and-css "unevaluatedItems: at least one item did not conform to schema"))
          [c1 []])))))
 
 (defmethod check-property-2 "contains" [_property c2 p2 {mn "minContains" :as m2} [v2]]
@@ -1071,7 +1066,7 @@
        (if (json-array? m1)
          (let [i-and-css (map (fn [i _] [i cs]) (range) m1)
                [new-c1 [{es :errors}]]
-               (ci c1 p1 m1 continue i-and-css "contains: at least one item did not conform to schema")
+               (ci c1 p1 m1 i-and-css "contains: at least one item did not conform to schema")
                matches (- (count m1) (count es))]
            (if (<= (min base 1) matches)
              [new-c1 nil]
@@ -1310,52 +1305,40 @@
        {}
        m2)))))
 
-(defn do-bail-on-error [c1 acc es]
-  (if (seq es)
-    (reduced [c1 es])
-    [c1 acc]))
-
-(defn dont-bail-on-error [c1 acc es]
-  [c1 (concatv acc es)])
-
-(defn get-bail [{x? :exhaustive?}]
-  (if x? dont-bail-on-error do-bail-on-error))
-
 (defn check-schema-2 [{t? :trace? :as c2} p2 m2]
   ;; TODO; this needs to be simplified
-  (let [bail (get-bail c2)]
-    (cond
-      (true? m2)
-      (fn [c1 _p1 _m1]
-        [c1 nil])
+  (cond
+    (true? m2)
+    (fn [c1 _p1 _m1]
+      [c1 nil])
 
-      (false? m2)
+    (false? m2)
+    (fn [c1 p1 m1]
+      [c1
+       (when (present? m1)
+         [(make-error "schema is false: nothing will match" p2 m2 p1 m1)])])
+
+    :else
+    (let [p2-and-cps
+          (mapv
+           (fn [[ks vs]]
+             (let [ks (if (= 1 (count ks)) (first ks) ks) ;; hack - lose later
+                   new-p2 (conj p2 ks)]
+               [new-p2 (check-property ks c2 new-p2 m2 vs)]))
+           (compile-m2 m2))]
       (fn [c1 p1 m1]
-        [c1
-         (when (present? m1)
-           [(make-error "schema is false: nothing will match" p2 m2 p1 m1)])])
-
-      :else
-      (let [p2-and-cps
-            (mapv
-             (fn [[ks vs]]
-               (let [ks (if (= 1 (count ks)) (first ks) ks) ;; hack - lose later
-                     new-p2 (conj p2 ks)]
-                 [new-p2 (check-property ks c2 new-p2 m2 vs)]))
-             (compile-m2 m2))]
-        (fn [c1 p1 m1]
-          (if (present? m1)
-            (let [[new-c1 es]
-                  (reduce
-                   (fn [[old-c1 acc] [new-p2 cp]]
-                     (let [[new-c1 [{m :message} :as es]] (cp old-c1 p1 m1)]
-                       (when t? (println (pr-str new-p2) (pr-str p1) (if (seq es) ["❌" m] "✅")))
-                       (bail new-c1 acc es)))
-                   [c1 []]
-                   p2-and-cps)]
-              [new-c1
-               (make-error-on-failure "schema: document did not conform" p2 m2 p1 m1 es)])
-            [c1 []]))))))
+        (if (present? m1)
+          (let [[new-c1 es]
+                (reduce
+                 (fn [[old-c1 acc] [new-p2 cp]]
+                   (let [[new-c1 [{m :message} :as es]] (cp old-c1 p1 m1)]
+                     (when t? (println (pr-str new-p2) (pr-str p1) (if (seq es) ["❌" m] "✅")))
+                     [new-c1 (concatv acc es)]))
+                 [c1 []]
+                 p2-and-cps)]
+            [new-c1
+             (make-error-on-failure "schema: document did not conform" p2 m2 p1 m1 es)])
+          [c1 []])))))
 
 ;; quicker than actual 'apply' [?]
 (defn apply3 [f [c p m]]
