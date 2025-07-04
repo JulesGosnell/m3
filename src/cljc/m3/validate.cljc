@@ -262,6 +262,16 @@
      (when (string? m1)
        (match format pattern c2 p2 m2 p1 m1)))))
 
+(defn check-parse [p f _c2 p2 m2]
+  (memo
+   (fn [_c1 p1 m1]
+     (when (string? m1)
+       (try
+         (p m1)
+         nil
+         (catch Exception e
+           [(make-error (str "format: not a valid " f ": " (ex-message e)) p2 m2 p1 m1)]))))))
+
 ;; standard formats
 
 (defmethod check-format-2 "email" [f c2 p2 m2]
@@ -276,35 +286,14 @@
 (defmethod check-format-2 "hostname" [f c2 p2 m2]
   (check-pattern f hostname-pattern c2 p2 m2))
 
-(defmethod check-format-2 "date-time" [_format _c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (try
-         (odt/parse m1)
-         nil
-         (catch Exception e
-           [(make-error (str "format: not a valid date-time: " (ex-message e)) p2 m2 p1 m1)]))))))
+(defmethod check-format-2 "date-time" [f c2 p2 m2]
+  (check-parse odt/parse f c2 p2 m2))
 
-(defmethod check-format-2 "date" [_format _c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (try
-         (ld/parse m1)
-         nil
-         (catch Exception e
-           [(make-error (str "format: not a valid date: " (ex-message e)) p2 m2 p1 m1)]))))))
+(defmethod check-format-2 "date" [f c2 p2 m2]
+  (check-parse ld/parse f c2 p2 m2))
 
-(defmethod check-format-2 "time" [_format _c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (when (string? m1)
-       (try
-         (ot/parse m1)
-         nil
-         (catch Exception e
-           [(make-error (str "format: not a valid time: " (ex-message e)) p2 m2 p1 m1)]))))))
+(defmethod check-format-2 "time" [f c2 p2 m2]
+  (check-parse ot/parse f c2 p2 m2))
 
 (defmethod check-format-2 "json-pointer" [f c2 p2 m2]
   (check-pattern f json-pointer-pattern c2 p2 m2))
@@ -357,20 +346,11 @@
      (when (and (string? m1) (not (json-duration? m1)))
        [(make-error "format: not a valid duration:" p2 m2 p1 m1)]))))
 
-(defmethod check-format-2 "regex" [_format _c2 p2 m2]
-  (memo
-   (fn [_c1 p1 m1]
-     (try
-       (when (string? m1)
-         (ecma-pattern m1)
-         [])
-       (catch Exception e
-         [(make-error (str "format: not a valid regex: " (ex-message e)) p2 m2 p1 m1)])))))
+(defmethod check-format-2 "regex" [f c2 p2 m2]
+  (check-parse ecma-pattern f c2 p2 m2))
 
 (defmethod check-format-2 "unknown" [_format _c2 _p2 _m2]
-  (memo
-   (fn [_c1 _p1 _m1]
-     nil)))
+  (constantly nil))
 
 (defmethod check-format-2 :default [f _c2 _p2 _m2]
   (memo
