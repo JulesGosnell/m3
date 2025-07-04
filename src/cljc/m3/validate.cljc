@@ -18,9 +18,9 @@
    #?(:cljs [goog.string.format])
    #?(:clj  [cheshire.core :as cheshire]
       :cljs [cljs.core :as cljs])
-   [cljc.java-time.local-date :as ld]
-   [cljc.java-time.offset-date-time :as odt]
-   [cljc.java-time.offset-time :as ot]
+   [cljc.java-time.local-date :refer [parse] :rename {parse local-date-parse}]
+   [cljc.java-time.offset-date-time :refer [parse] :rename {parse offset-date-time-parse}]
+   [cljc.java-time.offset-time :refer [parse] :rename {parse offset-time-parse}]
    [clojure.string :refer [starts-with? ends-with? replace] :rename {replace string-replace}]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.util :refer [absent present? concatv into-set conj-set seq-contains?]]
@@ -282,13 +282,13 @@
   (check-pattern f hostname-pattern c2 p2 m2))
 
 (defmethod check-format-2 "date-time" [f c2 p2 m2]
-  (check-parse odt/parse f c2 p2 m2))
+  (check-parse offset-date-time-parse f c2 p2 m2))
 
 (defmethod check-format-2 "date" [f c2 p2 m2]
-  (check-parse ld/parse f c2 p2 m2))
+  (check-parse local-date-parse f c2 p2 m2))
 
 (defmethod check-format-2 "time" [f c2 p2 m2]
-  (check-parse ot/parse f c2 p2 m2))
+  (check-parse offset-time-parse f c2 p2 m2))
 
 (defmethod check-format-2 "json-pointer" [f c2 p2 m2]
   (check-pattern f json-pointer-pattern c2 p2 m2))
