@@ -363,43 +363,33 @@
 
 (def check-type (memo check-type-2))
 
-(defmethod check-type-2 "object" [_type _c2 p2 m2]
+(defn check-type-3 [p? t _c2 p2 m2]
   (memo
    (fn [c1 p1 m1]
-     [c1 (when-not (map? m1) [(make-error "type: not an object" p2 m2 p1 m1)])])))
+     [c1 (when-not (p? m1) [(make-error (str "type: not a[n] " t) p2 m2 p1 m1)])])))
 
-(defmethod check-type-2 "array" [_type _c2 p2 m2]
-  (memo
-   (fn [c1 p1 m1]
-     [c1 (when-not (vector? m1) [(make-error "type: not an array" p2 m2 p1 m1)])])))
+(defmethod check-type-2 "object" [t c2 p2 m2]
+  (check-type-3 map? t c2 p2 m2))
 
-(defmethod check-type-2 "string" [_type _c2 p2 m2]
-  (memo
-   (fn [c1 p1 m1]
-     [c1 (when-not (string? m1) [(make-error "type: not a string" p2 m2 p1 m1)])])))
+(defmethod check-type-2 "array" [t c2 p2 m2]
+  (check-type-3 vector? t c2 p2 m2))
 
-(defmethod check-type-2 "integer" [_type {si? :strict-integer?} p2 m2]
-  (let [check (if si? integer? json-integer?)]
-    (memo
-     (fn [c1 p1 m1]
-       [c1 (when-not (check m1) [(make-error "type: not an integer" p2 m2 p1 m1)])]))))
+(defmethod check-type-2 "string" [t c2 p2 m2]
+  (check-type-3 string? t c2 p2 m2))
 
-(defmethod check-type-2 "number" [_type _c2 p2 m2]
-  (memo
-   (fn [c1 p1 m1]
-     [c1 (when-not (json-number? m1) [(make-error "type: not a number" p2 m2 p1 m1)])])))
+(defmethod check-type-2 "integer" [t {si? :strict-integer? :as c2} p2 m2]
+  (check-type-3 (if si? integer? json-integer?) t c2 p2 m2))
 
-(defmethod check-type-2 "boolean" [_type _c2 p2 m2]
-  (memo
-   (fn [c1 p1 m1]
-     [c1 (when-not (boolean? m1) [(make-error "type: not a boolean" p2 m2 p1 m1)])])))
+(defmethod check-type-2 "number" [t c2 p2 m2]
+  (check-type-3 json-number? t c2 p2 m2))
 
-(defmethod check-type-2 "null" [_type _c2 p2 m2]
-  (memo
-   (fn [c1 p1 m1]
-     [c1 (when-not (nil? m1) [(make-error "type: non null" p2 m2 p1 m1)])])))
+(defmethod check-type-2 "boolean" [t c2 p2 m2]
+  (check-type-3 boolean? t c2 p2 m2))
 
-(defmethod check-type-2 "any" [_type _c2 _p2 _m2]
+(defmethod check-type-2 "null" [t c2 p2 m2]
+  (check-type-3 nil? t c2 p2 m2))
+
+(defmethod check-type-2 "any" [_t _c2 _p2 _m2]
   (fn [c1 _p1 _m1] [c1 nil]))
 
 (defmethod check-type-2 :default [ts c2 p2 m2]
