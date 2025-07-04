@@ -26,6 +26,7 @@
    [m3.util :refer [absent present? concatv into-set conj-set seq-contains?]]
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.ref :refer [meld resolve-uri try-path]]
+   [m3.pattern :refer [email-pattern ipv4-pattern ipv6-pattern hostname-pattern json-pointer-pattern relative-pointer-pattern uri-pattern uri-reference-pattern uri-template-pattern idn-email-pattern iri-pattern iri-reference-pattern uuid-pattern json-duration-pattern]]
    )
   #?(:clj
      (:import
@@ -263,26 +264,14 @@
 
 ;; standard formats
 
-;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-(def email-pattern #"^(?:[^\s@\"\.](?:(?!\.\.)[^\s@\"])*[^\s@\"\.]|\"(?:[^\r\n\\\"]|\\[\s\S])+\")@(?:[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)*|\[IPv6:[a-fA-F0-9:]+\]|\[(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\])$")
-
 (defmethod check-format-2 "email" [f c2 p2 m2]
   (check-format-3 f email-pattern c2 p2 m2))
-
-;; https://howtodoinjava.com/java/regex/java-regex-validate-email-address/
-(def ipv4-pattern #"^(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(\.(?!$)|$)){4}$")
 
 (defmethod check-format-2 "ipv4" [f c2 p2 m2]
   (check-format-3 f ipv4-pattern c2 p2 m2))
 
-        ;; adapted from: https://github.com/ajv-validator/ajv-formats/blob/master/src/formats.ts
-(def ipv6-pattern #"^((([0-9a-f]{1,4}:){7}([0-9a-f]{1,4}|:))|(([0-9a-f]{1,4}:){6}(:[0-9a-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-f]{1,4}:){5}(((:[0-9a-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-f]{1,4}:){4}(((:[0-9a-f]{1,4}){1,3})|((:[0-9a-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){3}(((:[0-9a-f]{1,4}){1,4})|((:[0-9a-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){2}(((:[0-9a-f]{1,4}){1,5})|((:[0-9a-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){1}(((:[0-9a-f]{1,4}){1,6})|((:[0-9a-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9a-f]{1,4}){1,7})|((:[0-9a-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))$")
-
 (defmethod check-format-2 "ipv6" [f c2 p2 m2]
   (check-format-3 f ipv6-pattern c2 p2 m2))
-
-;; adapted from: https://stackoverflow.com/questions/106179/regular-expression-to-match-dns-hostname-or-ip-address
-(def hostname-pattern #"^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]{0,61}[A-Za-z0-9])$")
 
 (defmethod check-format-2 "hostname" [f c2 p2 m2]
   (check-format-3 f hostname-pattern c2 p2 m2))
@@ -317,40 +306,20 @@
          (catch Exception e
            [(make-error (str "format: not a valid time: " (ex-message e)) p2 m2 p1 m1)]))))))
 
-;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-(def json-pointer-pattern #"^(?:/(?:[^~/]|~[01])*)*$")
-
 (defmethod check-format-2 "json-pointer" [f c2 p2 m2]
   (check-format-3 f json-pointer-pattern c2 p2 m2))
-
-;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-(def relative-pointer-pattern #"^(?:0|[1-9][0-9]*)(#|(?:/(?:[^~/]|~[01])*)*)$|^#(?:/(?:[^~/]|~[01])*)*$")
 
 (defmethod check-format-2 "relative-json-pointer" [f c2 p2 m2]
   (check-format-3 f relative-pointer-pattern c2 p2 m2))
 
-;; TODO: this should be shared with uri.cljc
-
-;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-(def uri-pattern #"^(?:[A-Za-z][A-Za-z0-9+.\-]*:[^\s]*|#(?:[^\s]*)?)$")
-
 (defmethod check-format-2 "uri" [f c2 p2 m2]
   (check-format-3 f uri-pattern c2 p2 m2))
-
-;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-(def uri-reference-pattern #"^[^\s\\]*$")
 
 (defmethod check-format-2 "uri-reference" [f c2 p2 m2]
   (check-format-3 f uri-reference-pattern c2 p2 m2))
 
-;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-(def uri-template-pattern #"^(?:[^\s{}]|(?:\{[^\s{}]*\}))*$")
-
 (defmethod check-format-2 "uri-template" [f c2 p2 m2]
   (check-format-3 f uri-template-pattern c2 p2 m2))
-
-;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-(def idn-email-pattern #"^(?:[^\s@\[\]\"(),:;<>\\]+(?:\.[^\s@\[\]\"(),:;<>\\]+)*|\"(?:[^\"\\\r\n]|\\.)+\")@(?:[^\s@\[\]\"(),:;<>\\]+\.)*[^\s@\[\]\"(),:;<>\\]+$")
 
 (defmethod check-format-2 "idn-email" [f c2 p2 m2]
   (check-format-3 f idn-email-pattern c2 p2 m2))
@@ -365,53 +334,14 @@
      (when (string? m1)
        nil))));NYI
 
-;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-(def iri-pattern #"^[A-Za-z][A-Za-z0-9+.\-]*://(?:[^\s/?#@\\]+@)?(?:\[[0-9A-Fa-f:]+\]|[^\s/?#@:]+)(?::\d+)?(?:/[^\s?#\\]*)?(?:\?[^\s#\\]*)?(?:#[^\s\\]*)?$")
-
 (defmethod check-format-2 "iri" [f c2 p2 m2]
   (check-format-3 f iri-pattern c2 p2 m2))
-
-;; N.B. made by ChatGPT o-preview specifically to pass testsuite...
-(def iri-reference-pattern #"^[^\s\\]*$")
 
 (defmethod check-format-2 "iri-reference" [f c2 p2 m2]
   (check-format-3 f iri-reference-pattern c2 p2 m2))
 
-;; https://www.jvt.me/posts/2022/01/14/java-uuid-regex/
-(def uuid-pattern #"^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$")
-
 (defmethod check-format-2 "uuid" [f c2 p2 m2]
   (check-format-3 f uuid-pattern c2 p2 m2))
-
-;; ISO 8601 duration
-;; https://en.wikipedia.org/wiki/ISO_8601#Durations
-;; TODO:
-;; - allow more than 4 numbers before each letter
-;; - allow a single decimal point in each number group ?
-;; - allow a general date-time format ?
-(def json-duration-pattern
-  (re-pattern
-   (str
-    "^"
-    "P"
-    "("
-    "("
-    "([0-9]{1,4}Y|)"
-    "([0-9]{1,4}M|)"
-    "([0-9]{1,4}D|)"
-    ")"
-    "("
-    "T"
-    "([0-9]{1,4}H|)"
-    "([0-9]{1,4}M|)"
-    "([0-9]{1,4}S|)"
-    "|"
-    ")"
-    "|"
-    "([0-9]{1,4}W|)"    
-    ")"
-    "$"    
-    )))
 
 (defn json-duration? [s]
   (boolean
@@ -441,8 +371,6 @@
   (memo
    (fn [_c1 _p1 _m1]
      nil)))
-
-;; see: https://github.com/juxt/jinx/blob/master/src/juxt/jinx/alpha/patterns.clj
 
 (defmethod check-format-2 :default [f _c2 _p2 _m2]
   (memo
