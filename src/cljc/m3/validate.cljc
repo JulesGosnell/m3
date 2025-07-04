@@ -238,11 +238,6 @@
     :else
     (= l r)))
 
-(defn bail-on-error [acc e]
-  (if (seq e)
-    (reduced e)
-    acc))
-
 ;;------------------------------------------------------------------------------
 
 (defmulti check-format-2 (fn [format _c2 _p2 _m2] format))
@@ -738,9 +733,8 @@
     (reduced [c new-es])
     [c old-es]))
 
-(defmethod check-property-2 "dependencies" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
-  (let [bail (if x? conj (fn [_acc r] (reduced [r])))
-        property->checker
+(defmethod check-property-2 "dependencies" [_property c2 p2 m2 [v2]]
+  (let [property->checker
         (reduce
          (fn [acc [k v]]
            (assoc
@@ -751,7 +745,7 @@
               (fn [c1 p1 m1] [c1 (when (not (contains? m1 v)) [v v])])
               (json-array? v) ;; a multiple property dependency
               ;; TODO: this looks very suspect
-              (fn [c1 p1 m1] [c1 (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (bail acc2 [k k2]))) [] v)])
+              (fn [c1 p1 m1] [c1 (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v)])
               (or (json-object? v) (boolean? v)) ;; a schema dependency
               (check-schema c2 p2 v)
               ;; we should not need to check other cases as m2 should have been validated against m3
@@ -775,9 +769,8 @@
               [(make-error ["dependencies: missing properties (at least):" missing] p2 m2 p1 m1)])])
          [c1 []])))))
 
-(defmethod check-property-2 "dependentSchemas" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
-  (let [bail (if x? conj (fn [_acc r] (reduced [r])))
-        property->checker
+(defmethod check-property-2 "dependentSchemas" [_property c2 p2 m2 [v2]]
+  (let [property->checker
         (reduce
          (fn [acc [k v]]
            (assoc acc k (check-schema c2 p2 v)))
@@ -800,9 +793,8 @@
               [(make-error ["dependentSchemas: missing properties (at least):" missing] p2 m2 p1 m1)])])
          [c1 nil])))))
 
-(defmethod check-property-2 "propertyDependencies" [_property {x? :exhaustive? :as c2} p2 _m2 [v2]]
-  (let [bail (if x? continue bail-out)
-        checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] (check-schema c2 p2 s)]) vs)) v2))
+(defmethod check-property-2 "propertyDependencies" [_property c2 p2 _m2 [v2]]
+  (let [checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] (check-schema c2 p2 s)]) vs)) v2))
         ks (keys v2)]
     (memo
      (fn [c1 p1 m1]
@@ -812,22 +804,21 @@
             (let [v (m1 k)]
               (if-let [checker (and (json-string? v) (checkers [k v]))]
                 (let [[c new-es] (checker c p1 m1)]
-                  (bail c old-es new-es))
+                  (continue c old-es new-es))
                 [c old-es])))
           [c1 []]
           ks)
          [c1 []])))))
 
 ;; TODO: share more code with dependencies
-(defmethod check-property-2 "dependentRequired" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
-  (let [bail (if x? conj (fn [_acc r] (reduced [r])))
-        property->checker
+(defmethod check-property-2 "dependentRequired" [_property c2 p2 m2 [v2]]
+  (let [property->checker
         (reduce
          (fn [acc [k v]]
            (assoc
             acc
             k
-            (fn [c1 p1 m1] (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (bail acc2 [k k2]))) [] v))))
+            (fn [c1 p1 m1] (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v))))
          {}
          v2)]
     (memo
@@ -900,34 +891,31 @@
                (update :evaluated update p1 into-set ks)))
          (make-error-on-failure message p2 m2 p1 m1 es)]))))
 
-(defmethod check-property-2 "properties" [_property {x? :exhaustive? :as c2} p2 m2 [ps]]
-  (let [bail (if x? continue bail-out)
-        k-and-css (mapv (fn [[k v]] [k (check-schema c2 (conj p2 k) v)]) ps)
+(defmethod check-property-2 "properties" [_property c2 p2 m2 [ps]]
+  (let [k-and-css (mapv (fn [[k v]] [k (check-schema c2 (conj p2 k) v)]) ps)
         cp (check-properties c2 p2 m2)]
     (memo
      (fn [c1 p1 m1]
        (if (json-object? m1)
          (let [k-and-css (filter (fn [[k]] (contains? m1 k)) k-and-css)]
-           (cp c1 p1 m1 bail k-and-css "properties: at least one property did not conform to respective schema"))
+           (cp c1 p1 m1 continue k-and-css "properties: at least one property did not conform to respective schema"))
          [c1 []])))))
 
 ;; what is opposite of "additional" - "matched" - used by spec to refer to properties matched by "properties" or "patternProperties"
 
-(defmethod check-property-2 "patternProperties" [_property {x? :exhaustive? :as c2} p2 m2 [pps]]
-  (let [bail (if x? continue bail-out)
-        cp-and-pattern-and-ks (mapv (fn [[k v]] [(check-schema c2 (conj p2 k) v) (ecma-pattern k) k]) pps)
+(defmethod check-property-2 "patternProperties" [_property c2 p2 m2 [pps]]
+  (let [cp-and-pattern-and-ks (mapv (fn [[k v]] [(check-schema c2 (conj p2 k) v) (ecma-pattern k) k]) pps)
         cp (check-properties c2 p2 m2)]
     (memo
      (fn [c1 p1 m1]
        (if (json-object? m1)
          (let [k-and-css (apply concat (keep (fn [[k]] (keep (fn [[cs p]] (when (ecma-match p k) [k cs])) cp-and-pattern-and-ks)) m1))]
-           (cp c1 p1 m1 bail k-and-css "patternProperties: at least one property did not conform to respective schema"))
+           (cp c1 p1 m1 continue k-and-css "patternProperties: at least one property did not conform to respective schema"))
          [c1 []])))))
 
 
-(defmethod check-property-2 "additionalProperties" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
-  (let [bail (if x? continue bail-out)
-        cs (check-schema c2 p2 v2)
+(defmethod check-property-2 "additionalProperties" [_property c2 p2 m2 [v2]]
+  (let [cs (check-schema c2 p2 v2)
         pp2 (butlast p2)
         cp (check-properties c2 p2 m2)]
     (memo
@@ -936,12 +924,11 @@
          (let [mps (get (get c1 :matched) pp2 #{})
                aps (remove (fn [[k]] (contains? mps k)) m1) ;; k might be nil
                p-and-css (mapv (fn [[k]] [k cs]) aps)] ; TODO: feels inefficient
-           (cp c1 p1 m1 bail p-and-css "additionalProperties: at least one property did not conform to schema"))
+           (cp c1 p1 m1 continue p-and-css "additionalProperties: at least one property did not conform to schema"))
          [c1 []])))))
 
-(defmethod check-property-2 "unevaluatedProperties" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
-  (let [bail (if x? continue bail-out)
-        cs (check-schema c2 p2 v2)
+(defmethod check-property-2 "unevaluatedProperties" [_property c2 p2 m2 [v2]]
+  (let [cs (check-schema c2 p2 v2)
         cp (check-properties c2 p2 m2)]
     (memo
      (fn [c1 p1 m1]
@@ -949,35 +936,31 @@
          (let [eps (get (get c1 :evaluated) p1 #{})
                ups (remove (fn [[k]] (contains? eps k)) m1) ;; k might be nil
                p-and-css (mapv (fn [[k]] [k cs]) ups)] ; TODO: feels inefficient
-           (cp c1 p1 m1 bail p-and-css "unevaluatedProperties: at least one property did not conform to schema"))
+           (cp c1 p1 m1 continue p-and-css "unevaluatedProperties: at least one property did not conform to schema"))
          [c1 []])))))
 
-;; TODO: can we move more up into m2 time ?
-(defmethod check-property-2 "propertyNames" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
-  (let [bail (if x? concatv bail-on-error)]
-    (memo
-     (fn [c1 p1 m1]
-       [c1
-        (when (json-object? m1)
-          (make-error-on-failure
-           "propertyNames: at least one property's name failed to conform to relevant schema"
-           p2 m2 p1 m1
-           (reduce
-            (fn [acc [k]]
-              (let [[_new-c1 es] ((check-schema c2 (conj p2 k) v2) c1 (conj p1 k) k)]
-                (bail acc es)))
-            []
-            m1)))]))))
+(defmethod check-property-2 "propertyNames" [_property c2 p2 m2 [v2]]
+  (memo
+   (fn [c1 p1 m1]
+     [c1
+      (when (json-object? m1)
+        (make-error-on-failure
+         "propertyNames: at least one property's name failed to conform to relevant schema"
+         p2 m2 p1 m1
+         (reduce
+          (fn [acc [k]]
+            (let [[_new-c1 es] ((check-schema c2 (conj p2 k) v2) c1 (conj p1 k) k)]
+              (concatv acc es)))
+          []
+          m1)))])))
 
-;; N.B. by default, this will bail on detection of first missing property - this may not be what is expected
-(defmethod check-property-2 "required" [_property {x? :exhaustive?} p2 m2 [v2]]
-  (let [bail (if x? conj (fn [_acc r] (reduced [r])))]
-    (memo
-     (fn [c1 p1 m1]
-       [c1
-        (when (json-object? m1)
-          (when-let [missing (seq (reduce (fn [acc k] (if (contains? m1 k) acc (bail acc k))) [] v2))]
-            [(make-error ["required: missing properties (at least):" missing] p2 m2 p1 m1)]))]))))
+(defmethod check-property-2 "required" [_property _c2 p2 m2 [v2]]
+  (memo
+   (fn [c1 p1 m1]
+     [c1
+      (when (json-object? m1)
+        (when-let [missing (seq (reduce (fn [acc k] (if (contains? m1 k) acc (conj acc k))) [] v2))]
+          [(make-error ["required: missing properties (at least):" missing] p2 m2 p1 m1)]))])))
 
 (defmethod check-property-2 "minProperties" [_property _c2 p2 m2 [v2]]
   (memo
@@ -1022,19 +1005,17 @@
              (map vector i-and-css m1))]
         [c1 (make-error-on-failure message p2 m2 p1 m1 es)]))))
 
-(defmethod check-property-2 "prefixItems" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
-  (let [bail (if x? continue bail-out)
-        i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema c2 (conj p2 i) sub-schema)]) v2))
+(defmethod check-property-2 "prefixItems" [_property c2 p2 m2 [v2]]
+  (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema c2 (conj p2 i) sub-schema)]) v2))
         ci (check-items c2 p2 m2)]
     (memo
      (fn [c1 p1 m1]
        (if (json-array? m1)
-         (ci c1 p1 m1 bail i-and-css "prefixItems: at least one item did not conform to respective schema")
+         (ci c1 p1 m1 continue i-and-css "prefixItems: at least one item did not conform to respective schema")
          [c1 []])))))
 
-(defmethod check-property-2 "items" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
-  (let [bail (if x? continue bail-out)
-        n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
+(defmethod check-property-2 "items" [_property c2 p2 m2 [v2]]
+  (let [n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
         [m css] (if (json-array? v2)
               ["respective " (map-indexed (fn [i v] (check-schema c2 (conj p2 i) v)) v2)]
               ["" (repeat (check-schema c2 p2 v2))])
@@ -1044,13 +1025,12 @@
        (if (json-array? m1)
          (let [items (drop n m1)
                i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
-           (ci c1 p1 items bail i-and-css (str "items: at least one item did not conform to " m "schema")))
+           (ci c1 p1 items continue i-and-css (str "items: at least one item did not conform to " m "schema")))
          [c1 []])))))
 
-(defmethod check-property-2 "additionalItems" [_property {x? :exhaustive? :as c2} p2 {is "items" :as m2} [v2]]
+(defmethod check-property-2 "additionalItems" [_property c2 p2 {is "items" :as m2} [v2]]
   (if (json-array? is) ;; additionalItems is only used when items is a tuple
-    (let [bail (if x? continue bail-out)
-          cs (check-schema c2 p2 v2)
+    (let [cs (check-schema c2 p2 v2)
           ;;pp2 (butlast p2)
           ci (check-items c2 p2 m2)]
       (memo
@@ -1065,14 +1045,13 @@
                  ais (drop n m1)
                  i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) (repeat cs) ais)
                  ]
-             (ci c1 p1 ais bail i-and-css "additionalItems: at least one item did not conform to schema"))
+             (ci c1 p1 ais continue i-and-css "additionalItems: at least one item did not conform to schema"))
            [c1 []]))))
     (fn [c1 _p1 _m1]
       [c1 nil])))
     
-(defmethod check-property-2 "unevaluatedItems" [_property {x? :exhaustive? :as c2} p2 m2 [v2]]
-  (let [bail (if x? continue bail-out)
-        css (repeat (check-schema c2 p2 v2))
+(defmethod check-property-2 "unevaluatedItems" [_property c2 p2 m2 [v2]]
+  (let [css (repeat (check-schema c2 p2 v2))
         ci (check-items c2 p2 m2)]
     (memo
      (fn [{p->eis :evaluated :as c1} p1 m1]
@@ -1080,7 +1059,7 @@
          (let [eis (or (get p->eis p1) #{})
                index-and-items (filter (fn [[k]] (not (eis k))) (map-indexed (fn [i v] [i v]) m1))
                i-and-css (mapv (fn [cs [i]] [i cs]) css index-and-items)] ;; TODO: item not used
-           (ci c1 p1 (map second index-and-items) bail i-and-css "unevaluatedItems: at least one item did not conform to schema"))
+           (ci c1 p1 (map second index-and-items) continue i-and-css "unevaluatedItems: at least one item did not conform to schema"))
          [c1 []])))))
 
 (defmethod check-property-2 "contains" [_property c2 p2 {mn "minContains" :as m2} [v2]]
