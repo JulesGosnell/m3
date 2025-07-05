@@ -735,7 +735,7 @@
   (case d
     ("draft2019-09" "draft2020-12" "draft2021-12" "draft-next")
     ;; this keyword no longer exists - it was split into "dependentRequired" and "dependentSchemas"...
-    (log/warn (str "dependencies was split into dependentRequired and dependentSchemas in draft2019-09 - you are using: " d))
+    (log/info (str "dependencies was split into dependentRequired and dependentSchemas in draft2019-09 - you are using: " d))
     nil)
   (let [property->checker
         (reduce
@@ -778,7 +778,7 @@
     ("draft3" "draft4" "draft6" "draft7")
     ;; this keyword didn't exist - it arose from the splitting of "dependencies'
     (fn [c1 p1 m1]
-      (log/warn (str "dependentschemas: did not exist in " d))
+      (log/warn (str "dependentSchemas:  was not introduced until draft2019-09 - you are using: " d " - ignored"))
       [c1 nil])
     
     ("draft2019-09" "draft2020-12" "draft2021-12" "draft-next")
@@ -827,9 +827,8 @@
   (memo
    (case d
      ("draft3" "draft4" "draft6" "draft7")
-     ;; this keyword didn't exist - it arose from the splitting of "dependencies'
      (fn [c1 p1 m1]
-       (log/warn (str "dependentRequired: did not exist in " d))
+       (log/warn (str "dependentRequired: was not introduced until draft2019-09 - you are using: " d " - ignored"))
        [c1 nil])
      
      ("draft2019-09" "draft2020-12" "draft2021-12" "draft-next")
@@ -1026,19 +1025,32 @@
              (map vector i-and-css m1))]
         [c1 (make-error-on-failure message p2 m2 p1 m1 es)]))))
 
-(defmethod check-property-2 "prefixItems" [_property c2 p2 m2 [v2]]
-  (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema c2 (conj p2 i) sub-schema)]) v2))
-        ci (check-items c2 p2 m2)]
-    (memo
-     (fn [c1 p1 m1]
-       (if (json-array? m1)
-         (ci c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")
-         [c1 []])))))
+;; TODO: consider warning if using tuple form of items post draft2020-12
+(defmethod check-property-2 "prefixItems" [_property {d :draft :as c2}  p2 m2 [v2]]
+  (case d
+    ("draft3" "draft4" "draft6" "draft7" "draft2019-09")
+    (fn [c1 p1 m1]
+      (log/warn (str "prefixItems: was not introduced until draft2020-12 - you are using: " d " - ignored"))
+      [c1 nil])
+    ("draft2020-12" "draft2021-12" "draft-next")
+    (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema c2 (conj p2 i) sub-schema)]) v2))
+          ci (check-items c2 p2 m2)]
+      (memo
+       (fn [c1 p1 m1]
+         (if (json-array? m1)
+           (ci c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")
+           [c1 []]))))))
 
-(defmethod check-property-2 "items" [_property c2 p2 m2 [v2]]
+(defmethod check-property-2 "items" [_property {d :draft :as c2}  p2 m2 [v2]]
   (let [n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
         [m css] (if (json-array? v2)
-              ["respective " (map-indexed (fn [i v] (check-schema c2 (conj p2 i) v)) v2)]
+                  (do
+                    (case d
+                      ("draft3" "draft4" "draft6" "draft7" "draft2019-09")
+                      nil
+                      ("draft2020-12" "draft2021-12" "draft-next")
+                      (log/info (str "prefixItems: was introduced in draft2020-12 to handle tuple version of items - you are using: " d)))
+                    ["respective " (map-indexed (fn [i v] (check-schema c2 (conj p2 i) v)) v2)])
               ["" (repeat (check-schema c2 p2 v2))])
         ci (check-items c2 p2 m2)]
     (memo

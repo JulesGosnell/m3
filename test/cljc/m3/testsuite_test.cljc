@@ -83,9 +83,6 @@
 
 (def exclude-test?
   #{
-    ;;["cross-draft.json" "refs to historic drafts are processed as historic drafts" "missing bar is valid"]
-    ["cross-draft.json" "refs to historic drafts are processed as historic drafts" "first item not a string is valid"]
-
     ["defs.json" "validate definition against metaschema" "invalid definition schema"]
     ["definitions.json" "validate definition against metaschema" "invalid definition schema"] ;; new
 
