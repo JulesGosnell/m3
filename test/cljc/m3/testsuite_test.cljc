@@ -83,76 +83,47 @@
 
 (def exclude-test?
   #{
+    ["anchor.json" "$anchor inside an enum is not a real identifier" "match $ref to $anchor"]
+    ["date-time.json" "validation of date-time strings" "a valid date-time with a leap second, UTC"]
+    ["date-time.json" "validation of date-time strings" "a valid date-time with a leap second, w[main] WARN m3.validate - property: unexpected property encountered: "]
+    ["date-time.json" "validation of date-time strings" "a valid date-time with a leap second, with minus offset"]
     ["defs.json" "validate definition against metaschema" "invalid definition schema"]
-    ["definitions.json" "validate definition against metaschema" "invalid definition schema"] ;; new
-
-    ["dynamicRef.json" "A $dynamicRef resolves to the first $dynamicAnchor still in scope that is encountered when the schema is evaluated" "An array containing non-strings is invalid"]
-    ["dynamicRef.json" "A $dynamicRef with intermediate scopes that don't include a matching $dynamicAnchor does not affect dynamic scope resolution" "An array containing non-strings is invalid"]
-    ["dynamicRef.json" "A $dynamicRef that initially resolves to a schema with a matching $dynamicAnchor resolves to the first $dynamicAnchor in the dynamic scope" "The recursive part is not valid against the root"]
-    ["dynamicRef.json" "multiple dynamic paths to the $dynamicRef keyword" "number list with string values"]
-    ["dynamicRef.json" "multiple dynamic paths to the $dynamicRef keyword" "string list with number values"]
-    ["dynamicRef.json" "after leaving a dynamic scope, it is not used by a $dynamicRef" "string matches /$defs/thingy, but the $dynamicRef does not stop here"]
-    ["dynamicRef.json" "after leaving a dynamic scope, it is not used by a $dynamicRef" "first_scope is not in dynamic scope for the $dynamicRef"]
-    ["dynamicRef.json" "strict-tree schema, guards against misspelled properties" "instance with misspelled field"]
-    ["dynamicRef.json" "tests for implementation dynamic anchor and reference link" "incorrect extended schema"]
+    ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected integers - additional property as not integer is invalid"]
+    ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected strings - additional property as not string is invalid"]
     ["dynamicRef.json" "$ref and $dynamicAnchor are independent of order - $defs first" "incorrect extended schema"]
     ["dynamicRef.json" "$ref and $dynamicAnchor are independent of order - $ref first" "incorrect extended schema"]
     ["dynamicRef.json" "$ref to $dynamicRef finds detached $dynamicAnchor" "non-number is invalid"]
-    ["dynamicRef.json" "A $dynamicRef resolves to the first $dynamicAnchor still in scope that is encountered when the schema is evaluated" "An array of strings is valid"]
-    ["dynamicRef.json" "A $dynamicRef with intermediate scopes that don't include a matching $dynamicAnchor does not affect dynamic scope resolution" "An array of strings is valid"]
-    ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected strings - additional property as string is valid"]
-    ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected integers - additional property as integer is valid"]
-
-    ;; 'stash' needs to understand json to fix these issues...
-    ["anchor.json" "$anchor inside an enum is not a real identifier" "match $ref to $anchor"] ;; schema would fail validation
-    ["id.json" "$id inside an enum is not a real identifier" "match $ref to $id"] ;; schema would fail validation
-    ["id.json" "id inside an enum is not a real identifier" "match $ref to id"] ;; schema would fail validation
-    ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches second anyOf, which has a real schema in it"] ;; schema would fail validation
-    ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches non-schema in first anyOf"]
-    ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches non-schema in third anyOf"]
-
-    ["recursiveRef.json" "$recursiveRef without $recursiveAnchor works like $ref" "recursive mismatch"]
+    ["dynamicRef.json" "A $dynamicRef that initially resolves to a schema with a matching $dynamicAnchor resolves to the first $dynamicAnchor in the dynamic scope" "The recursive part is not valid against the root"]
+    ["dynamicRef.json" "A $dynamicRef with a non-matching $dynamicAnchor in the same schema resource behaves like a normal $ref to $anchor" "Any array is valid"]
+    ["dynamicRef.json" "A $dynamicRef without a matching $dynamicAnchor in the same schema resource behaves like a normal $ref to $anchor" "Any array is valid"]
+    ["dynamicRef.json" "An $anchor with the same name as a $dynamicAnchor is not used for dynamic scope resolution" "Any array is valid"]
+    ["dynamicRef.json" "after leaving a dynamic scope, it is not used by a $dynamicRef" "first_scope is not in dynamic scope for the $dynamicRef"]
+    ["dynamicRef.json" "after leaving a dynamic scope, it is not used by a $dynamicRef" "first_scope is[main] WARN m3.validate - property: unexpected property encountered: "]
+    ["dynamicRef.json" "after leaving a dynamic scope, it is not used by a $dynamicRef" "string matches /$defs/thingy, but the $dynamicRef does not stop here"]
+    ["dynamicRef.json" "strict-tree schema, guards against misspelled properties" "instance with misspelled field"]
+    ["dynamicRef.json" "tests for implementation dynamic a dependentSchemas in draft2019-09 - you are using: draft-nexnchor and reference link" "incorrect extended schema"]
+    ["dynamicRef.json" "tests for implementation dynamic anchor and reference link" "incorrect extended schema"]
+    ["id.json" "$id inside an enum is not a real identifier" "match $ref to $id"]
+    ["id.json" "id inside an enum is not a real identifier" "match $ref to id"]
     ["recursiveRef.json" "$recursiveRef with nesting" "integer now matches as a property value"]
     ["recursiveRef.json" "$recursiveRef with nesting" "two levels, properties match with $recursiveRef"]
-    ["recursiveRef.json" "multiple dynamic paths to the $recursiveRef keyword" "recurse to integerNode - floats are not allowed"]
-    ["recursiveRef.json" "dynamic $recursiveRef destination (not predictable at schema compile time)" "integer node"]
-
-    ["ref.json" "ref creates new scope when adjacent to keywords" "referenced subschema doesn't see annotations from properties"]  ;; needs unevaluatedProperties
+    ["recursiveRef.json" "$recursiveRef without $recursiveAnchor works like $ref" "recursive mismatch"]
     ["ref.json" "$ref with $recursiveAnchor" "extra items allowed for inner arrays"]
-    ["ref.json" "Recursive references between schemas" "valid tree"]
-
-    ["dynamicRef.json" "An $anchor with the same name as a $dynamicAnchor is not used for dynamic scope resolution" "Any array is valid"]
-    ["dynamicRef.json" "A $dynamicRef without a matching $dynamicAnchor in the same schema resource behaves like a normal $ref to $anchor" "Any array is valid"]
-    ["dynamicRef.json" "A $dynamicRef with a non-matching $dynamicAnchor in the same schema resource behaves like a normal $ref to $anchor" "Any array is valid"]
-    ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected strings - additional property as not string is invalid"]
-    ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected integers - additional property as not integer is invalid"]
-
+    ["ref.json" "ref creates new scope when adjacent to keywords" "referenced subschema doesn't see annotations from properties"]
     ["refRemote.json" "retrieved nested refs resolve relative to their URI not $id" "number is invalid"]
-
-    ;; leap-second support seems to be an issue with java-time
-    ;; https://coderanch.com/t/667087/java/Reconciling-Java-date-time-GPS
-    ["date-time.json" "validation of date-time strings" "a valid date-time with a leap second, UTC"]
-    ["date-time.json" "validation of date-time strings" "a valid date-time with a leap second, with minus offset"]
     ["time.json" "validation of time strings" "a valid time string with leap second, Zulu"]
-    ["time.json" "validation of time strings" "valid leap second, zero time-offset"]
-    ["time.json" "validation of time strings" "valid leap second, positive time-offset"]
+    ["time.json" "validation of time strings" "valid leap second, large negative time-offset"]
     ["time.json" "validation of time strings" "valid leap second, large positive time-offset"]
     ["time.json" "validation of time strings" "valid leap second, negative time-offset"]
-    ["time.json" "validation of time strings" "valid leap second, large negative time-offset"]
-
-    ;; needs $vocabulary support
-    ["vocabulary.json" "schema that uses custom metaschema with with no validation vocabulary" "no validation: invalid number, but it still validates"]
-
-    ;; issues with cljs
-    #?@(:cljs
-        [;; javascript treats numbers differently - grrr
-         ["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]])
-
-
+    ["time.json" "validation of time strings" "valid leap second, positive tim[main] WARN m3.validate - property: unexpected property encountered: "]
+    ["time.json" "validation of time strings" "valid leap second, positive time-offset"]
+    ["time.json" "validation of time strings" "valid leap second, zero time-offset"]
     ["unevaluatedItems.json" "unevaluatedItems with $dynamicRef" "with no unevaluated items"]
     ["unevaluatedItems.json" "unevaluatedItems with $recursiveRef" "with no unevaluated items"]
-
     ["unevaluatedProperties.json" "unevaluatedProperties with $dynamicRef" "with no unevaluated properties"]
+    ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches non-schema in third anyOf"]
+    ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches second anyOf, which has a real schema in it"]
+    ["vocabulary.json" "schema that uses custom metaschema with with no validation vocabulary" "no validation: invalid number, but it still validates"]
     })
 
 (defn load-schema [s]
