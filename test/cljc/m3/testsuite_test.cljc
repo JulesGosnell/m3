@@ -85,7 +85,6 @@
   #{
     ["anchor.json" "$anchor inside an enum is not a real identifier" "match $ref to $anchor"]
     ["date-time.json" "validation of date-time strings" "a valid date-time with a leap second, UTC"]
-    ["date-time.json" "validation of date-time strings" "a valid date-time with a leap second, w[main] WARN m3.validate - property: unexpected property encountered: "]
     ["date-time.json" "validation of date-time strings" "a valid date-time with a leap second, with minus offset"]
     ["defs.json" "validate definition against metaschema" "invalid definition schema"]
     ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected integers - additional property as not integer is invalid"]
@@ -115,7 +114,6 @@
     ["time.json" "validation of time strings" "valid leap second, large negative time-offset"]
     ["time.json" "validation of time strings" "valid leap second, large positive time-offset"]
     ["time.json" "validation of time strings" "valid leap second, negative time-offset"]
-    ["time.json" "validation of time strings" "valid leap second, positive tim[main] WARN m3.validate - property: unexpected property encountered: "]
     ["time.json" "validation of time strings" "valid leap second, positive time-offset"]
     ["time.json" "validation of time strings" "valid leap second, zero time-offset"]
     ["unevaluatedItems.json" "unevaluatedItems with $dynamicRef" "with no unevaluated items"]
