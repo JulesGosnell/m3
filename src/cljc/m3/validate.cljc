@@ -90,6 +90,22 @@
    "latest"       #{"draft3" "draft4" "draft6" "draft7" "draft2019-09" "draft2020-12" "draft2021-12"}
    "draft-next"   #{"draft3" "draft4" "draft6" "draft7" "draft2019-09" "draft2020-12" "draft2021-12" "draft-next"}})
 
+(def draft->$schema
+  {"draft3"       "http://json-schema.org/draft-03/schema"
+   "draft4"       "http://json-schema.org/draft-04/schema"
+   "draft6"       "http://json-schema.org/draft-06/schema"
+   "draft7"       "http://json-schema.org/draft-07/schema"
+   "draft2019-09" "https://json-schema.org/draft/2019-09/schema"
+   "draft2020-12" "https://json-schema.org/draft/2020-12/schema"
+   "latest"       "https://json-schema.org/draft/2020-12/schema"
+   "draft-next"   "https://json-schema.org/draft/next/schema"})
+
+(def $schema->draft
+  (reduce-kv (fn [acc k v] (conj (conj acc [v k]) [(str v "#") k])) {} (dissoc draft->$schema "latest")))
+
+(def $schema-uri->draft
+  (reduce-kv (fn [acc k v] (conj acc [(parse-uri k) v])) {} $schema->draft))
+
 ;;------------------------------------------------------------------------------
 
 (def ^:dynamic *enable-memo* false) ;; recompile if you change this
@@ -712,10 +728,15 @@
   (let [f (if strict?
             (fn [f2] (fn [c p m] [c (f2 c p m)]))
             (fn [f2] (fn [c p m] (when-let [[{m :message}] (f2 c p m)] [c (log/warn m)]))))]
-  ;; we do this here so that user may override default format checkers...
+    ;; we do this here so that user may override default format checkers...
     (f ((or (cfs v2) check-format) v2 c2 p2 m2))))
 
-(defmethod check-property-2 "dependencies" [_property c2 p2 m2 [v2]]
+(defmethod check-property-2 "dependencies" [_property {d :draft :as c2} p2 m2 [v2]]
+  (case d
+    ("draft2019-09" "draft2020-12" "draft2021-12" "draft-next")
+    ;; this keyword no longer exists - it was split into "dependentRequired" and "dependentSchemas"...
+    (log/warn (str "dependencies was split into dependentRequired and dependentSchemas in draft2019-09 - you are using: " d))
+    nil)
   (let [property->checker
         (reduce
          (fn [acc [k v]]
@@ -751,29 +772,38 @@
               [(make-error ["dependencies: missing properties (at least):" missing] p2 m2 p1 m1)])])
          [c1 []])))))
 
-(defmethod check-property-2 "dependentSchemas" [_property c2 p2 m2 [v2]]
-  (let [property->checker
-        (reduce
-         (fn [acc [k v]]
-           (assoc acc k (check-schema c2 p2 v)))
-         {}
-         v2)]
-    (memo
-     (fn [c1 p1 m1]
-       (if (json-object? m1)
-         (let [[c1 es]
-               (reduce
-                (fn [[c old-es] [k v]]
-                  (if (contains? m1 k)
-                    (let [[c new-es] ((property->checker k) c p1 m1)]
-                      [c (concatv old-es new-es)])
-                    [c old-es]))
-                [c1 []]
-                v2)]
-           [c1
-            (when-let [missing (seq es)]
-              [(make-error ["dependentSchemas: missing properties (at least):" missing] p2 m2 p1 m1)])])
-         [c1 nil])))))
+;; do same for dependencies
+(defmethod check-property-2 "dependentSchemas" [_property {d :draft :as c2} p2 m2 [v2]]
+  (case d
+    ("draft3" "draft4" "draft6" "draft7")
+    ;; this keyword didn't exist - it arose from the splitting of "dependencies'
+    (fn [c1 p1 m1]
+      (log/warn (str "dependentschemas: did not exist in " d))
+      [c1 nil])
+    
+    ("draft2019-09" "draft2020-12" "draft2021-12" "draft-next")
+    (let [property->checker
+          (reduce
+           (fn [acc [k v]]
+             (assoc acc k (check-schema c2 p2 v)))
+           {}
+           v2)]
+      (memo
+       (fn [c1 p1 m1]
+         (if (json-object? m1)
+           (let [[c1 es]
+                 (reduce
+                  (fn [[c old-es] [k v]]
+                    (if (contains? m1 k)
+                      (let [[c new-es] ((property->checker k) c p1 m1)]
+                        [c (concatv old-es new-es)])
+                      [c old-es]))
+                  [c1 []]
+                  v2)]
+             [c1
+              (when-let [missing (seq es)]
+                [(make-error ["dependentSchemas: missing properties (at least):" missing] p2 m2 p1 m1)])])
+           [c1 nil]))))))
 
 (defmethod check-property-2 "propertyDependencies" [_property c2 p2 _m2 [v2]]
   (let [checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] (check-schema c2 p2 s)]) vs)) v2))
@@ -793,30 +823,39 @@
          [c1 []])))))
 
 ;; TODO: share more code with dependencies
-(defmethod check-property-2 "dependentRequired" [_property c2 p2 m2 [v2]]
-  (let [property->checker
-        (reduce
-         (fn [acc [k v]]
-           (assoc
-            acc
-            k
-            (fn [c1 p1 m1] (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v))))
-         {}
-         v2)]
-    (memo
+(defmethod check-property-2 "dependentRequired" [_property {d :draft :as c2} p2 m2 [v2]]
+  (memo
+   (case d
+     ("draft3" "draft4" "draft6" "draft7")
+     ;; this keyword didn't exist - it arose from the splitting of "dependencies'
      (fn [c1 p1 m1]
-       [c1
-        (when (json-object? m1)
-          (when-let [missing
-                     (seq
-                      (reduce
-                       (fn [acc [k v]]
-                         (if (contains? m1 k)
-                           (concatv acc ((property->checker k) c1 p1 m1))
-                           acc))
-                       []
-                       v2))]
-            [(make-error ["dependentRequired: missing properties (at least):" missing] p2 m2 p1 m1)]))]))))
+       (log/warn (str "dependentRequired: did not exist in " d))
+       [c1 nil])
+     
+     ("draft2019-09" "draft2020-12" "draft2021-12" "draft-next")
+     (let [property->checker
+           (reduce
+            (fn [acc [k v]]
+              (assoc
+               acc
+               k
+               (fn [c1 p1 m1] (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v))))
+            {}
+            v2)]
+       (fn [c1 p1 m1]
+         [c1
+          (when (json-object? m1)
+            (when-let [missing
+                       (seq
+                        (reduce
+                         (fn [acc [k v]]
+                           (if (contains? m1 k)
+                             (concatv acc ((property->checker k) c1 p1 m1))
+                             acc))
+                         []
+                         v2))]
+              [(make-error ["dependentRequired: missing properties (at least):" missing] p2 m2 p1 m1)]))])
+       ))))
 
 ;;------------------------------------------------------------------------------
 
@@ -1330,7 +1369,22 @@
 ;; quicker than actual 'apply' [?]
 (defn apply3 [f [c p m]]
   (f c p m))
-  
+
+;; At the moment a validation is only a reduction of c1, not c2.
+;; Since a draft switch is something that happens at c2-level, I think we need an interceptor...
+;; if m2-fn returned [new-c2 m2] perhaps we would not need interceptors !
+;; but we would have to thread m2 as well - can we do it - consider...
+
+(defn make-draft-interceptor []
+  (fn [delegate]
+    (fn [c2 p2 {s "$schema" :as m2}]
+      (delegate 
+       (if-let [d (and s ($schema->draft s))]
+         (update c2 :draft (fn [old-d new-d] (when (not= old-d new-d) (log/infof "switching draft %s -> %s" old-d new-d)) new-d) d)
+         c2)
+       p2
+       m2))))
+
 (defn make-ref-interceptor [k merger]
   (fn [delegate]
     (fn this [c2 p2 {r k :as m2}]
@@ -1360,7 +1414,8 @@
      ((make-anchor-interceptor (constantly "$dynamicAnchor") stash-$dynamic-anchor)
       ((make-anchor-interceptor (constantly "$recursiveAnchor") stash-$recursive-anchor)
        ((make-anchor-interceptor :id-key stash-$id)
-        check-schema-2)))))))
+        ((make-draft-interceptor)
+         check-schema-2))))))))
 
 (def check-schema (memo check-schema-1))
 
@@ -1393,24 +1448,6 @@
       (stash-anchor path true false a)
       (stash-anchor path true false da)))
       
-;;------------------------------------------------------------------------------
-
-(def draft->$schema
-  {"draft3"       "http://json-schema.org/draft-03/schema"
-   "draft4"       "http://json-schema.org/draft-04/schema"
-   "draft6"       "http://json-schema.org/draft-06/schema"
-   "draft7"       "http://json-schema.org/draft-07/schema"
-   "draft2019-09" "https://json-schema.org/draft/2019-09/schema"
-   "draft2020-12" "https://json-schema.org/draft/2020-12/schema"
-   "latest"       "https://json-schema.org/draft/2020-12/schema"
-   "draft-next"   "https://json-schema.org/draft/next/schema"})
-
-(def $schema->draft
-  (reduce-kv (fn [acc k v] (conj acc [v k])) {} (dissoc draft->$schema "latest")))
-
-(def $schema-uri->draft
-  (reduce-kv (fn [acc k v] (conj acc [(parse-uri k) v])) {} $schema->draft))
-
 ;;------------------------------------------------------------------------------
 
 ;; TODO: rename
