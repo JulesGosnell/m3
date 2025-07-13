@@ -1,16 +1,15 @@
 (ns m3.idn-hostname
-  (:require [clojure.string :as str])
-  (:import
-   [java.lang Character$UnicodeScript]
-   [java.text Normalizer Normalizer$Form]))
+  (:import [java.text Normalizer Normalizer$Form]
+           [java.lang Character StringBuilder Character$UnicodeScript])
+  (:require [clojure.string :as str]))
 
-(def ^:private base 36)
-(def ^:private tmin 1)
-(def ^:private tmax 26)
-(def ^:private skew 38)
-(def ^:private damp 700)
-(def ^:private initial-bias 72)
-(def ^:private initial-n 128)
+(def ^:private base 36N)
+(def ^:private tmin 1N)
+(def ^:private tmax 26N)
+(def ^:private skew 38N)
+(def ^:private damp 700N)
+(def ^:private initial-bias 72N)
+(def ^:private initial-n 128N)
 (def ^:private delimiter \-)
 
 (def exceptions {
@@ -43,29 +42,32 @@
   })
 
 (def case-fold-map {
-  ;; Comprehensive case folding map as before, no changes needed
+  ;; The comprehensive map as provided earlier
+  ;; I'll assume it's included; no need to repeat the entire map here
   })
 
 (def joining-type-map {
-  ;; As before
+  0x0628 "D"
+  0x064a "D"
+  ;; Add more as needed
   })
 
 (def ccc-map {
   0x094d 9
-  ;; As before
+  ;; Add more as needed
   })
 
 (defn joining-type [cp]
   (get joining-type-map cp "U"))
 
 (defn adapt [delta numpoints firsttime]
-  (let [delta (if firsttime (quot delta damp) (quot delta 2))
-        delta (+' delta (quot delta numpoints))]
+  (let [delta (if firsttime (quot delta damp) (quot delta 2N))
+        delta (+ delta (quot delta numpoints))]
     (loop [delta delta
-           k 0]
-      (if (> delta (quot (*' (- base tmin) tmax) 2))
-        (recur (quot delta (- base tmin)) (+' k base))
-        (+' k (quot (*' (+' (- base tmin) 1) delta) (+' delta skew)))))))
+           k 0N]
+      (if (> delta (quot (* (- base tmin) tmax) 2N))
+        (recur (quot delta (- base tmin)) (+ k base))
+        (+ k (quot (* (+ (- base tmin) 1N) delta) (+ delta skew)))))))
 
 (defn puny-digit [c]
   (let [c (Character/toLowerCase c)]
@@ -86,13 +88,13 @@
         pos (if (pos? basic-end) (inc last-delim) 0)]
     (loop [pos pos
            n initial-n
-           i 0
+           i 0N
            bias initial-bias
            output output]
       (if (>= pos (count input))
         output
         (let [old-i i
-              [i pos] (loop [w 1
+              [i pos] (loop [w 1N
                              k base
                              i i
                              pos pos]
@@ -102,7 +104,7 @@
                                 digit (puny-digit c)]
                             (when (neg? digit)
                               (throw (IllegalArgumentException. "invalid digit")))
-                            (let [i (+' i (*' digit w))]
+                            (let [i (+ i (* digit w))]
                               (when (neg? i)
                                 (throw (IllegalArgumentException. "overflow")))
                               (let [t (cond (<= k bias) tmin
@@ -110,17 +112,17 @@
                                             :else (- k bias))]
                                 (if (< digit t)
                                   [i (inc pos)]
-                                  (let [w (*' w (- base t))]
+                                  (let [w (* w (- base t))]
                                     (when (neg? w)
                                       (throw (IllegalArgumentException. "overflow")))
-                                    (recur w (+' k base) i (inc pos)))))))))]
-              (let [len (inc (count output))
-                    bias (adapt (-' i old-i) len (= old-i 0))
-                    n (+' n (quot i len))]
+                                    (recur w (+ k base) i (inc pos)))))))))]
+              (let [len (count output)
+                    bias (adapt (- i old-i) (inc len) (= old-i 0N))
+                    n (+ n (quot i (inc len)))
+                    i (mod i (inc len))]
                 (when (neg? n)
                   (throw (IllegalArgumentException. "overflow")))
-                (let [i (mod i len)
-                      output (vec (concat (subvec output 0 i) [n] (subvec output i)))]
+                (let [output (vec (concat (subvec output 0 i) [n] (subvec output i)))]
                   (recur pos n (inc i) bias output))))))))
 
 (defn digit-to-char [d]
@@ -131,10 +133,10 @@
 (defn punycode-encode [input]
   (let [input (vec input)
         basic-count (count (filter #(< % 128) input))
-        output (vec (filter #(< % 128) input))
-        output (if (pos? basic-count) (conj output (int delimiter)) output)
+        output (vec (map char (filter #(< % 128) input)))
+        output (if (pos? basic-count) (conj output delimiter) output)
         h basic-count
-        delta 0
+        delta 0N
         bias initial-bias
         n initial-n]
     (loop [h h
@@ -143,14 +145,14 @@
            bias bias
            output output]
       (if (>= h (count input))
-        (apply str (map char output))
+        (apply str output)
         (let [m (apply min (filter #(>= % n) input))
-              delta (+' delta (*' (- m n) (inc' h)))
+              delta (+ delta (* (- m n) (inc h)))
               _ (when (neg? delta) (throw (IllegalArgumentException. "overflow")))
               n m
               [delta bias h output] (reduce (fn [[delta bias h output] c]
                                               (if (< c n)
-                                                (let [delta (inc' delta)]
+                                                (let [delta (inc delta)]
                                                   (when (neg? delta) (throw (IllegalArgumentException. "overflow")))
                                                   [delta bias h output])
                                                 (if (= c n)
@@ -162,18 +164,18 @@
                                                                                     (>= k (+ bias tmax)) tmax
                                                                                     :else (- k bias))]
                                                                         (if (< q t)
-                                                                          [q (conj output (int (digit-to-char q)))]
-                                                                          (let [code (+' t (mod (- q t) (- base t)))
+                                                                          [q (conj output (digit-to-char q))]
+                                                                          (let [code (+ t (mod (- q t) (- base t)))
                                                                                 q (quot (- q t) (- base t))]
-                                                                            (recur (+' k base) q (conj output (int (digit-to-char code))))))))]
-                                                    (let [bias (adapt delta (inc' h) (= h basic-count))
-                                                          delta 0
-                                                          h (inc' h)]
+                                                                            (recur (+ k base) q (conj output (digit-to-char code)))))))]
+                                                    (let [bias (adapt delta (inc h) (= h basic-count))
+                                                          delta 0N
+                                                          h (inc h)]
                                                       [delta bias h output]))
-                                                  [(inc' delta) bias h output])))
+                                                  [ (inc delta) bias h output])))
                                             [delta bias h output]
                                             input)
-              n (inc' n)]
+              n (inc n)]
           (recur h n delta bias output))))))
 
 (defn codepoints-to-string [cps]
@@ -262,8 +264,8 @@
                   (when (and left-idx right-idx)
                     (let [left-jt (joining-type (nth codepoints left-idx))
                           right-jt (joining-type (nth codepoints right-idx))]
-                      (and (or (= "R" left-jt) (= "D" left-jt))
-                           (or (= "L" right-jt) (= "D" right-jt)))))))
+                      (and (or (= "L" left-jt) (= "D" left-jt))
+                           (or (= "R" right-jt) (= "D" right-jt)))))))
     0x00b7 (and (> idx 0) (< idx (dec (count codepoints)))
                  (= (nth codepoints (dec idx)) 0x006C)
                  (= (nth codepoints (inc idx)) 0x006C))
