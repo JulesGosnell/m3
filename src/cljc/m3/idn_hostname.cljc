@@ -313,12 +313,21 @@
 
 (defn validate-label [label]
   (and (not (str/blank? label))
-       (<= (count label) 63)
-       (not (str/starts-with? label "-"))
-       (not (str/ends-with? label "-"))
-       (if (str/starts-with? (str/lower-case label) "xn--")
-         (validate-a-label label)
-         (validate-u-label label))))
+       (let [is-a (str/starts-with? (str/lower-case label) "xn--")]
+         (if is-a
+           (and (<= (count label) 63)
+                (not (str/starts-with? label "-"))
+                (not (str/ends-with? label "-"))
+                (validate-a-label label))
+           (try
+             (let [codepoints (string-to-codepoints label)
+                   puny (punycode-encode codepoints)
+                   a-label (str "xn--" puny)]
+               (and (<= (count a-label) 63)
+                    (not (str/starts-with? label "-"))
+                    (not (str/ends-with? label "-"))
+                    (validate-u-label label)))
+             (catch Exception _ false))))))
 
 (defn json-idn-hostname? [data]
   (if-not (string? data)

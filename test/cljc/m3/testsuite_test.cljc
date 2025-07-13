@@ -123,6 +123,8 @@
     ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches second anyOf, which has a real schema in it"]
     ["vocabulary.json" "schema that uses custom metaschema with with no validation vocabulary" "no validation: invalid number, but it still validates"]
 
+    ;;["idn-hostname.json" "validation of internationalized host names" "valid Chinese Punycode"]
+
     ["idn-hostname.json" "validation of internationalized host names" "valid Chinese Punycode"]
     
     })
