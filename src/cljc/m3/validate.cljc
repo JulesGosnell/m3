@@ -27,6 +27,7 @@
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.ref :refer [meld resolve-uri try-path]]
    [m3.pattern :refer [email-pattern ipv4-pattern ipv6-pattern hostname-pattern json-pointer-pattern relative-pointer-pattern uri-pattern uri-reference-pattern uri-template-pattern idn-email-pattern iri-pattern iri-reference-pattern uuid-pattern json-duration-pattern]]
+   [m3.idn-hostname :refer [json-idn-hostname?]]
    )
   #?(:clj
      (:import
@@ -328,11 +329,11 @@
 ;; I can't find a java, javascript, clojure or clojurescript library which comes close
 ;; writing my own seems like an unreasable amount of work just to pass this one part of the spec
 ;; wait for someone else to do it or AI to get good enough to generate the code....
-(defmethod check-format-2 "idn-hostname" [_format _c2 _p2 _m2]
+(defmethod check-format-2 "idn-hostname" [_format _c2 p2 m2]
   (memo
-   (fn [_c1 _p1 m1]
-     (when (string? m1)
-       nil))));NYI
+   (fn [_c1 p1 m1]
+     (when (and (string? m1) (not (json-idn-hostname? m1)))
+       [(make-error "format: not a valid duration:" p2 m2 p1 m1)]))))
 
 (defmethod check-format-2 "iri" [f c2 p2 m2]
   (check-pattern iri-pattern f c2 p2 m2))

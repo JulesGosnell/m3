@@ -78,7 +78,7 @@
 (def exclude-module?
   #{
     ;; difficult - see comment in validate.cljc
-    "idn-hostname.json"
+    ;;"idn-hostname.json"
     })
 
 (def exclude-test?
@@ -122,6 +122,10 @@
     ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches non-schema in third anyOf"]
     ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches second anyOf, which has a real schema in it"]
     ["vocabulary.json" "schema that uses custom metaschema with with no validation vocabulary" "no validation: invalid number, but it still validates"]
+
+    ["idn-hostname.json" "validation of internationalized host names" "valid Chinese Punycode"]
+    ["idn-hostname.json" "validation of internationalized host names" "single label with hyphen"]
+    
     })
 
 (defn load-schema [s]
