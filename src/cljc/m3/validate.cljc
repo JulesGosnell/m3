@@ -1393,7 +1393,7 @@
     (fn [c2 p2 {s "$schema" :as m2}]
       (delegate 
        (if-let [d (and s ($schema->draft s))]
-         (update c2 :draft (fn [old-d new-d] (when (not= old-d new-d) (log/infof "switching draft %s -> %s" old-d new-d)) new-d) d)
+         (update c2 :draft (fn [old-d new-d] (when (not= old-d new-d) (log/info (str "switching draft: " old-d " -> "  new-d))) new-d) d)
          c2)
        p2
        m2))))

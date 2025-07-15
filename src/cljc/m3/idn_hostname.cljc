@@ -17,7 +17,9 @@
 ;; a lot and I have tweaked some of the code slightly.
 
 (ns m3.idn-hostname
-  (:require [clojure.string :as str])
+  (:require
+   [clojure.string :as str]
+   #?(:cljs ["punycode/" :as punycode]))
   #?(:clj
      (:import
       [java.net IDN]
@@ -25,29 +27,86 @@
       [java.lang Character StringBuilder Character$UnicodeScript])))
 
 ;;------------------------------------------------------------------------------
+
+(defn trace [m f]
+  (fn [& args]
+    (let [result (apply f args)]
+      (prn "TRACE: (" m args ") -> " result)
+      result)))
+
+;;------------------------------------------------------------------------------
 ;; common platform
 
+;; TODO: share with validate
+#?(:cljs
+   (def Exception js/Error))
+
+(def code-point-at
+  (trace "CODE-POINT-AT"
+  #?(:clj (fn [s i] (Character/codePointAt s i))
+     :cljs (fn [s i] (.codePointAt s i)))))
+
+(def char-count
+  (trace "CHAR-COUNT"
+  #?(:clj (fn [cp] (Character/charCount cp))
+     :cljs (fn [cp] (if (> cp 0xffff) 2 1)))))
+
+(defn string-to-codepoints [s]
+  (let [result (transient [])]
+    (loop [i 0]
+      (if (< i (.length s))
+        (let [cp (code-point-at s i)]
+          (conj! result cp)
+          (recur (+ i (char-count cp))))
+        (persistent! result)))))
+
 (def to-ascii
+  (trace "TO-ASCII"
   #?(:clj (fn [label] (IDN/toASCII label))
-     :cljs (fn [label]
+     :cljs (trace "TO-ASCII"
+                  (fn [label]
              (let [low (str/lower-case label)]
                (if (re-matches #"[a-z0-9-]+" low)
                  low
-                 (str "xn--" (punycode-encode (string-to-codepoints low))))))))
+                 (str "xn--" (punycode/encode (string-to-codepoints low))))))))))
+
+(def string-builder
+  (trace "STRING-BUILDER"
+  #?(:clj (fn [] (StringBuilder.))
+     :cljs (fn [] ""))))
+
+(def string-builder-append-code-point
+  (trace "STRING-BUILDER-APPEND-CODE-POINT"
+  #?(:clj (fn [^StringBuilder sb cp] (.appendCodePoint sb cp))
+     :cljs (fn [acc cp] (str acc (js/String.fromCodePoint cp))))))
+
+(def string-builder-to-string
+  (trace "STRING-BUILDER-TO-STRING"
+  #?(:clj (fn [^StringBuilder sb] (.toString sb))
+     :cljs (fn [acc] acc))))
+
+(defn codepoints-to-string [cps]
+  (let [sb (string-builder)]
+    (doseq [cp cps]
+      (string-builder-append-code-point sb cp))
+    (string-builder-to-string sb)))
 
 (def to-unicode
+  (trace "TO-UNICODE"
   #?(:clj (fn [label] (IDN/toUnicode label))
      :cljs (fn [label]
              (let [low (str/lower-case label)]
-               (if (starts-with? low "xn--")
-                 (codepoints-to-string (punycode-decode (subs low 4)))
-                 label)))))
+               (if (str/starts-with? low "xn--")
+                 (codepoints-to-string (punycode/decode (subs low 4)))
+                 label))))))
 
 (def normalise-nfkc
+  (trace "NORMALISE-NFC"
   #?(:clj (fn [s] (Normalizer/normalize s Normalizer$Form/NFKC))
-     :cljs (fn [s] (.normalize s "NFKC"))))
+     :cljs (fn [s] (.normalize s "NFKC")))))
 
 (def unicode-script-of
+  (trace "UNICODE-SCRIPT-OF"
   #?(:clj (fn [cp] (keyword (.name (Character$UnicodeScript/of cp))))
      :cljs (fn [cp]
              (let [s (js/String.fromCodePoint cp)]
@@ -57,28 +116,7 @@
                  (.match s (js/RegExp "\\p{Sc=Hiragana}" "u")) :HIRAGANA
                  (.match s (js/RegExp "\\p{Sc=Katakana}" "u")) :KATAKANA
                  (.match s (js/RegExp "\\p{Sc=Han}" "u")) :HAN
-                 :else :UNKNOWN)))))
-
-
-(def string-builder
-  #?(:clj (fn [] (StringBuilder.))
-     :cljs (fn [] "")))
-
-(def string-builder-append-code-point
-  #?(:clj (fn [^StringBuilder sb cp] (.appendCodePoint sb cp))
-     :cljs (fn [acc cp] (str acc (js/String.fromCodePoint cp)))))
-
-(def string-builder-to-string
-  #?(:clj (fn [^StringBuilder sb] (.toString sb))
-     :cljs (fn [acc] acc)))
-
-(def code-point-at
-  #?(:clj (fn [s i] (Character/codePointAt s i))
-     :cljs (fn [s i] (.codePointAt s i))))
-
-(def char-count
-  #?(:clj (fn [cp] (Character/charCount cp))
-     :cljs (fn [cp] (if (> cp 0xffff) 2 1))))
+                 :else :UNKNOWN))))))
 
 (def CHARACTER_UPPERCASE_LETTER        1)
 (def CHARACTER_LOWERCASE_LETTER        2)
@@ -91,6 +129,7 @@
 (def CHARACTER_FORMAT                  16)
 
 (def get-char-type
+  (trace "GET-CHAR-TYPE"
   #?(:clj (fn [cp] (Character/getType cp))
      :cljs (fn [cp]
              (let [s (js/String.fromCodePoint cp)]
@@ -103,21 +142,24 @@
                  (.match s (js/RegExp "\\p{Mn}" "u")) CHARACTER_NON_SPACING_MARK
                  (.match s (js/RegExp "\\p{Me}" "u")) CHARACTER_ENCLOSING_MARK
                  (.match s (js/RegExp "\\p{Mc}" "u")) CHARACTER_COMBINING_SPACING_MARK
-                 :else 0)))))
+                 :else 0))))))
 
 (def is-defined
+  (trace "IS-DEFINED"
   #?(:clj (fn [cp] (Character/isDefined cp))
-     :cljs (fn [cp] (and (<= 0 cp 0x10ffff) (not= (get-char-type cp) 0)))))
+     :cljs (fn [cp] (and (<= 0 cp 0x10ffff) (not= (get-char-type cp) 0))))))
 
 (def to-lower-case
+  (trace "TO-LOWER-CASE"
   #?(:clj (fn [cp] (Character/toLowerCase cp))
-     :cljs (fn [cp] (.codePointAt (.toLowerCase (js/String.fromCodePoint cp)) 0))))
+     :cljs (fn [cp] (.codePointAt (.toLowerCase (js/String.fromCodePoint cp)) 0)))))
 
 (def is-whitespace
+  (trace "IS-WHITESPACE"
   #?(:clj (fn [cp] (Character/isWhitespace cp))
      :cljs (fn [cp]
              (let [s (js/String.fromCodePoint cp)]
-               (boolean (.match s (js/RegExp "\\s" "u")))))))
+               (boolean (.match s (js/RegExp "\\s" "u"))))))))
 
 ;;------------------------------------------------------------------------------
 
@@ -216,21 +258,6 @@
 (defn joining-type [cp]
   (get joining-type-map cp "U"))
 
-(defn string-to-codepoints [s]
-  (let [result (transient [])]
-    (loop [i 0]
-      (if (< i (.length s))
-        (let [cp (code-point-at s i)]
-          (conj! result cp)
-          (recur (+ i (char-count cp))))
-        (persistent! result)))))
-
-(defn codepoints-to-string [cps]
-  (let [sb (string-builder)]
-    (doseq [cp cps]
-      (string-builder-append-code-point sb cp))
-    (string-builder-to-string sb)))
-
 (defn noncharacter? [cp]
   (or (and (<= 0xfdd0 cp 0xfdef))
       (let [low (bit-and cp 0xffff)]
@@ -264,7 +291,7 @@
         (let [cp (code-point-at s i)
               folded (or (get case-fold-map cp) [(to-lower-case cp)])]
           (doseq [f folded]
-            (.appendCodePoint sb f))
+            (string-builder-append-code-point sb f))
           (recur (+ i (char-count cp))))
         (.toString sb)))))
 
@@ -355,7 +382,7 @@
                   (validate-u-label label)))
            (catch Exception _ false)))))
 
-(defn json-idn-hostname? [data]
+(def json-idn-hostname? (trace "JSON-IDN-HOSTNAME?" (fn [data]
   (if-not (string? data)
     true
     (try
@@ -366,4 +393,4 @@
              (not (str/includes? s ".."))
              (every? validate-label (str/split s #"\."))))
       (catch Exception _
-        false))))
+        false))))))
