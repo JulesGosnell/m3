@@ -231,12 +231,7 @@
 
 ;;------------------------------------------------------------------------------
 
-(defmulti check-format-2 (fn [format _c2 _p2 _m2] format))
-
-(defn check-format-keys [[format context p2 m2]]
-  [format context m2])
-
-(def check-format check-format-2)
+(defmulti check-format (fn [format _c2 _p2 _m2] format))
 
 (defn match [format pattern _c2 p2 m2 p1 m1]
   (when-not (re-find pattern m1)
@@ -258,61 +253,61 @@
 
 ;; standard formats
 
-(defmethod check-format-2 "email" [f c2 p2 m2]
+(defmethod check-format "email" [f c2 p2 m2]
   (check-pattern email-pattern f c2 p2 m2))
 
-(defmethod check-format-2 "ipv4" [f c2 p2 m2]
+(defmethod check-format "ipv4" [f c2 p2 m2]
   (check-pattern ipv4-pattern f c2 p2 m2))
 
-(defmethod check-format-2 "ipv6" [f c2 p2 m2]
+(defmethod check-format "ipv6" [f c2 p2 m2]
   (check-pattern ipv6-pattern f c2 p2 m2))
 
-(defmethod check-format-2 "hostname" [f c2 p2 m2]
+(defmethod check-format "hostname" [f c2 p2 m2]
   (check-pattern hostname-pattern f c2 p2 m2))
 
-(defmethod check-format-2 "date-time" [f c2 p2 m2]
+(defmethod check-format "date-time" [f c2 p2 m2]
   (check-parse offset-date-time-parse f c2 p2 m2))
 
-(defmethod check-format-2 "date" [f c2 p2 m2]
+(defmethod check-format "date" [f c2 p2 m2]
   (check-parse local-date-parse f c2 p2 m2))
 
-(defmethod check-format-2 "time" [f c2 p2 m2]
+(defmethod check-format "time" [f c2 p2 m2]
   (check-parse offset-time-parse f c2 p2 m2))
 
-(defmethod check-format-2 "json-pointer" [f c2 p2 m2]
+(defmethod check-format "json-pointer" [f c2 p2 m2]
   (check-pattern json-pointer-pattern f c2 p2 m2))
 
-(defmethod check-format-2 "relative-json-pointer" [f c2 p2 m2]
+(defmethod check-format "relative-json-pointer" [f c2 p2 m2]
   (check-pattern relative-pointer-pattern f c2 p2 m2))
 
-(defmethod check-format-2 "uri" [f c2 p2 m2]
+(defmethod check-format "uri" [f c2 p2 m2]
   (check-pattern uri-pattern f c2 p2 m2))
 
-(defmethod check-format-2 "uri-reference" [f c2 p2 m2]
+(defmethod check-format "uri-reference" [f c2 p2 m2]
   (check-pattern uri-reference-pattern f c2 p2 m2))
 
-(defmethod check-format-2 "uri-template" [f c2 p2 m2]
+(defmethod check-format "uri-template" [f c2 p2 m2]
   (check-pattern uri-template-pattern f c2 p2 m2))
 
-(defmethod check-format-2 "idn-email" [f c2 p2 m2]
+(defmethod check-format "idn-email" [f c2 p2 m2]
   (check-pattern idn-email-pattern f c2 p2 m2))
 
 ;; this is really difficult.
 ;; I can't find a java, javascript, clojure or clojurescript library which comes close
 ;; writing my own seems like an unreasable amount of work just to pass this one part of the spec
 ;; wait for someone else to do it or AI to get good enough to generate the code....
-(defmethod check-format-2 "idn-hostname" [_format _c2 p2 m2]
+(defmethod check-format "idn-hostname" [_format _c2 p2 m2]
   (fn [_c1 p1 m1]
     (when (and (string? m1) (not (json-idn-hostname? m1)))
       [(make-error "format: not a valid duration:" p2 m2 p1 m1)])))
 
-(defmethod check-format-2 "iri" [f c2 p2 m2]
+(defmethod check-format "iri" [f c2 p2 m2]
   (check-pattern iri-pattern f c2 p2 m2))
 
-(defmethod check-format-2 "iri-reference" [f c2 p2 m2]
+(defmethod check-format "iri-reference" [f c2 p2 m2]
   (check-pattern iri-reference-pattern f c2 p2 m2))
 
-(defmethod check-format-2 "uuid" [f c2 p2 m2]
+(defmethod check-format "uuid" [f c2 p2 m2]
   (check-pattern uuid-pattern f c2 p2 m2))
 
 (defn json-duration? [s]
@@ -323,18 +318,18 @@
        (and (empty? ymd) (empty? thms) (empty? w))
        (= "T" thms))))))
 
-(defmethod check-format-2 "duration" [_format _c2 p2 m2]
+(defmethod check-format "duration" [_format _c2 p2 m2]
   (fn [_c1 p1 m1]
     (when (and (string? m1) (not (json-duration? m1)))
       [(make-error "format: not a valid duration:" p2 m2 p1 m1)])))
 
-(defmethod check-format-2 "regex" [f c2 p2 m2]
+(defmethod check-format "regex" [f c2 p2 m2]
   (check-parse ecma-pattern f c2 p2 m2))
 
-(defmethod check-format-2 "unknown" [_format _c2 _p2 _m2]
+(defmethod check-format "unknown" [_format _c2 _p2 _m2]
   (constantly nil))
 
-(defmethod check-format-2 :default [f _c2 _p2 _m2]
+(defmethod check-format :default [f _c2 _p2 _m2]
   (fn [_c1 _p1 _m1]
     (log/warn "format: not recognised:" (pr-str f))
     nil))
@@ -343,41 +338,39 @@
 
 (declare check-schema)
 
-(defmulti check-type-2 (fn [type _c2 _p2 _m2]
-                       ;;(println "check-type-2" type document)
+(defmulti check-type (fn [type _c2 _p2 _m2]
+                       ;;(println "check-type" type document)
                          type))
-
-(def check-type  check-type-2)
 
 (defn check-type-3 [p? t _c2 p2 m2]
   (fn [c1 p1 m1]
     [c1 (when-not (p? m1) [(make-error (str "type: not a[n] " t) p2 m2 p1 m1)])]))
 
-(defmethod check-type-2 "object" [t c2 p2 m2]
+(defmethod check-type "object" [t c2 p2 m2]
   (check-type-3 map? t c2 p2 m2))
 
-(defmethod check-type-2 "array" [t c2 p2 m2]
+(defmethod check-type "array" [t c2 p2 m2]
   (check-type-3 vector? t c2 p2 m2))
 
-(defmethod check-type-2 "string" [t c2 p2 m2]
+(defmethod check-type "string" [t c2 p2 m2]
   (check-type-3 string? t c2 p2 m2))
 
-(defmethod check-type-2 "integer" [t {si? :strict-integer? :as c2} p2 m2]
+(defmethod check-type "integer" [t {si? :strict-integer? :as c2} p2 m2]
   (check-type-3 (if si? integer? json-integer?) t c2 p2 m2))
 
-(defmethod check-type-2 "number" [t c2 p2 m2]
+(defmethod check-type "number" [t c2 p2 m2]
   (check-type-3 json-number? t c2 p2 m2))
 
-(defmethod check-type-2 "boolean" [t c2 p2 m2]
+(defmethod check-type "boolean" [t c2 p2 m2]
   (check-type-3 boolean? t c2 p2 m2))
 
-(defmethod check-type-2 "null" [t c2 p2 m2]
+(defmethod check-type "null" [t c2 p2 m2]
   (check-type-3 nil? t c2 p2 m2))
 
-(defmethod check-type-2 "any" [_t _c2 _p2 _m2]
+(defmethod check-type "any" [_t _c2 _p2 _m2]
   (fn [c1 _p1 _m1] [c1 nil]))
 
-(defmethod check-type-2 :default [ts c2 p2 m2]
+(defmethod check-type :default [ts c2 p2 m2]
   (if (json-array? ts) ;; it could be an array of elements that are:
     ;; - either a string type
     ;; - a schema
@@ -405,23 +398,22 @@
 
 ;;------------------------------------------------------------------------------
 
-(defmulti check-property-2 (fn [property _c2 _p2 _m2 _v2s]
-                           ;;(println "check-property-2:" p2 p1)
+(defmulti check-property (fn [property _c2 _p2 _m2 _v2s]
+                           ;;(println "check-property:" p2 p1)
                            property))
 
-(def check-property  check-property-2)
 ;; standard common properties
 
-(defmethod check-property-2 "type" [_property c2 p2 m2 [v2]]
+(defmethod check-property "type" [_property c2 p2 m2 [v2]]
   (check-type v2 c2 p2 m2))
 
-(defmethod check-property-2 "const" [_property _c2 p2 m2 [v2]]
+(defmethod check-property "const" [_property _c2 p2 m2 [v2]]
   (fn [c1 p1 m1]
     [c1
      (when (not (json-= v2 m1))
        [(make-error (format "const: document does not contain schema value: %s != %s" m1 v2) p2 m2 p1 m1)])]))
 
-(defmethod check-property-2 "enum" [_property _c2 p2 m2 [v2]]
+(defmethod check-property "enum" [_property _c2 p2 m2 [v2]]
   (fn [c1 p1 m1]
      ;; we could check that the m2's enum contained any const or default
      ;; value here - but thus should be done somehow during validation of
@@ -432,30 +424,30 @@
      (when-not (seq-contains? v2 json-= m1)
        [(make-error "enum: does not contain value" p2 m2 p1 m1)])]))
 
-(defmethod check-property-2 "$comment"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property-2 "id"               [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property-2 "$id"              [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property-2 "description"      [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property-2 "title"            [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property-2 "readOnly"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property-2 "writeOnly"        [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property "$comment"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property "id"               [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property "$id"              [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property "description"      [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property "title"            [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property "readOnly"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property "writeOnly"        [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
 
-(defmethod check-property-2 "default"          [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property-2 "$schema"          [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil])) ;; TODO: switch drafts in context...
-(defmethod check-property-2 "examples"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property-2 "$anchor"          [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property-2 "$recursiveAnchor" [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property-2 "$vocabulary"      [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property "default"          [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property "$schema"          [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil])) ;; TODO: switch drafts in context...
+(defmethod check-property "examples"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property "$anchor"          [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property "$recursiveAnchor" [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property "$vocabulary"      [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
 
 ;; NYI
-(defmethod check-property-2 "$dynamicAnchor"   [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property "$dynamicAnchor"   [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
 
 ;; TODO: issue a warning somehow
-(defmethod check-property-2 "deprecated"  [_property _c2 _p2 _m2 _v2s] (fn [_c1 _p1 _m1])) ;; TODO: issue a warning or error ?
+(defmethod check-property "deprecated"  [_property _c2 _p2 _m2 _v2s] (fn [_c1 _p1 _m1])) ;; TODO: issue a warning or error ?
 
 ;; standard number properties
 
-(defmethod check-property-2 "minimum" [_property {d :draft} p2 m2 [v2]]
+(defmethod check-property "minimum" [_property {d :draft} p2 m2 [v2]]
   (case d
     ("draft3" "draft4")
     (let [e? (m2 "exclusiveMinimum")
@@ -476,7 +468,7 @@
          []
          [(make-error "minimum: value to low" p2 m2 p1 m1)])])))
 
-(defmethod check-property-2 "exclusiveMinimum" [_property {d :draft} p2 {m "minimum" :as m2} [v2]]
+(defmethod check-property "exclusiveMinimum" [_property {d :draft} p2 {m "minimum" :as m2} [v2]]
   (case d
     ("draft3" "draft4")
     (fn [c1 _p1 _m1]
@@ -491,7 +483,7 @@
          []
          [(make-error "minimum: value to low" p2 m2 p1 m1)])])))
 
-(defmethod check-property-2 "maximum" [_property {d :draft} p2 m2 [v2]]
+(defmethod check-property "maximum" [_property {d :draft} p2 m2 [v2]]
   (case d
     ("draft3" "draft4")
     (let [e? (m2 "exclusiveMaximum")
@@ -512,7 +504,7 @@
          []
          [(make-error "maximum: value too high" p2 m2 p1 m1)])])))
 
-(defmethod check-property-2 "exclusiveMaximum" [_property {d :draft} p2 {m "maximum" :as m2} [v2]]
+(defmethod check-property "exclusiveMaximum" [_property {d :draft} p2 {m "maximum" :as m2} [v2]]
   (case d
     ("draft3" "draft4")
     (fn [c1 _p1 _m1]
@@ -527,7 +519,7 @@
          []
          [(make-error "maximum: value too high" p2 m2 p1 m1)])])))
 
-(defmethod check-property-2 "multipleOf" [_property _c2 p2 m2 [v2]]
+(defmethod check-property "multipleOf" [_property _c2 p2 m2 [v2]]
   (let [v2-bd (bigdec v2)]
     (fn [c1 p1 m1]
       [c1
@@ -556,7 +548,7 @@
       (if (<= 0xD800 (int (char-code-at s i)) 0xDBFF) (+ i 2) (inc i))
       (inc acc)))))
 
-(defmethod check-property-2 "minLength" [_property _c2 p2 m2 [v2]]
+(defmethod check-property "minLength" [_property _c2 p2 m2 [v2]]
   (let [ml2 (quot v2 2)]
     (fn [c1 p1 m1]
       [c1
@@ -567,7 +559,7 @@
                (< (json-length m1) v2)))
          [(make-error "minLength: string too short" p2 m2 p1 m1)])])))
 
-(defmethod check-property-2 "maxLength" [_property _c2 p2 m2 [v2]]
+(defmethod check-property "maxLength" [_property _c2 p2 m2 [v2]]
   (let [ml2 (* v2 2)]
     (fn [c1 p1 m1]
       [c1
@@ -578,7 +570,7 @@
                (> (json-length m1) v2)))
          [(make-error "maxLength: string too long" p2 m2 p1 m1)])])))
 
-(defmethod check-property-2 "pattern" [_property c2 p2 m2 [v2]]
+(defmethod check-property "pattern" [_property c2 p2 m2 [v2]]
   (if (starts-with? v2 "$format:")
     ;; N.B.
     ;; this is an extension to allow patternProperties to
@@ -614,7 +606,7 @@
    "application/json" json-decode
    })
 
-(defmethod check-property-2 "contentEncoding" [_property {d :draft} p2 m2 [v2]]
+(defmethod check-property "contentEncoding" [_property {d :draft} p2 m2 [v2]]
   (let [strict? (#{"draft7"} d) ;; TODO: check a context flag aswell
         ce-decoder (ce->decoder v2)
         pp2 (butlast p2)]
@@ -636,7 +628,7 @@
             [c1 es]))
         [old-m1 nil]))))
 
-(defmethod check-property-2 "contentMediaType" [_property {d :draft} p2 m2 [v2]]
+(defmethod check-property "contentMediaType" [_property {d :draft} p2 m2 [v2]]
   (let [strict? (#{"draft7"} d) ;; TODO: check a context flag aswell
         cmt v2
         cmt-decoder (cmt->decoder cmt)
@@ -660,7 +652,7 @@
               [c1 es]))
           [old-m1 nil])))))
 
-(defmethod check-property-2 "contentSchema" [_property {d :draft :as c2} p2 {cmt "contentMediaType"} [v2]]
+(defmethod check-property "contentSchema" [_property {d :draft :as c2} p2 {cmt "contentMediaType"} [v2]]
   (let [strict? (#{"draft7"} d) ;; TODO: check a context flag aswell
         checker (check-schema c2 p2 v2)
         pp2 (butlast p2)]
@@ -677,14 +669,14 @@
            (catch Exception e
              (:errors (ex-data e))))]))))
 
-(defmethod check-property-2 "format" [_property {strict? :strict-format? cfs :check-format :or {cfs {}} :as c2} p2 m2 [v2]]
+(defmethod check-property "format" [_property {strict? :strict-format? cfs :check-format :or {cfs {}} :as c2} p2 m2 [v2]]
   (let [f (if strict?
             (fn [f2] (fn [c p m] [c (f2 c p m)]))
             (fn [f2] (fn [c p m] (when-let [[{m :message}] (f2 c p m)] [c (log/warn m)]))))]
     ;; we do this here so that user may override default format checkers...
     (f ((or (cfs v2) check-format) v2 c2 p2 m2))))
 
-(defmethod check-property-2 "dependencies" [_property {d :draft :as c2} p2 m2 [v2]]
+(defmethod check-property "dependencies" [_property {d :draft :as c2} p2 m2 [v2]]
   (case d
     ("draft2019-09" "draft2020-12" "draft2021-12" "draft-next")
     ;; this keyword no longer exists - it was split into "dependentRequired" and "dependentSchemas"...
@@ -726,7 +718,7 @@
         [c1 []]))))
 
 ;; do same for dependencies
-(defmethod check-property-2 "dependentSchemas" [_property {d :draft :as c2} p2 m2 [v2]]
+(defmethod check-property "dependentSchemas" [_property {d :draft :as c2} p2 m2 [v2]]
   (case d
     ("draft3" "draft4" "draft6" "draft7")
     ;; this keyword didn't exist - it arose from the splitting of "dependencies'
@@ -758,7 +750,7 @@
                [(make-error ["dependentSchemas: missing properties (at least):" missing] p2 m2 p1 m1)])])
           [c1 nil])))))
 
-(defmethod check-property-2 "propertyDependencies" [_property c2 p2 _m2 [v2]]
+(defmethod check-property "propertyDependencies" [_property c2 p2 _m2 [v2]]
   (let [checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] (check-schema c2 p2 s)]) vs)) v2))
         ks (keys v2)]
 
@@ -776,7 +768,7 @@
         [c1 []]))))
 
 ;; TODO: share more code with dependencies
-(defmethod check-property-2 "dependentRequired" [_property {d :draft} p2 m2 [v2]]
+(defmethod check-property "dependentRequired" [_property {d :draft} p2 m2 [v2]]
   (case d
     ("draft3" "draft4" "draft6" "draft7")
     (fn [c1 _p1 _m1]
@@ -809,7 +801,7 @@
 
 ;;------------------------------------------------------------------------------
 
-(defmethod check-property-2 "if" [_property c2 p2 _m2 [v2]]
+(defmethod check-property "if" [_property c2 p2 _m2 [v2]]
   (let [checker (check-schema c2 p2 v2)
         pp2 (butlast p2)]
 
@@ -818,7 +810,7 @@
             success? (empty? es)]
         [(update (if success? new-c1 old-c1) :if assoc pp2 success?) []]))))
 
-(defmethod check-property-2 "then" [_property c2 p2 _m2 [v2]]
+(defmethod check-property "then" [_property c2 p2 _m2 [v2]]
   (let [checker (check-schema c2 p2 v2)
         pp2 (butlast p2)]
 
@@ -827,7 +819,7 @@
         (checker c1 p1 m1)
         [c1 []]))))
 
-(defmethod check-property-2 "else" [_property c2 p2 _m2 [v2]]
+(defmethod check-property "else" [_property c2 p2 _m2 [v2]]
   (let [checker (check-schema c2 p2 v2)
         pp2 (butlast p2)]
 
@@ -836,11 +828,11 @@
         (checker c1 p1 m1)
         [c1 []]))))
 
-(defmethod check-property-2 "definitions" [_property c2 p2 _m2 [v2]]
+(defmethod check-property "definitions" [_property c2 p2 _m2 [v2]]
   (mapv (fn [[k v]] (check-schema c2 (conj p2 k) v)) v2)
   (fn [c1 _p1 _m1] [c1 nil]))
 
-(defmethod check-property-2 "$defs" [_property c2 p2 _m2 [v2]]
+(defmethod check-property "$defs" [_property c2 p2 _m2 [v2]]
   (mapv (fn [[k v]] (check-schema c2 (conj p2 k) v)) v2)
   (fn [c1 _p1 _m1] [c1 nil]))
 
@@ -862,7 +854,7 @@
                (update :evaluated update p1 into-set ks)))
          (make-error-on-failure message p2 m2 p1 m1 es)]))))
 
-(defmethod check-property-2 "properties" [_property c2 p2 m2 [ps]]
+(defmethod check-property "properties" [_property c2 p2 m2 [ps]]
   (let [k-and-css (mapv (fn [[k v]] [k (check-schema c2 (conj p2 k) v)]) ps)
         cp (check-properties c2 p2 m2)]
 
@@ -874,7 +866,7 @@
 
 ;; what is opposite of "additional" - "matched" - used by spec to refer to properties matched by "properties" or "patternProperties"
 
-(defmethod check-property-2 "patternProperties" [_property c2 p2 m2 [pps]]
+(defmethod check-property "patternProperties" [_property c2 p2 m2 [pps]]
   (let [cp-and-pattern-and-ks (mapv (fn [[k v]] [(check-schema c2 (conj p2 k) v) (ecma-pattern k) k]) pps)
         cp (check-properties c2 p2 m2)]
 
@@ -885,7 +877,7 @@
         [c1 []]))))
 
 
-(defmethod check-property-2 "additionalProperties" [_property c2 p2 m2 [v2]]
+(defmethod check-property "additionalProperties" [_property c2 p2 m2 [v2]]
   (let [cs (check-schema c2 p2 v2)
         pp2 (butlast p2)
         cp (check-properties c2 p2 m2)]
@@ -898,7 +890,7 @@
           (cp c1 p1 m1 p-and-css "additionalProperties: at least one property did not conform to schema"))
         [c1 []]))))
 
-(defmethod check-property-2 "unevaluatedProperties" [_property c2 p2 m2 [v2]]
+(defmethod check-property "unevaluatedProperties" [_property c2 p2 m2 [v2]]
   (let [cs (check-schema c2 p2 v2)
         cp (check-properties c2 p2 m2)]
 
@@ -910,7 +902,7 @@
           (cp c1 p1 m1 p-and-css "unevaluatedProperties: at least one property did not conform to schema"))
         [c1 []]))))
 
-(defmethod check-property-2 "propertyNames" [_property c2 p2 m2 [v2]]
+(defmethod check-property "propertyNames" [_property c2 p2 m2 [v2]]
 
   (fn [c1 p1 m1]
     [c1
@@ -925,7 +917,7 @@
          []
          m1)))]))
 
-(defmethod check-property-2 "required" [_property _c2 p2 m2 [v2]]
+(defmethod check-property "required" [_property _c2 p2 m2 [v2]]
 
   (fn [c1 p1 m1]
     [c1
@@ -933,7 +925,7 @@
        (when-let [missing (seq (reduce (fn [acc k] (if (contains? m1 k) acc (conj acc k))) [] v2))]
          [(make-error ["required: missing properties (at least):" missing] p2 m2 p1 m1)]))]))
 
-(defmethod check-property-2 "minProperties" [_property _c2 p2 m2 [v2]]
+(defmethod check-property "minProperties" [_property _c2 p2 m2 [v2]]
 
   (fn [c1 p1 m1]
     [c1
@@ -942,7 +934,7 @@
             (< (count m1) v2))
        [(make-error "minProperties: document contains too few properties" p2 m2 p1 m1)])]))
 
-(defmethod check-property-2 "maxProperties" [_property _c2 p2 m2 [v2]]
+(defmethod check-property "maxProperties" [_property _c2 p2 m2 [v2]]
 
   (fn [c1 p1 m1]
     [c1
@@ -977,7 +969,7 @@
         [c1 (make-error-on-failure message p2 m2 p1 m1 es)]))))
 
 ;; TODO: consider warning if using tuple form of items post draft2020-12
-(defmethod check-property-2 "prefixItems" [_property {d :draft :as c2}  p2 m2 [v2]]
+(defmethod check-property "prefixItems" [_property {d :draft :as c2}  p2 m2 [v2]]
   (case d
     ("draft3" "draft4" "draft6" "draft7" "draft2019-09")
     (fn [c1 p1 m1]
@@ -992,7 +984,7 @@
           (ci c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")
           [c1 []])))))
 
-(defmethod check-property-2 "items" [_property {d :draft :as c2}  p2 m2 [v2]]
+(defmethod check-property "items" [_property {d :draft :as c2}  p2 m2 [v2]]
   (let [n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
         [m css] (if (json-array? v2)
                   (do
@@ -1012,7 +1004,7 @@
           (ci c1 p1 items i-and-css (str "items: at least one item did not conform to " m "schema")))
         [c1 []]))))
 
-(defmethod check-property-2 "additionalItems" [_property c2 p2 {is "items" :as m2} [v2]]
+(defmethod check-property "additionalItems" [_property c2 p2 {is "items" :as m2} [v2]]
   (if (json-array? is) ;; additionalItems is only used when items is a tuple
     (let [cs (check-schema c2 p2 v2)
           ;;pp2 (butlast p2)
@@ -1032,7 +1024,7 @@
     (fn [c1 _p1 _m1]
       [c1 nil])))
     
-(defmethod check-property-2 "unevaluatedItems" [_property c2 p2 m2 [v2]]
+(defmethod check-property "unevaluatedItems" [_property c2 p2 m2 [v2]]
   (let [css (repeat (check-schema c2 p2 v2))
         ci (check-items c2 p2 m2)]
 
@@ -1044,7 +1036,7 @@
           (ci c1 p1 (map second index-and-items) i-and-css "unevaluatedItems: at least one item did not conform to schema"))
         [c1 []]))))
 
-(defmethod check-property-2 "contains" [_property c2 p2 {mn "minContains" :as m2} [v2]]
+(defmethod check-property "contains" [_property c2 p2 {mn "minContains" :as m2} [v2]]
   (let [cs (check-schema c2 p2 v2)
         base (if mn mn 1)
         ci (check-items c2 p2 v2)]
@@ -1059,7 +1051,7 @@
             [new-c1 nil]
             [c1 [(make-error "contains: document has no matches" p2 m2 p1 m1)]]))))))
 
-(defmethod check-property-2 "minContains" [_property _c2 p2 m2 [v2]]
+(defmethod check-property "minContains" [_property _c2 p2 m2 [v2]]
   (let [pp2 (butlast p2)]
 
     (fn [{matched :matched :as c1} p1 m1]
@@ -1073,7 +1065,7 @@
             [c1 [(make-error (str "minContains: document has too few matches - " n) p2 m2 p1 m1)]]))
         [c1 nil]))))
 
-(defmethod check-property-2 "maxContains" [_property _c2 p2 m2 [v2]]
+(defmethod check-property "maxContains" [_property _c2 p2 m2 [v2]]
   (let [pp2 (butlast p2)]
 
     (fn [{matched :matched :as c1} p1 m1]
@@ -1084,7 +1076,7 @@
             [c1 [(make-error (str "maxContains: document has too many matches - " n) p2 m2 p1 m1)]]))
         [c1 nil]))))
 
-(defmethod check-property-2 "minItems" [_property _c2 p2 m2 [v2]]
+(defmethod check-property "minItems" [_property _c2 p2 m2 [v2]]
 
   (fn [c1 p1 m1]
     [c1
@@ -1093,7 +1085,7 @@
             (< (count m1) v2))
        [(make-error "minItems: document contains too few items" p2 m2 p1 m1)])]))
 
-(defmethod check-property-2 "maxItems" [_property _c2 p2 m2 [v2]]
+(defmethod check-property "maxItems" [_property _c2 p2 m2 [v2]]
 
   (fn [c1 p1 m1]
     [c1
@@ -1105,7 +1097,7 @@
 ;; TODO: should be unique according to json equality
 ;; TODO: could be more efficient - only needs to find one duplicate before it bails..
 ;; TODO: use sorted-set-by and put items in 1 at a time until one is rejected then bail - reduced
-(defmethod check-property-2 "uniqueItems" [_property _c2 p2 m2 [v2]]
+(defmethod check-property "uniqueItems" [_property _c2 p2 m2 [v2]]
   (if v2
 
     (fn [c1 p1 m1]
@@ -1133,7 +1125,7 @@
         [c1
          (make-error-on message p2 m2 p1 m1 failed? es)]))))
 
-(defmethod check-property-2 "oneOf" [_property c2 p2 m2 [v2]]
+(defmethod check-property "oneOf" [_property c2 p2 m2 [v2]]
   (let [co (check-of c2 p2 m2 v2)
         m2-count (count v2)]
 
@@ -1143,7 +1135,7 @@
        "oneOf: document failed to conform to one and only one sub-schema"
        (fn [es] (not= 1 (- m2-count (count es))))))))
 
-(defmethod check-property-2 "anyOf" [_property c2 p2 m2 [v2]]
+(defmethod check-property "anyOf" [_property c2 p2 m2 [v2]]
   (let [co (check-of c2 p2 m2 v2)
         m2-count (count v2)]
 
@@ -1153,7 +1145,7 @@
        "anyOf: document failed to conform to at least one sub-schema"
        (fn [es] (not (< (count es) m2-count)))))))
          
-(defmethod check-property-2 "allOf" [_property c2 p2 m2 [v2]]
+(defmethod check-property "allOf" [_property c2 p2 m2 [v2]]
   (let [co (check-of c2 p2 m2 v2)]
 
     (fn [c1 p1 m1]
@@ -1163,7 +1155,7 @@
        seq))))
 
 ;; TODO: share check-of
-(defmethod check-property-2 "not" [_property c2 p2 m2 [v2]]
+(defmethod check-property "not" [_property c2 p2 m2 [v2]]
   (let [c (check-schema c2 p2 v2)]
 
     (fn [c1 p1 m1]
@@ -1178,7 +1170,7 @@
 
 ;; catch-all
 
-(defmethod check-property-2 :default [property {{checker property} :validators :as c2} p2 m2 v2s]
+(defmethod check-property :default [property {{checker property} :validators :as c2} p2 m2 v2s]
   (if checker
     (let [cp (checker property c2 p2 m2 v2s)]
 
@@ -1368,7 +1360,7 @@
             (delegate (or (stasher c2 p2 new-m2 a) c2) p2 new-m2))
           (delegate c2 p2 old-m2))))))
 
-(def check-schema-1
+(def check-schema
   ((make-ref-interceptor "$dynamicRef" expand-$dynamic-ref)
    ((make-ref-interceptor "$recursiveRef" expand-$recursive-ref)
     ((make-ref-interceptor "$ref" expand-$ref)
@@ -1377,8 +1369,6 @@
        ((make-anchor-interceptor :id-key stash-$id)
         ((make-draft-interceptor)
          check-schema-2))))))))
-
-(def check-schema  check-schema-1)
 
 ;;------------------------------------------------------------------------------
 ;; tmp solution - does not understand about schema structure
