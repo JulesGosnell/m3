@@ -31,7 +31,7 @@
 (defn trace [m f]
   (fn [& args]
     (let [result (apply f args)]
-      (prn "TRACE: (" m args ") -> " result)
+      ;;(prn "TRACE: (" m args ") -> " result)
       result)))
 
 ;;------------------------------------------------------------------------------
@@ -92,29 +92,28 @@
      :cljs (fn [cp] (.codePointAt (.toLowerCase (js/String.fromCodePoint cp)) 0)))))
 
 (defn case-fold [s]
-  (let [sb (string-builder)
-        len (count s)]
-    (loop [i 0]
-      (if (< i len)
-        (let [cp (code-point-at s i)
-              folded (or (get case-fold-map cp) [(to-lower-case cp)])]
-          (doseq [f folded]
-            (string-builder-append-code-point sb f))
-          (recur (+ i (char-count cp))))
-        (string-builder-to-string sb)))))
+  (let [cps (string-to-codepoints s)
+        sb (reduce (fn [acc cp]
+                     (reduce string-builder-append-code-point
+                             acc
+                             (or (get case-fold-map cp) [(to-lower-case cp)])))
+                   (string-builder)
+                   cps)]
+    (string-builder-to-string sb)))
 
 (def to-ascii
-  (trace "TO-ASCII"
-    #?(:clj (fn [label] (IDN/toASCII label))
-       :cljs (fn [label]
-               (let [low (str/lower-case label)
-                     nf1 (normalise-nfkc low)
-                     cf (case-fold nf1)
-                     mapped (normalise-nfkc cf)
-                     cps (string-to-codepoints mapped)]
-                 (if (re-matches #"[a-z0-9-]+" mapped)
-                   mapped
-                   (str "xn--" (punycode/encode cps))))))))
+  (trace
+   "TO-ASCII"
+   #?(:clj (fn [label] (IDN/toASCII label))
+      :cljs (fn [label]
+              (let [low (str/lower-case label)
+                    nf1 (normalise-nfkc low)
+                    cf (case-fold nf1)
+                    mapped (normalise-nfkc cf)]
+                (let [encoded (punycode/encode mapped)]
+                  (if (re-matches #"[a-z0-9-]+" mapped)
+                    mapped
+                    (str "xn--" encoded))))))))
 
 (defn codepoints-to-string [cps]
   (let [sb (string-builder)]
@@ -123,13 +122,14 @@
     (string-builder-to-string sb)))
 
 (def to-unicode
-  (trace "TO-UNICODE"
-    #?(:clj (fn [label] (IDN/toUnicode label))
-       :cljs (fn [label]
-               (let [low (str/lower-case label)]
-                 (if (str/starts-with? low "xn--")
-                   (codepoints-to-string (punycode/decode (subs low 4)))
-                   label))))))
+  (trace
+   "TO-UNICODE"
+   #?(:clj (fn [label] (IDN/toUnicode label))
+      :cljs (fn [label]
+              (let [low (str/lower-case label)]
+                (if (str/starts-with? low "xn--")
+                  (punycode/decode (subs low 4))
+                  label))))))
 
 (def unicode-script-of
   (trace "UNICODE-SCRIPT-OF"
@@ -158,23 +158,26 @@
 (def CHARACTER_FORMAT                  16)
 
 (def get-char-type
-  (trace "GET-CHAR-TYPE"
-  #?(:clj (fn [cp] (Character/getType cp))
-     :cljs (fn [cp]
-             (let [s (js/String.fromCodePoint cp)]
-               (cond
-                 (.match s (js/RegExp "\\p{Lu}" "u")) CHARACTER_UPPERCASE_LETTER
-                 (.match s (js/RegExp "\\p{Ll}" "u")) CHARACTER_LOWERCASE_LETTER
-                 (.match s (js/RegExp "\\p{Lo}" "u")) CHARACTER_OTHER_LETTER
-                 (.match s (js/RegExp "\\p{Nd}" "u")) CHARACTER_DECIMAL_DIGIT_NUMBER
-                 (.match s (js/RegExp "\\p{Lm}" "u")) CHARACTER_MODIFIER_LETTER
-                 (.match s (js/RegExp "\\p{Mn}" "u")) CHARACTER_NON_SPACING_MARK
-                 (.match s (js/RegExp "\\p{Me}" "u")) CHARACTER_ENCLOSING_MARK
-                 (.match s (js/RegExp "\\p{Mc}" "u")) CHARACTER_COMBINING_SPACING_MARK
-                 (.match s (js/RegExp "\\p{Pd}" "u")) 20  ; Dash punctuation (e.g., -)
-                 (.match s (js/RegExp "\\p{Po}" "u")) 24  ; Other punctuation (e.g., ·)
-                 (.match s (js/RegExp "\\p{Cf}" "u")) 16  ; Format (e.g., ZWNJ, ZWJ)
-                 :else 0))))))
+  (trace
+   "GET-CHAR-TYPE"
+   #?(:clj (fn [cp] (Character/getType cp))
+      :cljs (fn [cp]
+              (let [s (js/String.fromCodePoint cp)]
+                (cond
+                  (.match s (js/RegExp "\\p{Lu}" "u")) CHARACTER_UPPERCASE_LETTER
+                  (.match s (js/RegExp "\\p{Ll}" "u")) CHARACTER_LOWERCASE_LETTER
+                  (.match s (js/RegExp "\\p{Lo}" "u")) CHARACTER_OTHER_LETTER
+                  (.match s (js/RegExp "\\p{Nd}" "u")) CHARACTER_DECIMAL_DIGIT_NUMBER
+                  (.match s (js/RegExp "\\p{Lm}" "u")) CHARACTER_MODIFIER_LETTER
+                  (.match s (js/RegExp "\\p{Mn}" "u")) CHARACTER_NON_SPACING_MARK
+                  (.match s (js/RegExp "\\p{Me}" "u")) CHARACTER_ENCLOSING_MARK
+                  (.match s (js/RegExp "\\p{Mc}" "u")) CHARACTER_COMBINING_SPACING_MARK
+                  (.match s (js/RegExp "\\p{Pd}" "u")) 20  ; Dash punctuation (e.g., -)
+                  (.match s (js/RegExp "\\p{Po}" "u")) 24  ; Other punctuation (e.g., ·)
+                  (.match s (js/RegExp "\\p{Cf}" "u")) 16  ; Format (e.g., ZWNJ, ZWJ)
+                  (.match s (js/RegExp "\\p{Sk}" "u")) 4   ; Modifier symbol, treat similarly to Lm
+                  (.match s (js/RegExp "\\p{So}" "u")) 28  ; Other symbol
+                  :else 0))))))
 
 (def is-defined
   (trace "IS-DEFINED"

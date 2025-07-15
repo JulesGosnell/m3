@@ -122,29 +122,9 @@
     ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches second anyOf, which has a real schema in it"]
     ["vocabulary.json" "schema that uses custom metaschema with with no validation vocabulary" "no validation: invalid number, but it still validates"]
 
-    ;; ["idn-hostname.json" "validation of internationalized host names" "valid Chinese Punycode"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "ZERO WIDTH NON-JOINER preceded by Virama"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "single label"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "Extended Arabic-Indic digits not mixed with Arabic-Indic digits"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "MIDDLE DOT with surrounding 'l's"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "KATAKANA MIDDLE DOT with Han"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "single label with hyphen"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "KATAKANA MIDDLE DOT with Hiragana"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "ZERO WIDTH NON-JOINER not preceded by Virama but matches regexp"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "Hebrew GERSHAYIM preceded by Hebrew"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "Exceptions that are PVALID, right-to-left chars"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "a valid host name (example.test in Hangul)"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "single label with digits"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "KATAKANA MIDDLE DOT with Katakana"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "Hebrew GERESH preceded by Hebrew"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "Greek KERAIA followed by Greek"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "single label ending with digit"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "Exceptions that are PVALID, left-to-right chars"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "single label starting with digit"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "Arabic-Indic digits not mixed with Extended Arabic-Indic digits"]
-    ;; ["idn-hostname.json" "validation of internationalized host names" "ZERO WIDTH JOINER preceded by Virama"]
-
-    })
+    #?@(:cljs
+        [["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]
+         ["content.json" "validation of binary string-encoding" "an invalid base64 string (% is not a valid character)"]])})
 
 (defn load-schema [s]
   (json-decode (slurp (format "resources/schemas/%s/schema.json" s))))
@@ -209,26 +189,26 @@
 
 (def json-schema-test-suite-root "test-resources/JSON-Schema-Test-Suite/tests/")
 
-;; (deftest json-schema-test-suite
-;;   (doseq [[draft dir] [;;["draft3"       "draft3" "draft3/optional" "draft3/optional/format"] - exists but we are not setup for it yet - need to reclassify stuff out of draft4
-;;                        ["draft4"       "draft4"]
-;;                        ;;"draft5" - does not exist !
-;;                        ["draft6"       "draft6"]
-;;                        ["draft6"       "draft6/optional"]
-;;                        ["draft6"       "draft6/optional/format"]
-;;                        ["draft7"       "draft7"]
-;;                        ["draft7"       "draft7/optional"]
-;;                        ["draft7"       "draft7/optional/format"]
-;;                        ["draft2019-09" "draft2019-09"]
-;;                        ["draft2019-09" "draft2019-09/optional"]
-;;                        ["draft2019-09" "draft2019-09/optional/format"]
-;;                        ["draft2020-12" "draft2020-12"]
-;;                        ["draft2020-12" "draft2020-12/optional"]
-;;                        ["draft2020-12" "draft2020-12/optional/format"]
-;;                        ["draft-next"  "draft-next"]
-;;                        ["draft-next"  "draft-next/optional"]
-;;                        ["draft-next"  "draft-next/optional/format"]]]
-;;     (test-directory (file (str json-schema-test-suite-root dir)) draft)))
+(deftest json-schema-test-suite
+  (doseq [[draft dir] [;;["draft3"       "draft3" "draft3/optional" "draft3/optional/format"] - exists but we are not setup for it yet - need to reclassify stuff out of draft4
+                       ["draft4"       "draft4"]
+                       ;;"draft5" - does not exist !
+                       ["draft6"       "draft6"]
+                       ["draft6"       "draft6/optional"]
+                       ["draft6"       "draft6/optional/format"]
+                       ["draft7"       "draft7"]
+                       ["draft7"       "draft7/optional"]
+                       ["draft7"       "draft7/optional/format"]
+                       ["draft2019-09" "draft2019-09"]
+                       ["draft2019-09" "draft2019-09/optional"]
+                       ["draft2019-09" "draft2019-09/optional/format"]
+                       ["draft2020-12" "draft2020-12"]
+                       ["draft2020-12" "draft2020-12/optional"]
+                       ["draft2020-12" "draft2020-12/optional/format"]
+                       ["draft-next"  "draft-next"]
+                       ["draft-next"  "draft-next/optional"]
+                       ["draft-next"  "draft-next/optional/format"]]]
+    (test-directory (file (str json-schema-test-suite-root dir)) draft)))
 
 ;;------------------------------------------------------------------------------
 
