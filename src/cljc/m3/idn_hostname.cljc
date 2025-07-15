@@ -27,14 +27,6 @@
       [java.lang Character StringBuilder Character$UnicodeScript])))
 
 ;;------------------------------------------------------------------------------
-
-(defn trace [m f]
-  (fn [& args]
-    (let [result (apply f args)]
-      ;;(prn "TRACE: (" m args ") -> " result)
-      result)))
-
-;;------------------------------------------------------------------------------
 ;; common platform
 
 ;; TODO: share with validate
@@ -42,14 +34,12 @@
    (def Exception js/Error))
 
 (def code-point-at
-  (trace "CODE-POINT-AT"
   #?(:clj (fn [s i] (Character/codePointAt s i))
-     :cljs (fn [s i] (.codePointAt s i)))))
+     :cljs (fn [s i] (.codePointAt s i))))
 
 (def char-count
-  (trace "CHAR-COUNT"
   #?(:clj (fn [cp] (Character/charCount cp))
-     :cljs (fn [cp] (if (> cp 0xffff) 2 1)))))
+     :cljs (fn [cp] (if (> cp 0xffff) 2 1))))
 
 (defn string-to-codepoints [s]
   (let [result (transient [])]
@@ -61,9 +51,8 @@
         (persistent! result)))))
 
 (def normalise-nfkc
-  (trace "NORMALISE-NFC"
   #?(:clj (fn [s] (Normalizer/normalize s Normalizer$Form/NFKC))
-     :cljs (fn [s] (.normalize s "NFKC")))))
+     :cljs (fn [s] (.normalize s "NFKC"))))
 
 (def case-fold-map
   {0x00df [0x73 0x73]  ; ß -> ss
@@ -72,24 +61,20 @@
    })
 
 (def string-builder
-  (trace "STRING-BUILDER"
   #?(:clj (fn [] (StringBuilder.))
-     :cljs (fn [] ""))))
+     :cljs (fn [] "")))
 
 (def string-builder-append-code-point
-  (trace "STRING-BUILDER-APPEND-CODE-POINT"
   #?(:clj (fn [^StringBuilder sb cp] (.appendCodePoint sb cp))
-     :cljs (fn [acc cp] (str acc (js/String.fromCodePoint cp))))))
+     :cljs (fn [acc cp] (str acc (js/String.fromCodePoint cp)))))
 
 (def string-builder-to-string
-  (trace "STRING-BUILDER-TO-STRING"
   #?(:clj (fn [^StringBuilder sb] (.toString sb))
-     :cljs (fn [acc] acc))))
+     :cljs (fn [acc] acc)))
 
 (def to-lower-case
-  (trace "TO-LOWER-CASE"
   #?(:clj (fn [cp] (Character/toLowerCase cp))
-     :cljs (fn [cp] (.codePointAt (.toLowerCase (js/String.fromCodePoint cp)) 0)))))
+     :cljs (fn [cp] (.codePointAt (.toLowerCase (js/String.fromCodePoint cp)) 0))))
 
 (defn case-fold [s]
   (let [cps (string-to-codepoints s)
@@ -102,18 +87,16 @@
     (string-builder-to-string sb)))
 
 (def to-ascii
-  (trace
-   "TO-ASCII"
-   #?(:clj (fn [label] (IDN/toASCII label))
-      :cljs (fn [label]
-              (let [low (str/lower-case label)
-                    nf1 (normalise-nfkc low)
-                    cf (case-fold nf1)
-                    mapped (normalise-nfkc cf)]
-                (let [encoded (punycode/encode mapped)]
-                  (if (re-matches #"[a-z0-9-]+" mapped)
-                    mapped
-                    (str "xn--" encoded))))))))
+  #?(:clj (fn [label] (IDN/toASCII label))
+     :cljs (fn [label]
+             (let [low (str/lower-case label)
+                   nf1 (normalise-nfkc low)
+                   cf (case-fold nf1)
+                   mapped (normalise-nfkc cf)]
+               (let [encoded (punycode/encode mapped)]
+                 (if (re-matches #"[a-z0-9-]+" mapped)
+                   mapped
+                   (str "xn--" encoded)))))))
 
 (defn codepoints-to-string [cps]
   (let [sb (string-builder)]
@@ -122,30 +105,27 @@
     (string-builder-to-string sb)))
 
 (def to-unicode
-  (trace
-   "TO-UNICODE"
-   #?(:clj (fn [label] (IDN/toUnicode label))
-      :cljs (fn [label]
-              (let [low (str/lower-case label)]
-                (if (str/starts-with? low "xn--")
-                  (punycode/decode (subs low 4))
-                  label))))))
+  #?(:clj (fn [label] (IDN/toUnicode label))
+     :cljs (fn [label]
+             (let [low (str/lower-case label)]
+               (if (str/starts-with? low "xn--")
+                 (punycode/decode (subs low 4))
+                 label)))))
 
 (def unicode-script-of
-  (trace "UNICODE-SCRIPT-OF"
-         #?(:clj (fn [cp] (keyword (.name (Character$UnicodeScript/of cp))))
-            :cljs (fn [cp]
-                    (let [s (js/String.fromCodePoint cp)]
-                      (cond
-                        (.match s (js/RegExp "\\p{Script=Greek}" "u")) :GREEK
-                        (.match s (js/RegExp "\\p{Script=Hebrew}" "u")) :HEBREW
-                        (.match s (js/RegExp "\\p{Script=Hiragana}" "u")) :HIRAGANA
-                        (.match s (js/RegExp "\\p{Script=Katakana}" "u")) :KATAKANA
-                        (.match s (js/RegExp "\\p{Script=Han}" "u")) :HAN
-                        (.match s (js/RegExp "\\p{Script=Hangul}" "u")) :HANGUL
-                        (.match s (js/RegExp "\\p{Script=Arabic}" "u")) :ARABIC
-                        (.match s (js/RegExp "\\p{Script=Devanagari}" "u")) :DEVANAGARI
-                        :else nil))))))
+  #?(:clj (fn [cp] (keyword (.name (Character$UnicodeScript/of cp))))
+     :cljs (fn [cp]
+             (let [s (js/String.fromCodePoint cp)]
+               (cond
+                 (.match s (js/RegExp "\\p{Script=Greek}" "u")) :GREEK
+                 (.match s (js/RegExp "\\p{Script=Hebrew}" "u")) :HEBREW
+                 (.match s (js/RegExp "\\p{Script=Hiragana}" "u")) :HIRAGANA
+                 (.match s (js/RegExp "\\p{Script=Katakana}" "u")) :KATAKANA
+                 (.match s (js/RegExp "\\p{Script=Han}" "u")) :HAN
+                 (.match s (js/RegExp "\\p{Script=Hangul}" "u")) :HANGUL
+                 (.match s (js/RegExp "\\p{Script=Arabic}" "u")) :ARABIC
+                 (.match s (js/RegExp "\\p{Script=Devanagari}" "u")) :DEVANAGARI
+                 :else nil)))))
 
 (def CHARACTER_UPPERCASE_LETTER        1)
 (def CHARACTER_LOWERCASE_LETTER        2)
@@ -158,131 +138,119 @@
 (def CHARACTER_FORMAT                  16)
 
 (def get-char-type
-  (trace
-   "GET-CHAR-TYPE"
-   #?(:clj (fn [cp] (Character/getType cp))
-      :cljs (fn [cp]
-              (let [s (js/String.fromCodePoint cp)]
-                (cond
-                  (.match s (js/RegExp "\\p{Lu}" "u")) CHARACTER_UPPERCASE_LETTER
-                  (.match s (js/RegExp "\\p{Ll}" "u")) CHARACTER_LOWERCASE_LETTER
-                  (.match s (js/RegExp "\\p{Lo}" "u")) CHARACTER_OTHER_LETTER
-                  (.match s (js/RegExp "\\p{Nd}" "u")) CHARACTER_DECIMAL_DIGIT_NUMBER
-                  (.match s (js/RegExp "\\p{Lm}" "u")) CHARACTER_MODIFIER_LETTER
-                  (.match s (js/RegExp "\\p{Mn}" "u")) CHARACTER_NON_SPACING_MARK
-                  (.match s (js/RegExp "\\p{Me}" "u")) CHARACTER_ENCLOSING_MARK
-                  (.match s (js/RegExp "\\p{Mc}" "u")) CHARACTER_COMBINING_SPACING_MARK
-                  (.match s (js/RegExp "\\p{Pd}" "u")) 20  ; Dash punctuation (e.g., -)
-                  (.match s (js/RegExp "\\p{Po}" "u")) 24  ; Other punctuation (e.g., ·)
-                  (.match s (js/RegExp "\\p{Cf}" "u")) 16  ; Format (e.g., ZWNJ, ZWJ)
-                  (.match s (js/RegExp "\\p{Sk}" "u")) 4   ; Modifier symbol, treat similarly to Lm
-                  (.match s (js/RegExp "\\p{So}" "u")) 28  ; Other symbol
-                  :else 0))))))
+  #?(:clj (fn [cp] (Character/getType cp))
+     :cljs (fn [cp]
+             (let [s (js/String.fromCodePoint cp)]
+               (cond
+                 (.match s (js/RegExp "\\p{Lu}" "u")) CHARACTER_UPPERCASE_LETTER
+                 (.match s (js/RegExp "\\p{Ll}" "u")) CHARACTER_LOWERCASE_LETTER
+                 (.match s (js/RegExp "\\p{Lo}" "u")) CHARACTER_OTHER_LETTER
+                 (.match s (js/RegExp "\\p{Nd}" "u")) CHARACTER_DECIMAL_DIGIT_NUMBER
+                 (.match s (js/RegExp "\\p{Lm}" "u")) CHARACTER_MODIFIER_LETTER
+                 (.match s (js/RegExp "\\p{Mn}" "u")) CHARACTER_NON_SPACING_MARK
+                 (.match s (js/RegExp "\\p{Me}" "u")) CHARACTER_ENCLOSING_MARK
+                 (.match s (js/RegExp "\\p{Mc}" "u")) CHARACTER_COMBINING_SPACING_MARK
+                 (.match s (js/RegExp "\\p{Pd}" "u")) 20  ; Dash punctuation (e.g., -)
+                 (.match s (js/RegExp "\\p{Po}" "u")) 24  ; Other punctuation (e.g., ·)
+                 (.match s (js/RegExp "\\p{Cf}" "u")) 16  ; Format (e.g., ZWNJ, ZWJ)
+                 (.match s (js/RegExp "\\p{Sk}" "u")) 4   ; Modifier symbol, treat similarly to Lm
+                 (.match s (js/RegExp "\\p{So}" "u")) 28  ; Other symbol
+                 :else 0)))))
 
 (def is-defined
-  (trace "IS-DEFINED"
-    #?(:clj (fn [cp] (Character/isDefined cp))
-       :cljs (fn [cp]
-               (and (<= 0 cp 0x10ffff)
-                    (or (not= (get-char-type cp) 0)
-                        (= cp 0x002D)))))))  ; Special for hyphen
+  #?(:clj (fn [cp] (Character/isDefined cp))
+     :cljs (fn [cp]
+             (and (<= 0 cp 0x10ffff)
+                  (or (not= (get-char-type cp) 0)
+                      (= cp 0x002D)))))); Special for hyphen
 
 (def is-whitespace
-  (trace "IS-WHITESPACE"
   #?(:clj (fn [cp] (Character/isWhitespace cp))
      :cljs (fn [cp]
              (let [s (js/String.fromCodePoint cp)]
-               (boolean (.match s (js/RegExp "\\s" "u"))))))))
+               (boolean (.match s (js/RegExp "\\s" "u")))))))
 
 ;;------------------------------------------------------------------------------
 
-(def exceptions {
-  0x00df :pvalid
-  0x03c2 :pvalid
-  0x06fd :pvalid
-  0x06fe :pvalid
-  0x0f0b :pvalid
-  0x3007 :pvalid
-  0x0640 :disallowed
-  0x07fa :disallowed
-  0x302e :disallowed
-  0x302f :disallowed
-  0x3031 :disallowed
-  0x3032 :disallowed
-  0x3033 :disallowed
-  0x3034 :disallowed
-  0x3035 :disallowed
-  0x303b :disallowed
-  })
+(def exceptions {0x00df :pvalid
+                 0x03c2 :pvalid
+                 0x06fd :pvalid
+                 0x06fe :pvalid
+                 0x0f0b :pvalid
+                 0x3007 :pvalid
+                 0x0640 :disallowed
+                 0x07fa :disallowed
+                 0x302e :disallowed
+                 0x302f :disallowed
+                 0x3031 :disallowed
+                 0x3032 :disallowed
+                 0x3033 :disallowed
+                 0x3034 :disallowed
+                 0x3035 :disallowed
+                 0x303b :disallowed})
 
-(def context-map {
-  0x200c :contextj
-  0x200d :contextj
-  0x00b7 :contexto
-  0x0375 :contexto
-  0x05f3 :contexto
-  0x05f4 :contexto
-  0x30fb :contexto
-  })
+(def context-map {0x200c :contextj
+                  0x200d :contextj
+                  0x00b7 :contexto
+                  0x0375 :contexto
+                  0x05f3 :contexto
+                  0x05f4 :contexto
+                  0x30fb :contexto})
 
-(def joining-type-map {
-  0x0620 "U"
-  0x0621 "U"
-  0x0622 "R"
-  0x0623 "R"
-  0x0624 "R"
-  0x0625 "R"
-  0x0626 "D"
-  0x0627 "R"
-  0x0628 "D"
-  0x0629 "R"
-  0x062A "D"
-  0x062B "D"
-  0x062C "D"
-  0x062D "D"
-  0x062E "D"
-  0x062F "R"
-  0x0630 "R"
-  0x0631 "R"
-  0x0632 "R"
-  0x0633 "D"
-  0x0634 "D"
-  0x0635 "D"
-  0x0636 "D"
-  0x0637 "D"
-  0x0638 "D"
-  0x0639 "D"
-  0x063A "D"
-  0x063B "D"
-  0x063C "D"
-  0x063D "D"
-  0x063E "D"
-  0x063F "D"
-  0x0641 "D"
-  0x0642 "D"
-  0x0643 "D"
-  0x0644 "D"
-  0x0645 "D"
-  0x0646 "D"
-  0x0647 "D"
-  0x0648 "R"
-  0x0649 "D"
-  0x064A "D"
-  })
+(def joining-type-map {0x0620 "U"
+                       0x0621 "U"
+                       0x0622 "R"
+                       0x0623 "R"
+                       0x0624 "R"
+                       0x0625 "R"
+                       0x0626 "D"
+                       0x0627 "R"
+                       0x0628 "D"
+                       0x0629 "R"
+                       0x062A "D"
+                       0x062B "D"
+                       0x062C "D"
+                       0x062D "D"
+                       0x062E "D"
+                       0x062F "R"
+                       0x0630 "R"
+                       0x0631 "R"
+                       0x0632 "R"
+                       0x0633 "D"
+                       0x0634 "D"
+                       0x0635 "D"
+                       0x0636 "D"
+                       0x0637 "D"
+                       0x0638 "D"
+                       0x0639 "D"
+                       0x063A "D"
+                       0x063B "D"
+                       0x063C "D"
+                       0x063D "D"
+                       0x063E "D"
+                       0x063F "D"
+                       0x0641 "D"
+                       0x0642 "D"
+                       0x0643 "D"
+                       0x0644 "D"
+                       0x0645 "D"
+                       0x0646 "D"
+                       0x0647 "D"
+                       0x0648 "R"
+                       0x0649 "D"
+                       0x064A "D"})
 
-(def ccc-map {
-  0x094d 9
-  0x09CD 9
-  0x0A4D 9
-  0x0ACD 9
-  0x0B4D 9
-  0x0BCD 9
-  0x0C4D 9
-  0x0CCD 9
-  0x0D4D 9
-  0x0DCD 9
-  0x0F84 9
-  })
+(def ccc-map {0x094d 9
+              0x09CD 9
+              0x0A4D 9
+              0x0ACD 9
+              0x0B4D 9
+              0x0BCD 9
+              0x0C4D 9
+              0x0CCD 9
+              0x0D4D 9
+              0x0DCD 9
+              0x0F84 9})
 
 (defn joining-type [cp]
   (get joining-type-map cp "U"))
@@ -333,30 +301,30 @@
   (case cp
     0x200d (and (> idx 0) (= 9 (get ccc-map (nth codepoints (dec idx)) 0)))
     0x200c (or (and (> idx 0) (= 9 (get ccc-map (nth codepoints (dec idx)) 0)))
-                (let [left-idx (loop [j (dec idx)]
+               (let [left-idx (loop [j (dec idx)]
+                                (cond
+                                  (< j 0) nil
+                                  (= "T" (joining-type (nth codepoints j))) (recur (dec j))
+                                  :else j))
+                     right-idx (loop [j (inc idx)]
                                  (cond
-                                   (< j 0) nil
-                                   (= "T" (joining-type (nth codepoints j))) (recur (dec j))
-                                   :else j))
-                      right-idx (loop [j (inc idx)]
-                                  (cond
-                                    (>= j (count codepoints)) nil
-                                    (= "T" (joining-type (nth codepoints j))) (recur (inc j))
-                                    :else j))]
-                  (when (and left-idx right-idx)
-                    (let [left-jt (joining-type (nth codepoints left-idx))
-                          right-jt (joining-type (nth codepoints right-idx))]
-                      (and (or (= "R" left-jt) (= "D" left-jt))
-                           (or (= "L" right-jt) (= "D" right-jt)))))))
+                                   (>= j (count codepoints)) nil
+                                   (= "T" (joining-type (nth codepoints j))) (recur (inc j))
+                                   :else j))]
+                 (when (and left-idx right-idx)
+                   (let [left-jt (joining-type (nth codepoints left-idx))
+                         right-jt (joining-type (nth codepoints right-idx))]
+                     (and (or (= "R" left-jt) (= "D" left-jt))
+                          (or (= "L" right-jt) (= "D" right-jt)))))))
     0x00b7 (and (> idx 0) (< idx (dec (count codepoints)))
-                 (= (nth codepoints (dec idx)) 0x006C)
-                 (= (nth codepoints (inc idx)) 0x006C))
+                (= (nth codepoints (dec idx)) 0x006C)
+                (= (nth codepoints (inc idx)) 0x006C))
     0x0375 (and (< idx (dec (count codepoints)))
-                 (= :GREEK (unicode-script-of (nth codepoints (inc idx)))))
+                (= :GREEK (unicode-script-of (nth codepoints (inc idx)))))
     0x05f3 (and (> idx 0)
-                 (= :HEBREW (unicode-script-of (nth codepoints (dec idx)))))
+                (= :HEBREW (unicode-script-of (nth codepoints (dec idx)))))
     0x05f4 (and (> idx 0)
-                 (= :HEBREW (unicode-script-of (nth codepoints (dec idx)))))
+                (= :HEBREW (unicode-script-of (nth codepoints (dec idx)))))
     0x30fb (some (fn [c] (and (not= c 0x30fb)
                               (let [script (unicode-script-of c)]
                                 (or (= script :HIRAGANA)
@@ -399,7 +367,7 @@
                   (validate-u-label label)))
            (catch Exception _ false)))))
 
-(def json-idn-hostname? (trace "JSON-IDN-HOSTNAME?" (fn [data]
+(defn json-idn-hostname? [data]
   (if-not (string? data)
     true
     (try
@@ -410,4 +378,4 @@
              (not (str/includes? s ".."))
              (every? validate-label (str/split s #"\."))))
       (catch Exception _
-        false))))))
+        false))))
