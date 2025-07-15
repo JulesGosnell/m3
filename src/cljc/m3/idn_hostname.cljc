@@ -31,7 +31,7 @@
 (defn trace [m f]
   (fn [& args]
     (let [result (apply f args)]
-      (prn "TRACE: (" m args ") -> " result)
+      ;;(prn "TRACE: (" m args ") -> " result)
       result)))
 
 ;;------------------------------------------------------------------------------
@@ -54,21 +54,22 @@
 (defn string-to-codepoints [s]
   (let [result (transient [])]
     (loop [i 0]
-      (if (< i (.length s))
+      (if (< i (count s))
         (let [cp (code-point-at s i)]
           (conj! result cp)
           (recur (+ i (char-count cp))))
         (persistent! result)))))
 
-(def to-ascii
-  (trace "TO-ASCII"
-  #?(:clj (fn [label] (IDN/toASCII label))
-     :cljs (trace "TO-ASCII"
-                  (fn [label]
-             (let [low (str/lower-case label)]
-               (if (re-matches #"[a-z0-9-]+" low)
-                 low
-                 (str "xn--" (punycode/encode (string-to-codepoints low))))))))))
+(def normalise-nfkc
+  (trace "NORMALISE-NFC"
+  #?(:clj (fn [s] (Normalizer/normalize s Normalizer$Form/NFKC))
+     :cljs (fn [s] (.normalize s "NFKC")))))
+
+(def case-fold-map
+  {0x00df [0x73 0x73]  ; ß -> ss
+   0x03c2 [0x03c3]  ; ς -> σ
+   ; Add more as needed, e.g., 0x0130 [0x69 0x307], from CaseFolding.txt
+   })
 
 (def string-builder
   (trace "STRING-BUILDER"
@@ -85,6 +86,35 @@
   #?(:clj (fn [^StringBuilder sb] (.toString sb))
      :cljs (fn [acc] acc))))
 
+(def to-lower-case
+  (trace "TO-LOWER-CASE"
+  #?(:clj (fn [cp] (Character/toLowerCase cp))
+     :cljs (fn [cp] (.codePointAt (.toLowerCase (js/String.fromCodePoint cp)) 0)))))
+
+(defn case-fold [s]
+  (let [sb (string-builder)
+        len (count s)]
+    (loop [i 0]
+      (if (< i len)
+        (let [cp (code-point-at s i)
+              folded (or (get case-fold-map cp) [(to-lower-case cp)])]
+          (doseq [f folded]
+            (string-builder-append-code-point sb f))
+          (recur (+ i (char-count cp))))
+        (string-builder-to-string sb)))))
+
+(def to-ascii
+  (trace "TO-ASCII"
+    #?(:clj (fn [label] (IDN/toASCII label))
+       :cljs (fn [label]
+               (let [low (str/lower-case label)
+                     nf1 (normalise-nfkc low)
+                     cf (case-fold nf1)
+                     mapped (normalise-nfkc cf)]
+                 (if (re-matches #"[a-z0-9-]+" mapped)
+                   mapped
+                   (str "xn--" (punycode/encode mapped))))))))
+
 (defn codepoints-to-string [cps]
   (let [sb (string-builder)]
     (doseq [cp cps]
@@ -93,17 +123,12 @@
 
 (def to-unicode
   (trace "TO-UNICODE"
-  #?(:clj (fn [label] (IDN/toUnicode label))
-     :cljs (fn [label]
-             (let [low (str/lower-case label)]
-               (if (str/starts-with? low "xn--")
-                 (codepoints-to-string (punycode/decode (subs low 4)))
-                 label))))))
-
-(def normalise-nfkc
-  (trace "NORMALISE-NFC"
-  #?(:clj (fn [s] (Normalizer/normalize s Normalizer$Form/NFKC))
-     :cljs (fn [s] (.normalize s "NFKC")))))
+    #?(:clj (fn [label] (IDN/toUnicode label))
+       :cljs (fn [label]
+               (let [low (str/lower-case label)]
+                 (if (str/starts-with? low "xn--")
+                   (punycode/decode (subs low 4))
+                   label))))))
 
 (def unicode-script-of
   (trace "UNICODE-SCRIPT-OF"
@@ -142,17 +167,18 @@
                  (.match s (js/RegExp "\\p{Mn}" "u")) CHARACTER_NON_SPACING_MARK
                  (.match s (js/RegExp "\\p{Me}" "u")) CHARACTER_ENCLOSING_MARK
                  (.match s (js/RegExp "\\p{Mc}" "u")) CHARACTER_COMBINING_SPACING_MARK
+                 (.match s (js/RegExp "\\p{Pd}" "u")) 20  ; Dash punctuation (e.g., -)
+                 (.match s (js/RegExp "\\p{Po}" "u")) 24  ; Other punctuation (e.g., ·)
+                 (.match s (js/RegExp "\\p{Cf}" "u")) 16  ; Format (e.g., ZWNJ, ZWJ)
                  :else 0))))))
 
 (def is-defined
   (trace "IS-DEFINED"
-  #?(:clj (fn [cp] (Character/isDefined cp))
-     :cljs (fn [cp] (and (<= 0 cp 0x10ffff) (not= (get-char-type cp) 0))))))
-
-(def to-lower-case
-  (trace "TO-LOWER-CASE"
-  #?(:clj (fn [cp] (Character/toLowerCase cp))
-     :cljs (fn [cp] (.codePointAt (.toLowerCase (js/String.fromCodePoint cp)) 0)))))
+    #?(:clj (fn [cp] (Character/isDefined cp))
+       :cljs (fn [cp]
+               (and (<= 0 cp 0x10ffff)
+                    (or (not= (get-char-type cp) 0)
+                        (= cp 0x002D)))))))  ; Special for hyphen
 
 (def is-whitespace
   (trace "IS-WHITESPACE"
@@ -190,10 +216,6 @@
   0x05f3 :contexto
   0x05f4 :contexto
   0x30fb :contexto
-  })
-
-(def case-fold-map {
-  ;; the full case-fold-map as before
   })
 
 (def joining-type-map {
@@ -282,18 +304,6 @@
         (= type CHARACTER_MODIFIER_LETTER)
         (= type CHARACTER_NON_SPACING_MARK)
         (= type CHARACTER_COMBINING_SPACING_MARK))))
-
-(defn case-fold [s]
-  (let [sb (string-builder)
-        len (.length s)]
-    (loop [i 0]
-      (if (< i len)
-        (let [cp (code-point-at s i)
-              folded (or (get case-fold-map cp) [(to-lower-case cp)])]
-          (doseq [f folded]
-            (string-builder-append-code-point sb f))
-          (recur (+ i (char-count cp))))
-        (.toString sb)))))
 
 (defn unstable? [cp]
   (let [s (codepoints-to-string [cp])
