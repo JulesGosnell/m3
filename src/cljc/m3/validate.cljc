@@ -424,9 +424,65 @@
      (when-not (seq-contains? v2 json-= m1)
        [(make-error "enum: does not contain value" p2 m2 p1 m1)])]))
 
+(defmethod check-property "id" [_property _c2 _p2 _m2 [v2]]
+  (fn [c1 p1 _m1]
+    (let [draft (c1 :draft)]
+      (if (#{"draft3" "draft4"} draft)
+        (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
+          [(-> c1
+               (update :uri->path assoc uri p1)
+               (assoc :id-uri uri))
+           nil])
+        (do
+          (log/warn (str "id: ignored in unsupported draft: " draft))
+          [c1 nil])))))
+
+(defmethod check-property "$id" [_property _c2 _p2 _m2 [v2]]
+  (fn [c1 p1 _m1]
+    (let [draft (c1 :draft)]
+      (if (contains? (draft->draft? draft) "draft6")
+        (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
+          [(-> c1
+               (update :uri->path assoc uri p1)
+               (assoc :id-uri uri))
+           nil])
+        (do
+          (log/warn (str "$id: ignored in unsupported draft: " draft))
+          [c1 nil])))))
+
+(defmethod check-property "$anchor" [_property _c2 _p2 _m2 [v2]]
+  (fn [c1 p1 _m1]
+    (let [draft (c1 :draft)]
+      (if (contains? (draft->draft? draft) "draft2019-09")
+        (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
+          [(update c1 :uri->path assoc anchor-uri p1) nil])
+        (do
+          (log/warn (str "$anchor: ignored in unsupported draft: " draft))
+          [c1 nil])))))
+
+(defmethod check-property "$recursiveAnchor" [_property _c2 _p2 _m2 [v2]]
+  (fn [c1 p1 _m1]
+    (let [draft (c1 :draft)]
+      (if (= "draft2019-09" draft)
+        (if (true? v2)
+          (let [[uris top] (c1 :$recursive-anchor [#{} nil])]
+            [(assoc c1 :$recursive-anchor [(conj uris (c1 :id-uri)) (or top p1)]) nil])
+          [c1 nil])
+        (do
+          (log/warn (str "$recursiveAnchor: ignored in unsupported draft: " draft))
+          [c1 nil])))))
+
+(defmethod check-property "$dynamicAnchor" [_property _c2 _p2 _m2 [v2]]
+  (fn [c1 p1 _m1]
+    (let [draft (c1 :draft)]
+      (if (contains? (draft->draft? draft) "draft2020-12")
+        (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
+          [(update c1 :$dynamic-anchor assoc anchor-uri p1) nil])
+        (do
+          (log/warn (str "$dynamicAnchor: ignored in unsupported draft: " draft))
+          [c1 nil])))))
+
 (defmethod check-property "$comment"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property "id"               [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property "$id"              [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
 (defmethod check-property "description"      [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
 (defmethod check-property "title"            [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
 (defmethod check-property "readOnly"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
@@ -435,12 +491,7 @@
 (defmethod check-property "default"          [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
 (defmethod check-property "$schema"          [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil])) ;; TODO: switch drafts in context...
 (defmethod check-property "examples"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property "$anchor"          [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property "$recursiveAnchor" [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
 (defmethod check-property "$vocabulary"      [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-
-;; NYI
-(defmethod check-property "$dynamicAnchor"   [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
 
 ;; TODO: issue a warning somehow
 (defmethod check-property "deprecated"  [_property _c2 _p2 _m2 _v2s] (fn [_c1 _p1 _m1])) ;; TODO: issue a warning or error ?
