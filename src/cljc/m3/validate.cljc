@@ -430,7 +430,8 @@
       (if (#{"draft3" "draft4"} draft)
         (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
           [(-> c1
-               (update :uri->path assoc uri p1)
+               (update :path->uri assoc p1 uri)  ; Stash path to uri
+               (update :uri->path assoc uri p1)  ; Stash uri to path
                (assoc :id-uri uri))
            nil])
         (do
@@ -443,13 +444,15 @@
       (if (contains? (draft->draft? draft) "draft6")
         (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
           [(-> c1
-               (update :uri->path assoc uri p1)
+               (update :path->uri assoc p1 uri)  ; Stash path to uri
+               (update :uri->path assoc uri p1)  ; Stash uri to path
                (assoc :id-uri uri))
            nil])
         (do
           (log/warn (str "$id: ignored in unsupported draft: " draft))
           [c1 nil])))))
 
+;; Anchors only need :uri->path (no change, but included for completeness)
 (defmethod check-property "$anchor" [_property _c2 _p2 _m2 [v2]]
   (fn [c1 p1 _m1]
     (let [draft (c1 :draft)]
