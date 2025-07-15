@@ -31,7 +31,7 @@
 (defn trace [m f]
   (fn [& args]
     (let [result (apply f args)]
-      ;;(prn "TRACE: (" m args ") -> " result)
+      (prn "TRACE: (" m args ") -> " result)
       result)))
 
 ;;------------------------------------------------------------------------------
@@ -110,10 +110,11 @@
                (let [low (str/lower-case label)
                      nf1 (normalise-nfkc low)
                      cf (case-fold nf1)
-                     mapped (normalise-nfkc cf)]
+                     mapped (normalise-nfkc cf)
+                     cps (string-to-codepoints mapped)]
                  (if (re-matches #"[a-z0-9-]+" mapped)
                    mapped
-                   (str "xn--" (punycode/encode mapped))))))))
+                   (str "xn--" (punycode/encode cps))))))))
 
 (defn codepoints-to-string [cps]
   (let [sb (string-builder)]
@@ -127,21 +128,24 @@
        :cljs (fn [label]
                (let [low (str/lower-case label)]
                  (if (str/starts-with? low "xn--")
-                   (punycode/decode (subs low 4))
+                   (codepoints-to-string (punycode/decode (subs low 4)))
                    label))))))
 
 (def unicode-script-of
   (trace "UNICODE-SCRIPT-OF"
-  #?(:clj (fn [cp] (keyword (.name (Character$UnicodeScript/of cp))))
-     :cljs (fn [cp]
-             (let [s (js/String.fromCodePoint cp)]
-               (cond
-                 (.match s (js/RegExp "\\p{Sc=Greek}" "u")) :GREEK
-                 (.match s (js/RegExp "\\p{Sc=Hebrew}" "u")) :HEBREW
-                 (.match s (js/RegExp "\\p{Sc=Hiragana}" "u")) :HIRAGANA
-                 (.match s (js/RegExp "\\p{Sc=Katakana}" "u")) :KATAKANA
-                 (.match s (js/RegExp "\\p{Sc=Han}" "u")) :HAN
-                 :else :UNKNOWN))))))
+         #?(:clj (fn [cp] (keyword (.name (Character$UnicodeScript/of cp))))
+            :cljs (fn [cp]
+                    (let [s (js/String.fromCodePoint cp)]
+                      (cond
+                        (.match s (js/RegExp "\\p{Script=Greek}" "u")) :GREEK
+                        (.match s (js/RegExp "\\p{Script=Hebrew}" "u")) :HEBREW
+                        (.match s (js/RegExp "\\p{Script=Hiragana}" "u")) :HIRAGANA
+                        (.match s (js/RegExp "\\p{Script=Katakana}" "u")) :KATAKANA
+                        (.match s (js/RegExp "\\p{Script=Han}" "u")) :HAN
+                        (.match s (js/RegExp "\\p{Script=Hangul}" "u")) :HANGUL
+                        (.match s (js/RegExp "\\p{Script=Arabic}" "u")) :ARABIC
+                        (.match s (js/RegExp "\\p{Script=Devanagari}" "u")) :DEVANAGARI
+                        :else nil))))))
 
 (def CHARACTER_UPPERCASE_LETTER        1)
 (def CHARACTER_LOWERCASE_LETTER        2)
