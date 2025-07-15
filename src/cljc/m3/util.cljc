@@ -13,8 +13,9 @@
 ;; limitations under the License.
 
 (ns m3.util
-  ;;(:require)
-  )
+  (:require
+   [m3.log :as log]
+   ))
 
 ;;------------------------------------------------------------------------------
 
@@ -35,3 +36,8 @@
 
 (defn seq-contains? [s p? v]
   (boolean (some (partial p? v) s)))
+
+(defn when-assoc [c k v]
+  (if v
+    (assoc c k v)
+    c))

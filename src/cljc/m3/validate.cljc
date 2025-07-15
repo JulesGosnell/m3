@@ -23,7 +23,7 @@
    [cljc.java-time.offset-time :refer [parse] :rename {parse offset-time-parse}]
    [clojure.string :refer [starts-with? ends-with? replace] :rename {replace string-replace}]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
-   [m3.util :refer [absent present? concatv into-set conj-set seq-contains?]]
+   [m3.util :refer [absent present? concatv into-set conj-set seq-contains? when-assoc]]
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.ref :refer [meld resolve-uri try-path]]
    [m3.pattern :refer [email-pattern ipv4-pattern ipv6-pattern hostname-pattern json-pointer-pattern relative-pointer-pattern uri-pattern uri-reference-pattern uri-template-pattern idn-email-pattern iri-pattern iri-reference-pattern uuid-pattern json-duration-pattern]]
@@ -106,6 +106,8 @@
 
 (def $schema-uri->draft
   (reduce-kv (fn [acc k v] (conj acc [(parse-uri k) v])) {} $schema->draft))
+
+(def latest-$schema (draft->$schema "latest"))
 
 ;;------------------------------------------------------------------------------
 
@@ -485,7 +487,11 @@
           (log/warn (str "$dynamicAnchor: ignored in unsupported draft: " draft))
           [c1 nil])))))
 
-(defmethod check-property "$comment"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defmethod check-property "$comment" [_property _c2 _p2 _m2 [v2]]
+  (fn [c1 p1 _m1]
+    ;;(log/info (str "$comment:" v2 " : " p1))
+    [c1 nil]))
+
 (defmethod check-property "description"      [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
 (defmethod check-property "title"            [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
 (defmethod check-property "readOnly"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
@@ -754,7 +760,6 @@
               )))
          {}
          v2)]
-
     (fn [c1 p1 m1]
       (if (json-object? m1)
         (let [[c1 es]
@@ -787,7 +792,6 @@
              (assoc acc k (check-schema c2 p2 v)))
            {}
            v2)]
-
       (fn [c1 p1 m1]
         (if (json-object? m1)
           (let [[c1 es]
@@ -807,7 +811,6 @@
 (defmethod check-property "propertyDependencies" [_property c2 p2 _m2 [v2]]
   (let [checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] (check-schema c2 p2 s)]) vs)) v2))
         ks (keys v2)]
-
     (fn [c1 p1 m1]
       (if (json-object? m1)
         (reduce
@@ -858,7 +861,6 @@
 (defmethod check-property "if" [_property c2 p2 _m2 [v2]]
   (let [checker (check-schema c2 p2 v2)
         pp2 (butlast p2)]
-
     (fn [old-c1 p1 m1]
       (let [[new-c1 es] (checker old-c1 p1 m1)
             success? (empty? es)]
@@ -867,7 +869,6 @@
 (defmethod check-property "then" [_property c2 p2 _m2 [v2]]
   (let [checker (check-schema c2 p2 v2)
         pp2 (butlast p2)]
-
     (fn [c1 p1 m1]
       (if (true? (get (get c1 :if) pp2))
         (checker c1 p1 m1)
@@ -876,7 +877,6 @@
 (defmethod check-property "else" [_property c2 p2 _m2 [v2]]
   (let [checker (check-schema c2 p2 v2)
         pp2 (butlast p2)]
-
     (fn [c1 p1 m1]
       (if (false? (get (get c1 :if) pp2))
         (checker c1 p1 m1)
@@ -911,7 +911,6 @@
 (defmethod check-property "properties" [_property c2 p2 m2 [ps]]
   (let [k-and-css (mapv (fn [[k v]] [k (check-schema c2 (conj p2 k) v)]) ps)
         cp (check-properties c2 p2 m2)]
-
     (fn [c1 p1 m1]
       (if (json-object? m1)
         (let [k-and-css (filter (fn [[k]] (contains? m1 k)) k-and-css)]
@@ -923,7 +922,6 @@
 (defmethod check-property "patternProperties" [_property c2 p2 m2 [pps]]
   (let [cp-and-pattern-and-ks (mapv (fn [[k v]] [(check-schema c2 (conj p2 k) v) (ecma-pattern k) k]) pps)
         cp (check-properties c2 p2 m2)]
-
     (fn [c1 p1 m1]
       (if (json-object? m1)
         (let [k-and-css (apply concat (keep (fn [[k]] (keep (fn [[cs p]] (when (ecma-match p k) [k cs])) cp-and-pattern-and-ks)) m1))]
@@ -935,7 +933,6 @@
   (let [cs (check-schema c2 p2 v2)
         pp2 (butlast p2)
         cp (check-properties c2 p2 m2)]
-
     (fn [c1 p1 m1]
       (if (json-object? m1)
         (let [mps (get (get c1 :matched) pp2 #{})
@@ -947,7 +944,6 @@
 (defmethod check-property "unevaluatedProperties" [_property c2 p2 m2 [v2]]
   (let [cs (check-schema c2 p2 v2)
         cp (check-properties c2 p2 m2)]
-
     (fn [c1 p1 m1]
       (if (json-object? m1)
         (let [eps (get (get c1 :evaluated) p1 #{})
@@ -957,7 +953,6 @@
         [c1 []]))))
 
 (defmethod check-property "propertyNames" [_property c2 p2 m2 [v2]]
-
   (fn [c1 p1 m1]
     [c1
      (when (json-object? m1)
@@ -972,7 +967,6 @@
          m1)))]))
 
 (defmethod check-property "required" [_property _c2 p2 m2 [v2]]
-
   (fn [c1 p1 m1]
     [c1
      (when (json-object? m1)
@@ -980,7 +974,6 @@
          [(make-error ["required: missing properties (at least):" missing] p2 m2 p1 m1)]))]))
 
 (defmethod check-property "minProperties" [_property _c2 p2 m2 [v2]]
-
   (fn [c1 p1 m1]
     [c1
      (when (and
@@ -989,7 +982,6 @@
        [(make-error "minProperties: document contains too few properties" p2 m2 p1 m1)])]))
 
 (defmethod check-property "maxProperties" [_property _c2 p2 m2 [v2]]
-
   (fn [c1 p1 m1]
     [c1
      (when (and
@@ -1032,7 +1024,6 @@
     ("draft2020-12" "draft2021-12" "draft-next")
     (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema c2 (conj p2 i) sub-schema)]) v2))
           ci (check-items c2 p2 m2)]
-
       (fn [c1 p1 m1]
         (if (json-array? m1)
           (ci c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")
@@ -1050,7 +1041,6 @@
                     ["respective " (map-indexed (fn [i v] (check-schema c2 (conj p2 i) v)) v2)])
                   ["" (repeat (check-schema c2 p2 v2))])
         ci (check-items c2 p2 m2)]
-
     (fn [c1 p1 m1]
       (if (json-array? m1)
         (let [items (drop n m1)
@@ -1063,7 +1053,6 @@
     (let [cs (check-schema c2 p2 v2)
           ;;pp2 (butlast p2)
           ci (check-items c2 p2 m2)]
-
       (fn [c1 p1 m1]
         (if (json-array? m1)
           (let [;; this is how it should be done, but cheaper to just look at items (must be array for additionalItems to be meaningful) in m2 time
@@ -1081,7 +1070,6 @@
 (defmethod check-property "unevaluatedItems" [_property c2 p2 m2 [v2]]
   (let [css (repeat (check-schema c2 p2 v2))
         ci (check-items c2 p2 m2)]
-
     (fn [{p->eis :evaluated :as c1} p1 m1]
       (if (json-array? m1)
         (let [eis (or (get p->eis p1) #{})
@@ -1094,7 +1082,6 @@
   (let [cs (check-schema c2 p2 v2)
         base (if mn mn 1)
         ci (check-items c2 p2 v2)]
-
     (fn [c1 p1 m1]
       (if (json-array? m1)
         (let [i-and-css (map (fn [i _] [i cs]) (range) m1)
@@ -1107,7 +1094,6 @@
 
 (defmethod check-property "minContains" [_property _c2 p2 m2 [v2]]
   (let [pp2 (butlast p2)]
-
     (fn [{matched :matched :as c1} p1 m1]
       (if-let [matches (and (json-array? m1) (get matched pp2))]
         (let [n (count matches)]
@@ -1121,7 +1107,6 @@
 
 (defmethod check-property "maxContains" [_property _c2 p2 m2 [v2]]
   (let [pp2 (butlast p2)]
-
     (fn [{matched :matched :as c1} p1 m1]
       (if-let [matches (and (json-array? m1) (get matched pp2))]
         (let [n (count matches)]
@@ -1131,7 +1116,6 @@
         [c1 nil]))))
 
 (defmethod check-property "minItems" [_property _c2 p2 m2 [v2]]
-
   (fn [c1 p1 m1]
     [c1
      (when (and
@@ -1140,7 +1124,6 @@
        [(make-error "minItems: document contains too few items" p2 m2 p1 m1)])]))
 
 (defmethod check-property "maxItems" [_property _c2 p2 m2 [v2]]
-
   (fn [c1 p1 m1]
     [c1
      (when (and
@@ -1153,7 +1136,6 @@
 ;; TODO: use sorted-set-by and put items in 1 at a time until one is rejected then bail - reduced
 (defmethod check-property "uniqueItems" [_property _c2 p2 m2 [v2]]
   (if v2
-
     (fn [c1 p1 m1]
       [c1
        (when (json-array? m1)
@@ -1182,7 +1164,6 @@
 (defmethod check-property "oneOf" [_property c2 p2 m2 [v2]]
   (let [co (check-of c2 p2 m2 v2)
         m2-count (count v2)]
-
     (fn [c1 p1 m1]
       (co
        c1 p1 m1
@@ -1192,7 +1173,6 @@
 (defmethod check-property "anyOf" [_property c2 p2 m2 [v2]]
   (let [co (check-of c2 p2 m2 v2)
         m2-count (count v2)]
-
     (fn [c1 p1 m1]
       (co
        c1 p1 m1
@@ -1201,7 +1181,6 @@
          
 (defmethod check-property "allOf" [_property c2 p2 m2 [v2]]
   (let [co (check-of c2 p2 m2 v2)]
-
     (fn [c1 p1 m1]
       (co
        c1 p1 m1
@@ -1211,7 +1190,6 @@
 ;; TODO: share check-of
 (defmethod check-property "not" [_property c2 p2 m2 [v2]]
   (let [c (check-schema c2 p2 v2)]
-
     (fn [c1 p1 m1]
       (let [old-local-c1 (update c1 :evaluated dissoc p1)
             [new-local-c1 es] (c old-local-c1 p1 m1)
@@ -1227,7 +1205,6 @@
 (defmethod check-property :default [property {{checker property} :validators :as c2} p2 m2 v2s]
   (if checker
     (let [cp (checker property c2 p2 m2 v2s)]
-
       (fn [c1 p1 m1]
         [c1 (cp p1 m1)]))
     (let [m (str "property: unexpected property encountered: " (pr-str property))]
@@ -1338,6 +1315,42 @@
        {}
        m2)))))
 
+;;------------------------------------------------------------------------------
+;; tmp solution - does not understand about schema structure
+
+;; acc travels around and gets returned
+;; stuff travels down and does not
+(defn json-walk [f acc stuff path tree]
+  (let [[acc stuff] (if (map? tree) (f acc stuff tree path) [acc stuff])]
+    (if (or (map? tree) (vector? tree))
+      (reduce-kv
+       (fn [acc k v]
+         (json-walk f acc stuff (conj path k) v))
+       acc
+       tree)
+      acc)))
+
+(defn stash-anchor [[acc {id-uri :id-uri :as stuff} :as x] path fragment? id? anchor]
+  (if (string? anchor)
+    (let [anchor-uri (inherit-uri id-uri (parse-uri (str (when fragment? "#") anchor)))]
+      [(update acc :uri->path assoc anchor-uri path)
+       (if id? (assoc stuff :id-uri anchor-uri) stuff)])
+    x))
+
+(defn get-id [{d :draft} m]
+  (case d
+    ("draft3" "draft4") (get m "id")
+    (or (get m "$id") (get m "id"))))
+
+(defn stash [acc stuff {a "$anchor" da "$dynamicAnchor" :as m} path]
+  (-> [acc stuff]
+      ((fn [[acc {id-uri :id-uri :as stuff}]] [(update acc :path->uri assoc path id-uri) stuff]))
+      (stash-anchor path false true (get-id acc m))
+      (stash-anchor path true false a)
+      (stash-anchor path true false da)))
+      
+;;------------------------------------------------------------------------------
+
 (defn check-schema-2 [{t? :trace? :as c2} p2 m2]
   ;; TODO; this needs to be simplified
   (cond
@@ -1369,7 +1382,7 @@
                      [new-c1 (concatv acc es)]))
                  [c1 []]
                  p2-and-cps)]
-            [new-c1
+            [new-c1 ;; (first (stash new-c1 {} m1 p1))
              (make-error-on-failure "schema: document did not conform" p2 m2 p1 m1 es)])
           [c1 []])))))
 
@@ -1424,35 +1437,6 @@
         ((make-draft-interceptor)
          check-schema-2))))))))
 
-;;------------------------------------------------------------------------------
-;; tmp solution - does not understand about schema structure
-
-;; acc travels around and gets returned
-;; stuff travels down and does not
-(defn json-walk [f acc stuff path tree]
-  (let [[acc stuff] (if (map? tree) (f acc stuff tree path) [acc stuff])]
-    (if (or (map? tree) (vector? tree))
-      (reduce-kv
-       (fn [acc k v]
-         (json-walk f acc stuff (conj path k) v))
-       acc
-       tree)
-      acc)))
-
-(defn stash-anchor [[acc {id-uri :id-uri :as stuff} :as x] path fragment? id? anchor]
-  (if (string? anchor)
-    (let [anchor-uri (inherit-uri id-uri (parse-uri (str (when fragment? "#") anchor)))]
-      [(update acc :uri->path assoc anchor-uri path)
-       (if id? (assoc stuff :id-uri anchor-uri) stuff)])
-    x))
-
-(defn stash [{id-key :id-key :as acc} stuff {id id-key a "$anchor" da "$dynamicAnchor"} path]
-  (-> [acc stuff]
-      ((fn [[acc {id-uri :id-uri :as stuff}]] [(update acc :path->uri assoc path id-uri) stuff]))
-      (stash-anchor path false true id)
-      (stash-anchor path true false a)
-      (stash-anchor path true false da)))
-      
 ;;------------------------------------------------------------------------------
 
 ;; TODO: rename
@@ -1513,10 +1497,9 @@
   (let [{draft :draft id-key :id-key :as c2} (make-context c2 schema)
         sid (get schema id-key)
         cs (check-schema c2 [] schema)]
-
     (fn [c1 {did id-key _dsid "$schema" :as document}]
-        ;;(log/info "validate:" sid "/" did)
-        ;;(when (and dsid (not (= sid dsid))) (log/warn (format "document schema id not consistent with schema id: %s != %s" dsid sid)))
+      ;;(log/info "validate:" sid "/" did)
+      ;;(when (and dsid (not (= sid dsid))) (log/warn (format "document schema id not consistent with schema id: %s != %s" dsid sid)))
       (let [c1 (assoc c1 :id-key id-key  :uri->path {}) ;; docs must be of same draft as their schemas... ?
             c1 (json-walk stash c1 {} [] schema)
             c1 (assoc
@@ -1529,8 +1512,41 @@
                 :draft draft
                 :melder (:melder c2))
             [c1 es] (cs c1 [] document)]
-         ;;(prn "C:" (:evaluated c1))
+        ;;(prn "C:" (:evaluated c1))
         {:valid? (empty? es) :errors es}))))
+
+;; by recursing to top of schema hierarchy and then validating downwards we:
+;; - confirm validity of entire model, not just the m1
+;; - we can use our implicit knowledge of the structure of json docs to discover all the ids and anchors - how ?
+
+;; (defn tweak [[c1 es]]
+;;   {:valid? (empty? es) :errors es})
+
+;; (defn validate-1
+;;   ([c1 {sid "$schema" :or {sid latest-$schema} :as m1}]
+;;    (let [draft (get $schema->draft sid "latest")
+;;          m2 (uri->schema-2 {} [] (parse-uri sid))]
+;;      (if (= m2 m1)
+;;        ;; we are at top of schema hierarchy - ground out
+;;        (do
+;;          ;; self-validate root meta-schema
+;;          ((validate-2 {:draft draft} m2) c1 m1))
+;;        ;; continue up schema hierarchy...
+;;        (validate-1 {} m2 {} m1))))
+;;   ;; but some m1s are not objects (e.g. string) and thus have nowhere
+;;   ;; to carry $schema property - in which case use this entry point...
+;;   ([c2 m2 c1 m1]
+;;    ;; (let [[{path->uri :path->uri :as c1-1} es] (validate-1 c2 m2)]
+;;    ;;   (when path->uri (prn "PATH->URI:" path->uri))
+;;    ;; ;; copy id locations from outgoing m1-ctx into incoming m2-ctx... ?
+;;    ;; ((validate-2 c2 m2) c1 m1))
+;;    ))
+
+;; (defn validate
+;;   ([c m]
+;;    (tweak (validate-1 c m)))
+;;   ([c2 m2 c1 m1]
+;;    (tweak (validate-1 c2 m2 c1 m1))))
 
 ;; by recursing to top of schema hierarchy and then validating downwards we:
 ;; - confirm validity of entire model, not just the m1
