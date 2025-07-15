@@ -136,6 +136,10 @@
 (def CHARACTER_ENCLOSING_MARK          7)
 (def CHARACTER_COMBINING_SPACING_MARK  8)
 (def CHARACTER_FORMAT                  16)
+(def CHARACTER_DASH_PUNCTUATION        20)
+(def CHARACTER_OTHER_PUNCTUATION       24)
+(def CHARACTER_MODIFIER_SYMBOL         4)
+(def CHARACTER_OTHER_SYMBOL            28)
 
 (def get-char-type
   #?(:clj (fn [cp] (Character/getType cp))
@@ -150,11 +154,11 @@
                  (.match s (js/RegExp "\\p{Mn}" "u")) CHARACTER_NON_SPACING_MARK
                  (.match s (js/RegExp "\\p{Me}" "u")) CHARACTER_ENCLOSING_MARK
                  (.match s (js/RegExp "\\p{Mc}" "u")) CHARACTER_COMBINING_SPACING_MARK
-                 (.match s (js/RegExp "\\p{Pd}" "u")) 20  ; Dash punctuation (e.g., -)
-                 (.match s (js/RegExp "\\p{Po}" "u")) 24  ; Other punctuation (e.g., ·)
-                 (.match s (js/RegExp "\\p{Cf}" "u")) 16  ; Format (e.g., ZWNJ, ZWJ)
-                 (.match s (js/RegExp "\\p{Sk}" "u")) 4   ; Modifier symbol, treat similarly to Lm
-                 (.match s (js/RegExp "\\p{So}" "u")) 28  ; Other symbol
+                 (.match s (js/RegExp "\\p{Pd}" "u")) CHARACTER_DASH_PUNCTUATION
+                 (.match s (js/RegExp "\\p{Po}" "u")) CHARACTER_OTHER_PUNCTUATION
+                 (.match s (js/RegExp "\\p{Cf}" "u")) CHARACTER_FORMAT
+                 (.match s (js/RegExp "\\p{Sk}" "u")) CHARACTER_MODIFIER_SYMBOL
+                 (.match s (js/RegExp "\\p{So}" "u")) CHARACTER_OTHER_SYMBOL
                  :else 0)))))
 
 (def is-defined
@@ -256,7 +260,7 @@
   (get joining-type-map cp "U"))
 
 (defn noncharacter? [cp]
-  (or (and (<= 0xfdd0 cp 0xfdef))
+  (or (<= 0xfdd0 cp 0xfdef)
       (let [low (bit-and cp 0xffff)]
         (and (<= 0 (bit-shift-right cp 16) 0x10) (or (= low 0xfffe) (= low 0xffff))))))
 
@@ -266,9 +270,9 @@
       (noncharacter? cp)))
 
 (defn ignorable-blocks? [cp]
-  (or (and (<= 0x20d0 cp 0x20ff))
-      (and (<= 0x1d100 cp 0x1d1ff))
-      (and (<= 0x1d200 cp 0x1d24f))))
+  (or (<= 0x20d0 cp 0x20ff)
+      (<= 0x1d100 cp 0x1d1ff)
+      (<= 0x1d200 cp 0x1d24f)))
 
 (defn letter-digit? [cp]
   (let [type (get-char-type cp)]
