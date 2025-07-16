@@ -52,34 +52,45 @@
                           :output-dir "target/node"
                           :output-to "target/node/repl.js"
                           :main m3.repl/-main
-                          :devtools {:autoload true}}}}  
+                          :devtools {:autoload true}}}}
 
-  :profiles {:dev {:repl-options {:init-ns m3.repl}
-                   :dependencies [[cider/piggieback "0.6.0"]
-                                  [binaryage/devtools "1.0.7"]
-                                  [prone "2021-04-23"]
-                                  [nrepl "1.3.1"]
-                                  [pjstadig/humane-test-output "0.11.0"]]
+  :profiles {:dev
+             {:repl-options {:init-ns m3.repl}
+              :dependencies [[cider/piggieback "0.6.0"]
+                             [binaryage/devtools "1.0.7"]
+                             [prone "2021-04-23"]
+                             [nrepl "1.3.1"]
+                             [pjstadig/humane-test-output "0.11.0"]]
 
-                   :source-paths ["env/dev/clj"]
-                   :plugins [[cider/cider-nrepl "0.57.0"]
-                             [org.clojure/tools.namespace "1.5.0" :exclusions [org.clojure/tools.reader]]
-                             [refactor-nrepl "3.11.0" :exclusions [org.clojure/clojure]]]
+              :source-paths ["env/dev/clj"]
+              :plugins [[cider/cider-nrepl "0.57.0"]
+                        [org.clojure/tools.namespace "1.5.0" :exclusions [org.clojure/tools.reader]]
+                        [refactor-nrepl "3.11.0" :exclusions [org.clojure/clojure]]]
 
-                   :injections [(require 'pjstadig.humane-test-output)
-                                (pjstadig.humane-test-output/activate!)]
+              :injections [(require 'pjstadig.humane-test-output)
+                           (pjstadig.humane-test-output/activate!)]
 
-                   :env {:dev true}}
+              :env {:dev true}}
 
-             :uberjar {:hooks [minify-assets.plugin/hooks]
-                       :source-paths ["env/prod/clj"]
-                       :prep-tasks ["compile" ["cljsbuild" "once" "min"]]
-                       :env {:production true}
-                       :aot :all
-                       :omit-source true}
-             :cloverage
-             {:cloverage {:fail-threshold 90}}};; output is written to ./target/coverage/index.html
+             :uberjar
+             {:hooks [minify-assets.plugin/hooks]
+              :source-paths ["env/prod/clj"]
+              :prep-tasks ["compile" ["cljsbuild" "once" "min"]]
+              :env {:production true}
+              :aot :all
+              :omit-source true}
 
-  :aliases {"test-cljs" ["shadow" "compile" "test"]}
+             :cloverage ;; output is written to ./target/coverage/index.html
+             {:cloverage {:fail-threshold 90}}
 
-  )
+             :nrepl {:dependencies [[nrepl "1.3.1"]
+                                    [ch.qos.logback/logback-classic "1.4.14"]]
+                     :jvm-opts ["-Djdk.attach.allowAttachSelf"]}
+
+             ;; I published clojure-mcp build to my local repo
+             :mcp {:dependencies [[org.slf4j/slf4j-nop "2.0.16"]
+                                  [com.bhauman/clojure-mcp "0.1.6-SNAPSHOT"]]
+                   :source-paths ["test"]
+                   :main ^:skip-aot m3.mcp-runner}}
+
+  :aliases {"test-cljs" ["shadow" "compile" "test"]})
