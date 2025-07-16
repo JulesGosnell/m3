@@ -23,6 +23,7 @@
    [thheller/shadow-cljs "3.1.7"]                                           ;; https://github.com/thheller/shadow-cljs
    ;; cljc
    [com.widdindustries/cljc.java-time "0.1.21"]                             ;; https://github.com/henryw374/cljc.java-time
+   ;; [com.bhauman/clojure-mcp "0.1.6-SNAPSHOT"]
    ]
 
   :plugins [[lein-environ "1.2.0"]                                          ;; https://github.com/weavejester/environ
@@ -91,6 +92,7 @@
              :mcp {:dependencies [[org.slf4j/slf4j-nop "2.0.16"]
                                   [com.bhauman/clojure-mcp "0.1.6-SNAPSHOT"]]
                    :source-paths ["test"]
-                   :main ^:skip-aot m3.mcp-runner}}
+                   :main ^:skip-aot m3.mcp-runner}
+             }
 
   :aliases {"test-cljs" ["shadow" "compile" "test"]})
