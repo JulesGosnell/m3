@@ -301,7 +301,7 @@
 (defmethod check-format "idn-hostname" [_format _c2 p2 m2]
   (fn [_c1 p1 m1]
     (when (and (string? m1) (not (json-idn-hostname? m1)))
-      [(make-error "format: not a valid duration:" p2 m2 p1 m1)])))
+      [(make-error "format: not a valid idn-hostname:" p2 m2 p1 m1)])))
 
 (defmethod check-format "iri" [f c2 p2 m2]
   (check-pattern iri-pattern f c2 p2 m2))
