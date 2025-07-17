@@ -426,66 +426,61 @@
      (when-not (seq-contains? v2 json-= m1)
        [(make-error "enum: does not contain value" p2 m2 p1 m1)])]))
 
-(defmethod check-property "id" [_property _c2 _p2 _m2 [v2]]
+(defmethod check-property "id" [_property {draft :draft} _p2 _m2 [v2]]
   (fn [c1 p1 _m1]
-    (let [draft (c1 :draft)]
-      (if (#{"draft3" "draft4"} draft)
-        (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
-          [(-> c1
-               (update :path->uri assoc p1 uri)  ; Stash path to uri
-               (update :uri->path assoc uri p1)  ; Stash uri to path
-               (assoc :id-uri uri))
-           nil])
-        (do
-          (log/warn (str "id: ignored in unsupported draft: " draft))
-          [c1 nil])))))
+    (if (#{"draft3" "draft4"} draft)
+      (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
+        [(-> c1
+             (update :path->uri assoc p1 uri)  ; Stash path to uri
+             (update :uri->path assoc uri p1)  ; Stash uri to path
+             (assoc :id-uri uri))
+         nil])
+      (do
+        (log/warn (str "id: ignored in unsupported draft: " draft))
+        [c1 nil]))))
 
-(defmethod check-property "$id" [_property _c2 _p2 _m2 [v2]]
+(defmethod check-property "$id" [_property {draft :draft} _p2 _m2 [v2]]
   (fn [c1 p1 _m1]
-    (let [draft (c1 :draft)]
-      (if (contains? (draft->draft? draft) "draft6")
-        (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
-          [(-> c1
-               (update :path->uri assoc p1 uri)  ; Stash path to uri
-               (update :uri->path assoc uri p1)  ; Stash uri to path
-               (assoc :id-uri uri))
-           nil])
-        (do
-          (log/warn (str "$id: ignored in unsupported draft: " draft))
-          [c1 nil])))))
+    (if (contains? (draft->draft? draft) "draft6")
+      (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
+        [(-> c1
+             (update :path->uri assoc p1 uri)  ; Stash path to uri
+             (update :uri->path assoc uri p1)  ; Stash uri to path
+             (assoc :id-uri uri))
+         nil])
+      (do
+        (log/warn (str "$id: ignored in unsupported draft: " draft))
+        [c1 nil]))))
 
 ;; Anchors only need :uri->path (no change, but included for completeness)
-(defmethod check-property "$anchor" [_property _c2 _p2 _m2 [v2]]
+(defmethod check-property "$anchor" [_property {draft :draft} _p2 _m2 [v2]]
   (fn [c1 p1 _m1]
-    (let [draft (c1 :draft)]
-      (if (contains? (draft->draft? draft) "draft2019-09")
-        (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
-          [(update c1 :uri->path assoc anchor-uri p1) nil])
-        (do
-          (log/warn (str "$anchor: ignored in unsupported draft: " draft))
-          [c1 nil])))))
+    (if (contains? (draft->draft? draft) "draft2019-09")
+      (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
+        [(update c1 :uri->path assoc anchor-uri p1) nil])
+      (do
+        (log/warn (str "$anchor: ignored in unsupported draft: " draft))
+        [c1 nil]))))
 
-(defmethod check-property "$recursiveAnchor" [_property _c2 _p2 _m2 [v2]]
+(defmethod check-property "$recursiveAnchor" [_property {draft :draft} _p2 _m2 [v2]]
   (fn [c1 p1 _m1]
-    (let [draft (c1 :draft)]
-      (if (= "draft2019-09" draft)
-        (if (true? v2)
-          (let [[uris top] (c1 :$recursive-anchor [#{} nil])]
-            [(assoc c1 :$recursive-anchor [(conj uris (c1 :id-uri)) (or top p1)]) nil])
-          [c1 nil])
-        (do
-          (log/warn (str "$recursiveAnchor: ignored in unsupported draft: " draft))
-          [c1 nil])))))
+    (if (= "draft2019-09" draft)
+      (if (true? v2)
+        (let [[uris top] (c1 :$recursive-anchor [#{} nil])]
+          [(assoc c1 :$recursive-anchor [(conj uris (c1 :id-uri)) (or top p1)]) nil])
+        [c1 nil])
+      (do
+        (log/warn (str "$recursiveAnchor: ignored in unsupported draft: " draft))
+        [c1 nil]))))
 
-(defmethod check-property "$dynamicAnchor" [_property _c2 _p2 _m2 [v2]]
+(defmethod check-property "$dynamicAnchor" [_property {draft :draft} _p2 _m2 [v2]]
   (fn [c1 p1 _m1]
-    (let [draft (c1 :draft)]
-      (if (contains? (draft->draft? draft) "draft2020-12")
-        (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
-          [(update c1 :$dynamic-anchor assoc anchor-uri p1) nil])
-        (do
-          (log/warn (str "$dynamicAnchor: ignored in unsupported draft: " draft))
-          [c1 nil])))))
+    (if (contains? (draft->draft? draft) "draft2020-12")
+      (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
+        [(update c1 :$dynamic-anchor assoc anchor-uri p1) nil])
+      (do
+        (log/warn (str "$dynamicAnchor: ignored in unsupported draft: " draft))
+        [c1 nil]))))
 
 (defmethod check-property "$comment" [_property _c2 _p2 _m2 [v2]]
   (fn [c1 p1 _m1]
@@ -1514,58 +1509,43 @@
             [c1 es] (cs c1 [] document)]
         ;;(prn "C:" (:evaluated c1))
         {:valid? (empty? es) :errors es}))))
+  
+(defn $schema->m2 [s]
+  (uri->schema-2 {} [] (parse-uri s)))
 
-;; by recursing to top of schema hierarchy and then validating downwards we:
-;; - confirm validity of entire model, not just the m1
-;; - we can use our implicit knowledge of the structure of json docs to discover all the ids and anchors - how ?
+(declare validate-m2)
 
-;; (defn tweak [[c1 es]]
-;;   {:valid? (empty? es) :errors es})
+(defn validate-m2-2 [{draft :draft :as c2} m1]
+  (let [s (or (and (json-object? m1) (m1 "$schema")) (draft->$schema draft))]
+    (if-let [m2 ($schema->m2 s)]
+      (if (= m2 m1)
+        ;; we are at the top
+        (let [v (validate-2 c2 m2)
+              ;; self-validate - we need lower level api that returns c1 with marker stash...
+              {es :errors :as r} (v {} m1)]
+          (if (empty? es)
+            v
+            (constantly r)))
+        ;; keep going
+        (do
+          ((validate-m2 c2 m2) {} m1)
+          (validate-2 c2 m1)))
+      (constantly [{} {:errors (str "could not resolve $schema: " s)}]))))
 
-;; (defn validate-1
-;;   ([c1 {sid "$schema" :or {sid latest-$schema} :as m1}]
-;;    (let [draft (get $schema->draft sid "latest")
-;;          m2 (uri->schema-2 {} [] (parse-uri sid))]
-;;      (if (= m2 m1)
-;;        ;; we are at top of schema hierarchy - ground out
-;;        (do
-;;          ;; self-validate root meta-schema
-;;          ((validate-2 {:draft draft} m2) c1 m1))
-;;        ;; continue up schema hierarchy...
-;;        (validate-1 {} m2 {} m1))))
-;;   ;; but some m1s are not objects (e.g. string) and thus have nowhere
-;;   ;; to carry $schema property - in which case use this entry point...
-;;   ([c2 m2 c1 m1]
-;;    ;; (let [[{path->uri :path->uri :as c1-1} es] (validate-1 c2 m2)]
-;;    ;;   (when path->uri (prn "PATH->URI:" path->uri))
-;;    ;; ;; copy id locations from outgoing m1-ctx into incoming m2-ctx... ?
-;;    ;; ((validate-2 c2 m2) c1 m1))
-;;    ))
+(def validate-m2 (memoize validate-m2-2))
 
-;; (defn validate
-;;   ([c m]
-;;    (tweak (validate-1 c m)))
-;;   ([c2 m2 c1 m1]
-;;    (tweak (validate-1 c2 m2 c1 m1))))
+;; TODO: handle non object docs - arrays, strings, booleans...
+;; (defn validate-m1 [c2 {s "$schema" :as m1}]
+;;   (if s
+;;     (if-let [m2 ($schema->m2 s)]
+;;       ((validate-m2 c2 m2) {} m1)
+;;       [{} {:errors (str "could not resolve $schema: " s)}])
+;;     [{} {:errors "no $schema given"}]))
 
-;; by recursing to top of schema hierarchy and then validating downwards we:
-;; - confirm validity of entire model, not just the m1
-;; - we can use our implicit knowledge of the structure of json docs to discover all the ids and anchors
+;; this should work but doesn't
 (defn validate
-  ;; when a document is self-descriptive (i.e. it has a $schema) we
-  ;; can use this entry point....
-  ([c1 {sid "$schema" :as m1}]
-   (if sid
-     (let [draft (get $schema->draft sid "latest")
-           m2 (uri->schema-2 {} [] (parse-uri sid))]
-       (if (= m2 m1)
-         ;; we are at top of schema hierarchy - ground out
-         ((validate-2 {:draft draft} m2) c1 m1)
-         ;; continue up schema hierarchy...
-         (validate {} m2)))
-     [{:errors "no $schema given"}]))
-  ;; but some m1s are not objects (e.g. string) and thus have nowhere
-  ;; to carry $schema property - in which case use this entry point...
-  ([c2 schema c1 document]
-   (validate c2 schema)
-   ((validate-2 c2 schema) c1 document)))
+  ;; ([c2 m1]
+  ;;  (validate-m1 c2 m1))
+  ([c2 m2 c1 m1]
+   ;;(prn "HERE:" m2 m1)
+   ((validate-m2 c2 m2) c1 m1)))

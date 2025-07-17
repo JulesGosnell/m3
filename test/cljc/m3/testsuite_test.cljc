@@ -122,6 +122,12 @@
     ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches second anyOf, which has a real schema in it"]
     ["vocabulary.json" "schema that uses custom metaschema with with no validation vocabulary" "no validation: invalid number, but it still validates"]
 
+    ;; custom metaschemas ?
+    ["vocabulary.json" "ignore unrecognized optional vocabulary" "number value"]
+    ["vocabulary.json" "schema that uses custom metaschema with with no validation vocabulary" "no validation: valid number"]
+    ["format-assertion.json" "schema that uses custom metaschema with format-assertion: false" "format-assertion: false: valid string"]
+    ["format-assertion.json" "schema that uses custom metaschema with format-assertion: true" "format-assertion: true: valid string"]
+    
     #?@(:cljs
         [["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]
          ["content.json" "validation of binary string-encoding" "an invalid base64 string (% is not a valid character)"]])})
