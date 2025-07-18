@@ -1395,7 +1395,14 @@
     (fn [c2 p2 {s "$schema" :as m2}]
       (delegate 
        (if-let [d (and s ($schema->draft s))]
-         (update c2 :draft (fn [old-d new-d] (when (not= old-d new-d) (log/info (str "switching draft: " old-d " -> "  new-d))) new-d) d)
+         (update
+          c2
+          :draft
+          (fn [old-d new-d]
+            (when (not= old-d new-d)
+              (log/info (str "switching draft: " old-d " -> "  new-d)))
+            new-d)
+          d)
          c2)
        p2
        m2))))
@@ -1437,7 +1444,9 @@
 ;; TODO: rename
 (def uri-base->dir
   {"http://json-schema.org" "resources/schemas"
-   "https://json-schema.org" "resources/schemas"})
+   "https://json-schema.org" "resources/schemas"
+   "http://localhost:1234" "test-resources/JSON-Schema-Test-Suite/remotes" ;; TODO: should not be in production code
+   })
 
 ;; TODO: uris in sub-schema must inherit fromuris in super-schema...
 (defn uri->schema [uri-base->dir c p {origin :origin path :path :as url}]
@@ -1530,7 +1539,9 @@
         (do
           ((validate-m2 c2 m2) {} m1)
           (validate-2 c2 m1)))
-      (constantly [{} {:errors (str "could not resolve $schema: " s)}]))))
+      (do
+        (log/warn "unrecognised schema encountered:" s)
+        (constantly [{} {:errors (str "could not resolve $schema: " s)}])))))
 
 (def validate-m2 (memoize validate-m2-2))
 
