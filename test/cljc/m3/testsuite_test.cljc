@@ -72,14 +72,11 @@
 ;; TODO:
 ;; - make sure that we are recursing into all subdirectories
 ;; - implement vocabularies
-;; - evaluation - unevaluated properties, items, dynamic anchors, refs...
+;; - fix dynamic anchors, refs...
 ;; - maybe fix remaining tests
 
 (def exclude-module?
-  #{
-    ;; difficult - see comment in validate.cljc
-    ;;"idn-hostname.json"
-    })
+  #{})
 
 (def exclude-test?
   #{["anchor.json" "$anchor inside an enum is not a real identifier" "match $ref to $anchor"]
