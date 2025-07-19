@@ -239,8 +239,8 @@
 
 (defn test-m1 [c2 m2 {d "description" m1 "data" expected-v? "valid"}]
   (testing d
-    (let [{actual-v? :valid?} ((validate-2 c2 m2) {} m1)]
-      (is actual-v? expected-v?))))
+    (let [[_c es] ((validate-2 c2 m2) {} m1)]
+      (is (empty? es) expected-v?))))
     
 
 (defn test-m2 [c2 {d "description" m2 "schema" tests "tests"}]

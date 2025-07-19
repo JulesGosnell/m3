@@ -1209,7 +1209,16 @@
 ;;------------------------------------------------------------------------------
 
 (let [property-groups
-      [;; TODO: push quick wins towards lower ranks - type, format etc...
+      [["$schema"]
+       ["id"]
+       ["$id"]
+       ["$anchor"]
+       ["$dynamicAnchor"]
+       ["$recursiveAnchor"]
+
+       ["$ref"]
+       ["$recursiveRef"]
+       ["$dynamicRef"] 
 
        ["type"]
        ["const"]
@@ -1220,15 +1229,6 @@
        ["enum"]
        ["pattern"]
 
-       ["$ref"]
-       ["$schema"]
-       ["$id"]
-       ["id"]
-       ["$anchor"]
-       ["$recursiveRef"]
-       ["$recursiveAnchor"]
-       ["$dynamicRef"]
-       ["$dynamicAnchor"]
        ["$vocabulary"]
        ["title"]
        ["description"]
@@ -1466,6 +1466,18 @@
          []
          m]))))
 
+(defn marker-stash [{pu :path->uri up :uri->path}]
+  {:path->uri pu :uri->path up})
+
+(defn add-marker-stash [c m sid]
+  (if (or (:path->uri c) (:uri->path c))
+    c
+    (let [tmp (json-walk stash (assoc c :uri->path (if sid {(parse-uri sid) []} {})) {} [] m)]
+      ;; (prn "M2:" m)
+      ;; (prn "OLD:" (marker-stash tmp))
+      ;; (prn "NEW:" (:marker-stash c))
+      tmp)))
+
 (defn make-context [{draft :draft u->s :uri->schema :as c2} {s "$schema" :as m2}]
   (let [draft (or draft
                   (when s ($schema-uri->draft (uri-base (parse-uri s))))
@@ -1475,8 +1487,8 @@
         c2 (if-not u->s (assoc c2 :uri->schema (uri->continuation uri-base->dir)) c2) ;; TODO
         c2 (assoc c2 :draft draft)
         c2 (assoc c2 :id-key id-key)
-        c2 (assoc c2 :uri->path (if sid {(parse-uri sid) []} {}))
-        c2 (json-walk stash c2 {} [] m2)]
+        c2 (add-marker-stash c2 m2 sid)
+        ]
     (assoc
      c2
      :id-uri (or (:id-uri c2) (when sid (parse-uri sid))) ;; should be receiver uri - but seems to default to id/$id - yeugh
@@ -1490,14 +1502,11 @@
 ;; TODO: rename :root to ?:expanded?
 (defn validate-2 [c2 schema]
   (let [{draft :draft id-key :id-key :as c2} (make-context c2 schema)
-        sid (get schema id-key)
         cs (check-schema c2 [] schema)]
     (fn [c1 {did id-key _dsid "$schema" :as document}]
       ;;(log/info "validate:" sid "/" did)
       ;;(when (and dsid (not (= sid dsid))) (log/warn (format "document schema id not consistent with schema id: %s != %s" dsid sid)))
-      (let [c1 (assoc c1 :id-key id-key  :uri->path {}) ;; docs must be of same draft as their schemas... ?
-            c1 (json-walk stash c1 {} [] schema)
-            c1 (assoc
+      (let [c1 (assoc
                 c1
                 :id-key id-key
                 :id-uri (when did (parse-uri did))
@@ -1506,9 +1515,7 @@
                 :root document
                 :draft draft
                 :melder (:melder c2))
-            [c1 es] (cs c1 [] document)]
-        ;;(prn "C:" (:evaluated c1))
-        {:valid? (empty? es) :errors es}))))
+            ](cs c1 [] document)))))
   
 (defn $schema->m2 [s]
   (uri->schema-2 {} [] (parse-uri s)))
@@ -1522,17 +1529,21 @@
         ;; we are at the top
         (let [v (validate-2 c2 m2)
               ;; self-validate - we need lower level api that returns c1 with marker stash...
-              {es :errors :as r} (v {} m1)]
+              [_ es :as r] (v {} m1)]
           (if (empty? es)
             v
             (constantly r)))
         ;; keep going
-        (do
-          ((validate-m2 c2 m2) {} m1)
-          (validate-2 c2 m1)))
-      (constantly [{} {:errors (str "could not resolve $schema: " s)}]))))
+        (let [[c3 es :as r] ((validate-m2 c2 m2) {} m1)]
+          (if (empty? es)
+            (validate-2 (assoc c2 :marker-stash (marker-stash c3)) m1)
+            (constantly r))))
+      (constantly [c2 [(str "could not resolve $schema: " s)]]))))
 
 (def validate-m2 (memoize validate-m2-2))
+
+(defn reformat [[_ es]]
+  {:valid? (empty? es) :errors es})
 
 ;; TODO: handle non object docs - arrays, strings, booleans...
 ;; (defn validate-m1 [c2 {s "$schema" :as m1}]
@@ -1547,5 +1558,4 @@
   ;; ([c2 m1]
   ;;  (validate-m1 c2 m1))
   ([c2 m2 c1 m1]
-   ;;(prn "HERE:" m2 m1)
-   ((validate-m2 c2 m2) c1 m1)))
+   (reformat ((validate-m2 (assoc c2 :m2? true)  m2) c1 m1))))
