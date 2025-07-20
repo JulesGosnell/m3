@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "clojure-mcp": {
+      "command": "lein",
+      "args": [
+        "with-profile",
+        "mcp",
+        "run",
+        "-m",
+        "m3.mcp-runner",
+        "7888"
+      ]
+    }
+  }
+}
+
