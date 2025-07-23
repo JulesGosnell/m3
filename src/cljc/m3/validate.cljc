@@ -785,36 +785,29 @@
         [c1 []]))))
 
 ;; TODO: share more code with dependencies
-(defn check-property-dependentRequired [_property {d :draft} p2 m2 v2]
-  (case d
-    ("draft3" "draft4" "draft6" "draft7")
-    (fn [c1 _p1 _m1]
-      (log/warn (str "dependentRequired: was not introduced until draft2019-09 - you are using: " d " - ignored"))
-      [c1 nil])
-
-    ("draft2019-09" "draft2020-12" "draft2021-12" "draft-next")
-    (let [property->checker
-          (reduce
-           (fn [acc [k v]]
-             (assoc
-              acc
-              k
-              (fn [c1 p1 m1] (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v))))
-           {}
-           v2)]
-      (fn [c1 p1 m1]
-        [c1
-         (when (json-object? m1)
-           (when-let [missing
-                      (seq
-                       (reduce
-                        (fn [acc [k v]]
-                          (if (contains? m1 k)
-                            (concatv acc ((property->checker k) c1 p1 m1))
-                            acc))
-                        []
-                        v2))]
-             [(make-error ["dependentRequired: missing properties (at least):" missing] p2 m2 p1 m1)]))]))))
+(defn check-property-dependentRequired [_property _c2 p2 m2 v2]
+  (let [property->checker
+        (reduce
+         (fn [acc [k v]]
+           (assoc
+            acc
+            k
+            (fn [c1 p1 m1] (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v))))
+         {}
+         v2)]
+    (fn [c1 p1 m1]
+      [c1
+       (when (json-object? m1)
+         (when-let [missing
+                    (seq
+                     (reduce
+                      (fn [acc [k v]]
+                        (if (contains? m1 k)
+                          (concatv acc ((property->checker k) c1 p1 m1))
+                          acc))
+                      []
+                      v2))]
+           [(make-error ["dependentRequired: missing properties (at least):" missing] p2 m2 p1 m1)]))])))
 
 ;;------------------------------------------------------------------------------
 
@@ -1203,10 +1196,8 @@
     [:applicator "oneOf" check-property-oneOf]
     [:applicator "allOf" check-property-allOf]
     [:validation "required" check-property-required]
-    [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "dependencies" check-property-dependencies]
     [:applicator "dependentSchemas" check-property-dependentSchemas]
-    [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
@@ -1268,10 +1259,8 @@
     [:applicator "oneOf" check-property-oneOf]
     [:applicator "allOf" check-property-allOf]
     [:validation "required" check-property-required]
-    [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "dependencies" check-property-dependencies]
     [:applicator "dependentSchemas" check-property-dependentSchemas]
-    [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
@@ -1333,10 +1322,8 @@
     [:applicator "oneOf" check-property-oneOf]
     [:applicator "allOf" check-property-allOf]
     [:validation "required" check-property-required]
-    [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "dependencies" check-property-dependencies]
     [:applicator "dependentSchemas" check-property-dependentSchemas]
-    [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
@@ -1398,10 +1385,8 @@
     [:applicator "oneOf" check-property-oneOf]
     [:applicator "allOf" check-property-allOf]
     [:validation "required" check-property-required]
-    [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "dependencies" check-property-dependencies]
     [:applicator "dependentSchemas" check-property-dependentSchemas]
-    [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
@@ -1464,7 +1449,6 @@
     [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "dependencies" check-property-dependencies]
     [:applicator "dependentSchemas" check-property-dependentSchemas]
-    [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
@@ -1527,7 +1511,6 @@
     [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "dependencies" check-property-dependencies]
     [:applicator "dependentSchemas" check-property-dependentSchemas]
-    [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
@@ -1591,7 +1574,6 @@
     [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "dependencies" check-property-dependencies]
     [:applicator "dependentSchemas" check-property-dependentSchemas]
-    [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
@@ -1655,7 +1637,6 @@
     [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "dependencies" check-property-dependencies]
     [:applicator "dependentSchemas" check-property-dependentSchemas]
-    [:validation "dependentRequired" check-property-dependentRequired]
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
