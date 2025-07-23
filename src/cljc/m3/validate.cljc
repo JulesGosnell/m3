@@ -709,12 +709,7 @@
              (catch Exception e
                (:errors (ex-data e))))])))))
 
-(defn check-property-dependencies [_property {d :draft :as c2} p2 m2 v2]
-  (case d
-    ("draft2019-09" "draft2020-12" "draft2021-12" "draft-next")
-    ;; this keyword no longer exists - it was split into "dependentRequired" and "dependentSchemas"...
-    (log/info (str "dependencies was split into dependentRequired and dependentSchemas in draft2019-09 - you are using: " d))
-    nil)
+(defn check-property-dependencies [_property c2 p2 m2 v2]
   (let [property->checker
         (reduce
          (fn [acc [k v]]
@@ -747,39 +742,31 @@
           [c1
            (when-let [missing (seq es)]
              [(make-error ["dependencies: missing properties (at least):" missing] p2 m2 p1 m1)])])
-        [c1 []]))))
+        [c1 []])))
+  )
 
-;; do same for dependencies
-(defn check-property-dependentSchemas [_property {d :draft :as c2} p2 m2 v2]
-  (case d
-    ("draft3" "draft4" "draft6" "draft7")
-    ;; this keyword didn't exist - it arose from the splitting of "dependencies'
+(defn check-property-dependentSchemas [_property c2 p2 m2 v2]
+  (let [property->checker
+        (reduce
+         (fn [acc [k v]]
+           (assoc acc k (check-schema c2 p2 v)))
+         {}
+         v2)]
     (fn [c1 p1 m1]
-      (log/warn (str "dependentSchemas:  was not introduced until draft2019-09 - you are using: " d " - ignored"))
-      [c1 nil])
-
-    ("draft2019-09" "draft2020-12" "draft2021-12" "draft-next")
-    (let [property->checker
-          (reduce
-           (fn [acc [k v]]
-             (assoc acc k (check-schema c2 p2 v)))
-           {}
-           v2)]
-      (fn [c1 p1 m1]
-        (if (json-object? m1)
-          (let [[c1 es]
-                (reduce
-                 (fn [[c old-es] [k v]]
-                   (if (contains? m1 k)
-                     (let [[c new-es] ((property->checker k) c p1 m1)]
-                       [c (concatv old-es new-es)])
-                     [c old-es]))
-                 [c1 []]
-                 v2)]
-            [c1
-             (when-let [missing (seq es)]
-               [(make-error ["dependentSchemas: missing properties (at least):" missing] p2 m2 p1 m1)])])
-          [c1 nil])))))
+      (if (json-object? m1)
+        (let [[c1 es]
+              (reduce
+               (fn [[c old-es] [k v]]
+                 (if (contains? m1 k)
+                   (let [[c new-es] ((property->checker k) c p1 m1)]
+                     [c (concatv old-es new-es)])
+                   [c old-es]))
+               [c1 []]
+               v2)]
+          [c1
+           (when-let [missing (seq es)]
+             [(make-error ["dependentSchemas: missing properties (at least):" missing] p2 m2 p1 m1)])])
+        [c1 nil]))))
 
 (defn check-property-propertyDependencies [_property c2 p2 _m2 v2]
   (let [checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] (check-schema c2 p2 s)]) vs)) v2))
