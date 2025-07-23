@@ -628,7 +628,7 @@
     ;; this is an extension to allow patternProperties to
     ;; leverage formats since the spec does not provide a
     ;; formatProperties...
-    (check-property-format c2 p2 m2 (subs v2 (count "$format:")))
+    (check-property-format "format" c2 p2 m2 (subs v2 (count "$format:")))
     (let [p (ecma-pattern v2)]
 
       (fn [c1 p1 m1]
