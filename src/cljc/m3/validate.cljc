@@ -428,7 +428,7 @@
 
 (defn check-property-id [_property {draft :draft} _p2 _m2 v2]
   (fn [c1 p1 _m1]
-    (if (#{"draft3" "draft4"} draft)
+    (if (#{"draft3" "draft4"} draft) ;; TODO - remove post $vocabulary
       (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
         [(-> c1
              (update :path->uri assoc p1 uri)  ; Stash path to uri
@@ -441,7 +441,7 @@
 
 (defn check-property-$id [_property {draft :draft} _p2 _m2 v2]
   (fn [c1 p1 _m1]
-    (if (contains? (draft->draft? draft) "draft6")
+    (if (contains? (draft->draft? draft) "draft6") ;; TODO - remove post $vocabulary
       (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
         [(-> c1
              (update :path->uri assoc p1 uri)  ; Stash path to uri
@@ -455,7 +455,7 @@
 ;; Anchors only need :uri->path (no change, but included for completeness)
 (defn check-property-$anchor [_property {draft :draft} _p2 _m2 v2]
   (fn [c1 p1 _m1]
-    (if (contains? (draft->draft? draft) "draft2019-09")
+    (if (contains? (draft->draft? draft) "draft2019-09") ;; TODO - remove post $vocabulary
       (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
         [(update c1 :uri->path assoc anchor-uri p1) nil])
       (do
@@ -464,7 +464,7 @@
 
 (defn check-property-$recursiveAnchor [_property {draft :draft} _p2 _m2 v2]
   (fn [c1 p1 _m1]
-    (if (= "draft2019-09" draft)
+    (if (= "draft2019-09" draft) ;; TODO - remove post $vocabulary
       (if (true? v2)
         (let [[uris top] (c1 :$recursive-anchor [#{} nil])]
           [(assoc c1 :$recursive-anchor [(conj uris (c1 :id-uri)) (or top p1)]) nil])
