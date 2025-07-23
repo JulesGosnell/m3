@@ -974,20 +974,13 @@
              (map vector i-and-css m1))]
         [c1 (make-error-on-failure message p2 m2 p1 m1 es)]))))
 
-;; TODO: consider warning if using tuple form of items post draft2020-12
-(defn check-property-prefixItems [_property {d :draft :as c2}  p2 m2 v2]
-  (case d
-    ("draft3" "draft4" "draft6" "draft7" "draft2019-09")
+(defn check-property-prefixItems [_property c2  p2 m2 v2]
+  (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema c2 (conj p2 i) sub-schema)]) v2))
+        ci (check-items c2 p2 m2)]
     (fn [c1 p1 m1]
-      (log/warn (str "prefixItems: was not introduced until draft2020-12 - you are using: " d " - ignored"))
-      [c1 nil])
-    ("draft2020-12" "draft2021-12" "draft-next")
-    (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema c2 (conj p2 i) sub-schema)]) v2))
-          ci (check-items c2 p2 m2)]
-      (fn [c1 p1 m1]
-        (if (json-array? m1)
-          (ci c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")
-          [c1 []])))))
+      (if (json-array? m1)
+        (ci c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")
+        [c1 []]))))
 
 (defn check-property-items [_property {d :draft :as c2}  p2 m2 v2]
   (let [n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
@@ -1230,7 +1223,6 @@
     [:validation "minItems" check-property-minItems]
     [:validation "maxItems" check-property-maxItems]
     [:validation "uniqueItems" check-property-uniqueItems]
-    [:applicator "prefixItems" check-property-prefixItems]
     [:applicator "items" check-property-items]
     [:applicator "additionalItems" check-property-additionalItems]
     [:unevaluated "unevaluatedItems" check-property-unevaluatedItems]
@@ -1296,7 +1288,6 @@
     [:validation "minItems" check-property-minItems]
     [:validation "maxItems" check-property-maxItems]
     [:validation "uniqueItems" check-property-uniqueItems]
-    [:applicator "prefixItems" check-property-prefixItems]
     [:applicator "items" check-property-items]
     [:applicator "additionalItems" check-property-additionalItems]
     [:unevaluated "unevaluatedItems" check-property-unevaluatedItems]
@@ -1362,7 +1353,6 @@
     [:validation "minItems" check-property-minItems]
     [:validation "maxItems" check-property-maxItems]
     [:validation "uniqueItems" check-property-uniqueItems]
-    [:applicator "prefixItems" check-property-prefixItems]
     [:applicator "items" check-property-items]
     [:applicator "additionalItems" check-property-additionalItems]
     [:unevaluated "unevaluatedItems" check-property-unevaluatedItems]
@@ -1428,7 +1418,6 @@
     [:validation "minItems" check-property-minItems]
     [:validation "maxItems" check-property-maxItems]
     [:validation "uniqueItems" check-property-uniqueItems]
-    [:applicator "prefixItems" check-property-prefixItems]
     [:applicator "items" check-property-items]
     [:applicator "additionalItems" check-property-additionalItems]
     [:unevaluated "unevaluatedItems" check-property-unevaluatedItems]
@@ -1492,7 +1481,6 @@
     [:validation "minItems" check-property-minItems]
     [:validation "maxItems" check-property-maxItems]
     [:validation "uniqueItems" check-property-uniqueItems]
-    [:applicator "prefixItems" check-property-prefixItems]
     [:applicator "items" check-property-items]
     [:applicator "additionalItems" check-property-additionalItems]
     [:unevaluated "unevaluatedItems" check-property-unevaluatedItems]
