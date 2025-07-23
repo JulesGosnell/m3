@@ -422,61 +422,41 @@
      (when-not (seq-contains? v2 json-= m1)
        [(make-error "enum: does not contain value" p2 m2 p1 m1)])]))
 
-(defn check-property-id [_property {draft :draft} _p2 _m2 v2]
+(defn check-property-id [_property _c2 _p2 _m2 v2]
   (fn [c1 p1 _m1]
-    (if (#{"draft3" "draft4"} draft) ;; TODO - remove post $vocabulary
-      (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
-        [(-> c1
-             (update :path->uri assoc p1 uri)  ; Stash path to uri
-             (update :uri->path assoc uri p1)  ; Stash uri to path
-             (assoc :id-uri uri))
-         nil])
-      (do
-        (log/warn (str "id: ignored in unsupported draft: " draft))
-        [c1 nil]))))
+    (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
+      [(-> c1
+           (update :path->uri assoc p1 uri)  ; Stash path to uri
+           (update :uri->path assoc uri p1)  ; Stash uri to path
+           (assoc :id-uri uri))
+       nil])))
 
-(defn check-property-$id [_property {draft :draft} _p2 _m2 v2]
+(defn check-property-$id [_property _c2 _p2 _m2 v2]
   (fn [c1 p1 _m1]
-    (if (contains? (draft->draft? draft) "draft6") ;; TODO - remove post $vocabulary
-      (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
-        [(-> c1
-             (update :path->uri assoc p1 uri)  ; Stash path to uri
-             (update :uri->path assoc uri p1)  ; Stash uri to path
-             (assoc :id-uri uri))
-         nil])
-      (do
-        (log/warn (str "$id: ignored in unsupported draft: " draft))
-        [c1 nil]))))
+    (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
+      [(-> c1
+           (update :path->uri assoc p1 uri)  ; Stash path to uri
+           (update :uri->path assoc uri p1)  ; Stash uri to path
+           (assoc :id-uri uri))
+       nil])))
 
 ;; Anchors only need :uri->path (no change, but included for completeness)
-(defn check-property-$anchor [_property {draft :draft} _p2 _m2 v2]
+(defn check-property-$anchor [_property _c2 _p2 _m2 v2]
   (fn [c1 p1 _m1]
-    (if (contains? (draft->draft? draft) "draft2019-09") ;; TODO - remove post $vocabulary
-      (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
-        [(update c1 :uri->path assoc anchor-uri p1) nil])
-      (do
-        (log/warn (str "$anchor: ignored in unsupported draft: " draft))
-        [c1 nil]))))
+    (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
+      [(update c1 :uri->path assoc anchor-uri p1) nil])))
 
-(defn check-property-$recursiveAnchor [_property {draft :draft} _p2 _m2 v2]
+(defn check-property-$recursiveAnchor [_property _c2 _p2 _m2 v2]
   (fn [c1 p1 _m1]
-    (if (= "draft2019-09" draft) ;; TODO - remove post $vocabulary
-      (if (true? v2)
-        (let [[uris top] (c1 :$recursive-anchor [#{} nil])]
-          [(assoc c1 :$recursive-anchor [(conj uris (c1 :id-uri)) (or top p1)]) nil])
-        [c1 nil])
-      (do
-        (log/warn (str "$recursiveAnchor: ignored in unsupported draft: " draft))
-        [c1 nil]))))
+    (if (true? v2)
+      (let [[uris top] (c1 :$recursive-anchor [#{} nil])]
+        [(assoc c1 :$recursive-anchor [(conj uris (c1 :id-uri)) (or top p1)]) nil])
+      [c1 nil])))
 
-(defn check-property-$dynamicAnchor [_property {draft :draft} _p2 _m2 v2]
+(defn check-property-$dynamicAnchor [_property _c2 _p2 _m2 v2]
   (fn [c1 p1 _m1]
-    (if (contains? (draft->draft? draft) "draft2020-12")
-      (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
-        [(update c1 :$dynamic-anchor assoc anchor-uri p1) nil])
-      (do
-        (log/warn (str "$dynamicAnchor: ignored in unsupported draft: " draft))
-        [c1 nil]))))
+    (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
+      [(update c1 :$dynamic-anchor assoc anchor-uri p1) nil])))
 
 (defn check-property-$comment [_property _c2 _p2 _m2 v2]
   (fn [c1 p1 _m1]
@@ -492,7 +472,7 @@
 (defn check-property-writeOnly        [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
 
 (defn check-property-default          [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-$schema          [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil])) ;; TODO: switch drafts in context...
+(defn check-property-$schema          [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
 (defn check-property-examples         [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
 
 (defn check-property-$vocabulary [_property _c2 _p2 _m2 _v2]
@@ -504,26 +484,25 @@
 
 ;; standard number properties
 
-(defn check-property-minimum [_property {d :draft} p2 m2 v2]
-  (case d
-    ("draft3" "draft4")
-    (let [e? (m2 "exclusiveMinimum")
-          p? (if e? < <=)]
-      (fn [c1 p1 m1]
-        [c1
-         (if (or
-              (not (number? m1))
-              (p? v2 m1))
-           []
-           [(make-error (str "minimum" (when e? "(with exclusiveMinimum)") ": value to low") p2 m2 p1 m1)])]))
-   ;; default
+(defn check-property-minimum-old [_property _c2 p2 m2 v2]
+  (let [e? (m2 "exclusiveMinimum")
+        p? (if e? < <=)]
     (fn [c1 p1 m1]
       [c1
        (if (or
             (not (number? m1))
-            (<= v2 m1))
+            (p? v2 m1))
          []
-         [(make-error "minimum: value to low" p2 m2 p1 m1)])])))
+         [(make-error (str "minimum" (when e? "(with exclusiveMinimum)") ": value to low") p2 m2 p1 m1)])])))
+
+(defn check-property-minimum-new [_property _c2 p2 m2 v2]
+  (fn [c1 p1 m1]
+    [c1
+     (if (or
+          (not (number? m1))
+          (<= v2 m1))
+       []
+       [(make-error "minimum: value to low" p2 m2 p1 m1)])]))
 
 (defn check-property-exclusiveMinimum [_property {d :draft} p2 {m "minimum" :as m2} v2]
   (case d
@@ -1254,7 +1233,7 @@
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
-    [:validation "minimum" check-property-minimum]
+    [:validation "minimum" check-property-minimum-old]
     [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
     [:validation "maximum" check-property-maximum]
     [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
@@ -1320,7 +1299,7 @@
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
-    [:validation "minimum" check-property-minimum]
+    [:validation "minimum" check-property-minimum-old]
     [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
     [:validation "maximum" check-property-maximum]
     [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
@@ -1386,7 +1365,7 @@
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
-    [:validation "minimum" check-property-minimum]
+    [:validation "minimum" check-property-minimum-new]
     [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
     [:validation "maximum" check-property-maximum]
     [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
@@ -1452,7 +1431,7 @@
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
-    [:validation "minimum" check-property-minimum]
+    [:validation "minimum" check-property-minimum-new]
     [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
     [:validation "maximum" check-property-maximum]
     [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
@@ -1516,7 +1495,7 @@
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
-    [:validation "minimum" check-property-minimum]
+    [:validation "minimum" check-property-minimum-new]
     [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
     [:validation "maximum" check-property-maximum]
     [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
@@ -1580,7 +1559,7 @@
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
-    [:validation "minimum" check-property-minimum]
+    [:validation "minimum" check-property-minimum-new]
     [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
     [:validation "maximum" check-property-maximum]
     [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
@@ -1644,7 +1623,7 @@
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
-    [:validation "minimum" check-property-minimum]
+    [:validation "minimum" check-property-minimum-new]
     [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
     [:validation "maximum" check-property-maximum]
     [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
@@ -1708,7 +1687,7 @@
     [:applicator "contains" check-property-contains]
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
-    [:validation "minimum" check-property-minimum]
+    [:validation "minimum" check-property-minimum-new]
     [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
     [:validation "maximum" check-property-maximum]
     [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
