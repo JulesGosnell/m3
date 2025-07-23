@@ -504,56 +504,53 @@
        []
        [(make-error "minimum: value to low" p2 m2 p1 m1)])]))
 
-(defn check-property-exclusiveMinimum [_property {d :draft} p2 {m "minimum" :as m2} v2]
-  (case d
-    ("draft3" "draft4")
-    (fn [c1 _p1 _m1]
-      (when-not m (log/warn "exclusiveMinimum: no minimum present to modify"))
-      [c1 []])
-     ;; default
-    (fn [c1 p1 m1]
-      [c1
-       (if (or
-            (not (number? m1))
-            (< v2 m1))
-         []
-         [(make-error "minimum: value to low" p2 m2 p1 m1)])])))
+(defn check-property-exclusiveMinimum-old [_property _c2 p2 {m "minimum" :as m2} v2]
+  (fn [c1 _p1 _m1]
+    (when-not m (log/warn "exclusiveMinimum: no minimum present to modify"))
+    [c1 []]))
 
-(defn check-property-maximum [_property {d :draft} p2 m2 v2]
-  (case d
-    ("draft3" "draft4")
-    (let [e? (m2 "exclusiveMaximum")
-          p? (if e? > >=)]
-      (fn [c1 p1 m1]
-        [c1
-         (if (or
-              (not (number? m1))
-              (p? v2 m1))
-           []
-           [(make-error (str "maximum" (when e? "(with exclusiveMaximum)") ": value too high") p2 m2 p1 m1)])]))
-   ;; default
-    (fn [c1 p1 m1]
-      [c1
-       (if (or
-            (not (number? m1))
-            (>= v2 m1))
-         []
-         [(make-error "maximum: value too high" p2 m2 p1 m1)])])))
+(defn check-property-exclusiveMinimum-new [_property _c2 p2 {m "minimum" :as m2} v2]
+  (fn [c1 p1 m1]
+    [c1
+     (if (or
+          (not (number? m1))
+          (< v2 m1))
+       []
+       [(make-error "minimum: value to low" p2 m2 p1 m1)])]))
 
-(defn check-property-exclusiveMaximum [_property {d :draft} p2 {m "maximum" :as m2} v2]
-  (case d
-    ("draft3" "draft4")
-    (fn [c1 _p1 _m1]
-      (when-not m (log/warn "exclusiveMaximum: no maximum present to modify"))
-      [c1 []])
-     ;; default
+(defn check-property-maximum-old [_property _c2 p2 m2 v2]
+  (let [e? (m2 "exclusiveMaximum")
+        p? (if e? > >=)]
     (fn [c1 p1 m1]
       [c1
        (if (or
             (not (number? m1))
-            (> v2 m1))
+            (p? v2 m1))
          []
-         [(make-error "maximum: value too high" p2 m2 p1 m1)])])))
+         [(make-error (str "maximum" (when e? "(with exclusiveMaximum)") ": value too high") p2 m2 p1 m1)])])))
+
+(defn check-property-maximum-new [_property _c2 p2 m2 v2]
+  (fn [c1 p1 m1]
+    [c1
+     (if (or
+          (not (number? m1))
+          (>= v2 m1))
+       []
+       [(make-error "maximum: value too high" p2 m2 p1 m1)])]))
+
+(defn check-property-exclusiveMaximum-old [_property _c2 p2 {m "maximum" :as m2} v2]
+  (fn [c1 _p1 _m1]
+    (when-not m (log/warn "exclusiveMaximum: no maximum present to modify"))
+    [c1 []]))
+
+(defn check-property-exclusiveMaximum-new [_property _c2 p2 {m "maximum" :as m2} v2]
+  (fn [c1 p1 m1]
+    [c1
+     (if (or
+          (not (number? m1))
+          (> v2 m1))
+       []
+       [(make-error "maximum: value too high" p2 m2 p1 m1)])]))
 
 (defn check-property-multipleOf [_property _c2 p2 m2 v2]
   (let [v2-bd (bigdec v2)]
@@ -649,42 +646,18 @@
    "application/json" json-decode
    })
 
-(defn check-property-contentEncoding [_property {d :draft} p2 m2 v2]
-  (let [strict? (#{"draft7"} d) ;; TODO: check a context flag aswell
-        ce-decoder (ce->decoder v2)
-        pp2 (butlast p2)]
-    (fn [c1 p1 old-m1]
-      (if (string? old-m1)
-        (let [[new-m1 es]
-              (try
-                [(ce-decoder old-m1) nil]
-                (catch Exception e
-                  [nil
-                   (let [m (str "contentEncoding: could not " v2 " decode: " (pr-str old-m1) " - " (ex-message e))]
-                     (if strict?
-                       [(make-error m p2 m2 p1 old-m1)]
-                       (do
-                         (log/warn (string-replace m #"\n" " - "))
-                         [])))]))]
-          (if new-m1
-            [(update c1 :content assoc pp2 new-m1) nil]
-            [c1 es]))
-        [old-m1 nil]))))
-
-(defn check-property-contentMediaType [_property {d :draft} p2 m2 v2]
-  (let [strict? (#{"draft7"} d) ;; TODO: check a context flag aswell
-        cmt v2
-        cmt-decoder (cmt->decoder cmt)
-        pp2 (butlast p2)]
-    (fn [c1 p1 m1]
-      (let [old-m1 (or (get (get c1 :content) pp2) m1)]
+(defn make-check-property-contentEncoding [strict?]
+  (fn [_property _c2 p2 m2 v2]
+    (let [ce-decoder (ce->decoder v2)
+          pp2 (butlast p2)]
+      (fn [c1 p1 old-m1]
         (if (string? old-m1)
           (let [[new-m1 es]
                 (try
-                  [(cmt-decoder old-m1) nil]
+                  [(ce-decoder old-m1) nil]
                   (catch Exception e
                     [nil
-                     (let [m (str "contentMediaType: could not " v2 " decode: " (pr-str old-m1) " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
+                     (let [m (str "contentEncoding: could not " v2 " decode: " (pr-str old-m1) " - " (ex-message e))]
                        (if strict?
                          [(make-error m p2 m2 p1 old-m1)]
                          (do
@@ -695,22 +668,46 @@
               [c1 es]))
           [old-m1 nil])))))
 
-(defn check-property-contentSchema [_property {d :draft :as c2} p2 {cmt "contentMediaType"} v2]
-  (let [strict? (#{"draft7"} d) ;; TODO: check a context flag aswell
-        checker (check-schema c2 p2 v2)
-        pp2 (butlast p2)]
-    (fn [c1 p1 m1]
-      (let [old-m1 (or (get (get c1 :content) pp2) m1)
-            old-m1 (if cmt old-m1 (json-decode old-m1))] ;; TODO: error handling
-        [c1
-         (try
-           (let [{es :errors :as v} (checker c1 p1 old-m1)]
-             (when (seq es)
-               (if strict?
-                 es
-                 (log/warn "contentSchema: failed validation - " (prn-str v)))))
-           (catch Exception e
-             (:errors (ex-data e))))]))))
+(defn make-check-property-contentMediaType [strict?]
+  (fn [_property _c2 p2 m2 v2]
+    (let [cmt v2
+          cmt-decoder (cmt->decoder cmt)
+          pp2 (butlast p2)]
+      (fn [c1 p1 m1]
+        (let [old-m1 (or (get (get c1 :content) pp2) m1)]
+          (if (string? old-m1)
+            (let [[new-m1 es]
+                  (try
+                    [(cmt-decoder old-m1) nil]
+                    (catch Exception e
+                      [nil
+                       (let [m (str "contentMediaType: could not " v2 " decode: " (pr-str old-m1) " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
+                         (if strict?
+                           [(make-error m p2 m2 p1 old-m1)]
+                           (do
+                             (log/warn (string-replace m #"\n" " - "))
+                             [])))]))]
+              (if new-m1
+                [(update c1 :content assoc pp2 new-m1) nil]
+                [c1 es]))
+            [old-m1 nil]))))))
+
+(defn make-check-property-contentSchema [strict?]
+  (fn [_property c2 p2 {cmt "contentMediaType"} v2]
+    (let [checker (check-schema c2 p2 v2)
+          pp2 (butlast p2)]
+      (fn [c1 p1 m1]
+        (let [old-m1 (or (get (get c1 :content) pp2) m1)
+              old-m1 (if cmt old-m1 (json-decode old-m1))] ;; TODO: error handling
+          [c1
+           (try
+             (let [{es :errors :as v} (checker c1 p1 old-m1)]
+               (when (seq es)
+                 (if strict?
+                   es
+                   (log/warn "contentSchema: failed validation - " (prn-str v)))))
+             (catch Exception e
+               (:errors (ex-data e))))])))))
 
 (defn check-property-dependencies [_property {d :draft :as c2} p2 m2 v2]
   (case d
@@ -1234,12 +1231,12 @@
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
     [:validation "minimum" check-property-minimum-old]
-    [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
-    [:validation "maximum" check-property-maximum]
-    [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
-    [:content "contentEncoding" check-property-contentEncoding]
-    [:content "contentMediaType" check-property-contentMediaType]
-    [:content "contentSchema" check-property-contentSchema]
+    [:validation "exclusiveMinimum" check-property-exclusiveMinimum-old]
+    [:validation "maximum" check-property-maximum-old]
+    [:validation "exclusiveMaximum" check-property-exclusiveMaximum-old]
+    [:content "contentEncoding" (make-check-property-contentEncoding false)]
+    [:content "contentMediaType" (make-check-property-contentMediaType false)]
+    [:content "contentSchema" (make-check-property-contentSchema false)]
     [:applicator "if" check-property-if]
     [:applicator "then" check-property-then]
     [:applicator "else" check-property-else]
@@ -1300,12 +1297,12 @@
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
     [:validation "minimum" check-property-minimum-old]
-    [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
-    [:validation "maximum" check-property-maximum]
-    [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
-    [:content "contentEncoding" check-property-contentEncoding]
-    [:content "contentMediaType" check-property-contentMediaType]
-    [:content "contentSchema" check-property-contentSchema]
+    [:validation "exclusiveMinimum" check-property-exclusiveMinimum-old]
+    [:validation "maximum" check-property-maximum-old]
+    [:validation "exclusiveMaximum" check-property-exclusiveMaximum-old]
+    [:content "contentEncoding" (make-check-property-contentEncoding false)]
+    [:content "contentMediaType" (make-check-property-contentMediaType false)]
+    [:content "contentSchema" (make-check-property-contentSchema false)]
     [:applicator "if" check-property-if]
     [:applicator "then" check-property-then]
     [:applicator "else" check-property-else]
@@ -1366,12 +1363,12 @@
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
     [:validation "minimum" check-property-minimum-new]
-    [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
-    [:validation "maximum" check-property-maximum]
-    [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
-    [:content "contentEncoding" check-property-contentEncoding]
-    [:content "contentMediaType" check-property-contentMediaType]
-    [:content "contentSchema" check-property-contentSchema]
+    [:validation "exclusiveMinimum" check-property-exclusiveMinimum-new]
+    [:validation "maximum" check-property-maximum-new]
+    [:validation "exclusiveMaximum" check-property-exclusiveMaximum-new]
+    [:content "contentEncoding"  (make-check-property-contentEncoding false)]
+    [:content "contentMediaType" (make-check-property-contentMediaType false)]
+    [:content "contentSchema" (make-check-property-contentSchema false)]
     [:applicator "if" check-property-if]
     [:applicator "then" check-property-then]
     [:applicator "else" check-property-else]
@@ -1432,12 +1429,12 @@
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
     [:validation "minimum" check-property-minimum-new]
-    [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
-    [:validation "maximum" check-property-maximum]
-    [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
-    [:content "contentEncoding" check-property-contentEncoding]
-    [:content "contentMediaType" check-property-contentMediaType]
-    [:content "contentSchema" check-property-contentSchema]
+    [:validation "exclusiveMinimum" check-property-exclusiveMinimum-new]
+    [:validation "maximum" check-property-maximum-new]
+    [:validation "exclusiveMaximum" check-property-exclusiveMaximum-new]
+    [:content "contentEncoding" (make-check-property-contentEncoding true)]
+    [:content "contentMediaType" (make-check-property-contentMediaType true)]
+    [:content "contentSchema" (make-check-property-contentSchema true)]
     [:applicator "if" check-property-if]
     [:applicator "then" check-property-then]
     [:applicator "else" check-property-else]
@@ -1496,12 +1493,12 @@
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
     [:validation "minimum" check-property-minimum-new]
-    [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
-    [:validation "maximum" check-property-maximum]
-    [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
-    [:content "contentEncoding" check-property-contentEncoding]
-    [:content "contentMediaType" check-property-contentMediaType]
-    [:content "contentSchema" check-property-contentSchema]
+    [:validation "exclusiveMinimum" check-property-exclusiveMinimum-new]
+    [:validation "maximum" check-property-maximum-new]
+    [:validation "exclusiveMaximum" check-property-exclusiveMaximum-new]
+    [:content "contentEncoding" (make-check-property-contentEncoding false)]
+    [:content "contentMediaType" (make-check-property-contentMediaType false)]
+    [:content "contentSchema" (make-check-property-contentSchema false)]
     [:applicator "if" check-property-if]
     [:applicator "then" check-property-then]
     [:applicator "else" check-property-else]
@@ -1560,12 +1557,12 @@
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
     [:validation "minimum" check-property-minimum-new]
-    [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
-    [:validation "maximum" check-property-maximum]
-    [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
-    [:content "contentEncoding" check-property-contentEncoding]
-    [:content "contentMediaType" check-property-contentMediaType]
-    [:content "contentSchema" check-property-contentSchema]
+    [:validation "exclusiveMinimum" check-property-exclusiveMinimum-new]
+    [:validation "maximum" check-property-maximum-new]
+    [:validation "exclusiveMaximum" check-property-exclusiveMaximum-new]
+    [:content "contentEncoding" (make-check-property-contentEncoding false)]
+    [:content "contentMediaType" (make-check-property-contentMediaType false)]
+    [:content "contentSchema" (make-check-property-contentSchema false)]
     [:applicator "if" check-property-if]
     [:applicator "then" check-property-then]
     [:applicator "else" check-property-else]
@@ -1624,12 +1621,12 @@
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
     [:validation "minimum" check-property-minimum-new]
-    [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
-    [:validation "maximum" check-property-maximum]
-    [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
-    [:content "contentEncoding" check-property-contentEncoding]
-    [:content "contentMediaType" check-property-contentMediaType]
-    [:content "contentSchema" check-property-contentSchema]
+    [:validation "exclusiveMinimum" check-property-exclusiveMinimum-new]
+    [:validation "maximum" check-property-maximum-new]
+    [:validation "exclusiveMaximum" check-property-exclusiveMaximum-new]
+    [:content "contentEncoding" (make-check-property-contentEncoding false)]
+    [:content "contentMediaType" (make-check-property-contentMediaType false)]
+    [:content "contentSchema" (make-check-property-contentSchema false)]
     [:applicator "if" check-property-if]
     [:applicator "then" check-property-then]
     [:applicator "else" check-property-else]
@@ -1688,12 +1685,12 @@
     [:validation "minContains" check-property-minContains]
     [:validation "maxContains" check-property-maxContains]
     [:validation "minimum" check-property-minimum-new]
-    [:validation "exclusiveMinimum" check-property-exclusiveMinimum]
-    [:validation "maximum" check-property-maximum]
-    [:validation "exclusiveMaximum" check-property-exclusiveMaximum]
-    [:content "contentEncoding" check-property-contentEncoding]
-    [:content "contentMediaType" check-property-contentMediaType]
-    [:content "contentSchema" check-property-contentSchema]
+    [:validation "exclusiveMinimum" check-property-exclusiveMinimum-new]
+    [:validation "maximum" check-property-maximum-new]
+    [:validation "exclusiveMaximum" check-property-exclusiveMaximum-new]
+    [:content "contentEncoding" (make-check-property-contentEncoding false)]
+    [:content "contentMediaType" (make-check-property-contentMediaType false)]
+    [:content "contentSchema" (make-check-property-contentSchema false)]
     [:applicator "if" check-property-if]
     [:applicator "then" check-property-then]
     [:applicator "else" check-property-else]
@@ -1712,6 +1709,7 @@
 (defn compile-m2 [{d :draft :as c2} old-p2 m2]
   (let [property-and-checks (map rest (draft->vocab-and-property-and-semantics d))
         property->index-and-check (into {} (map-indexed (fn [i [p c]] [p [i c]]) property-and-checks))]
+    ;; cache
     (map
      rest
      (sort-by
