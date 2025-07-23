@@ -400,22 +400,22 @@
 
 ;;------------------------------------------------------------------------------
 
-(defmulti check-property (fn [property _c2 _p2 _m2 _v2s]
+(defmulti check-property (fn [property _c2 _p2 _m2 _v2]
                            ;;(println "check-property:" p2 p1)
                            property))
 
 ;; standard common properties
 
-(defmethod check-property "type" [_property c2 p2 m2 [v2]]
+(defn check-property-type [_property c2 p2 m2 v2]
   (check-type v2 c2 p2 m2))
 
-(defmethod check-property "const" [_property _c2 p2 m2 [v2]]
+(defn check-property-const [_property _c2 p2 m2 v2]
   (fn [c1 p1 m1]
     [c1
      (when (not (json-= v2 m1))
        [(make-error (format "const: document does not contain schema value: %s != %s" m1 v2) p2 m2 p1 m1)])]))
 
-(defmethod check-property "enum" [_property _c2 p2 m2 [v2]]
+(defn check-property-enum [_property _c2 p2 m2 v2]
   (fn [c1 p1 m1]
      ;; we could check that the m2's enum contained any const or default
      ;; value here - but thus should be done somehow during validation of
@@ -426,7 +426,7 @@
      (when-not (seq-contains? v2 json-= m1)
        [(make-error "enum: does not contain value" p2 m2 p1 m1)])]))
 
-(defmethod check-property "id" [_property {draft :draft} _p2 _m2 [v2]]
+(defn check-property-id [_property {draft :draft} _p2 _m2 v2]
   (fn [c1 p1 _m1]
     (if (#{"draft3" "draft4"} draft)
       (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
@@ -439,7 +439,7 @@
         (log/warn (str "id: ignored in unsupported draft: " draft))
         [c1 nil]))))
 
-(defmethod check-property "$id" [_property {draft :draft} _p2 _m2 [v2]]
+(defn check-property-$id [_property {draft :draft} _p2 _m2 v2]
   (fn [c1 p1 _m1]
     (if (contains? (draft->draft? draft) "draft6")
       (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
@@ -453,7 +453,7 @@
         [c1 nil]))))
 
 ;; Anchors only need :uri->path (no change, but included for completeness)
-(defmethod check-property "$anchor" [_property {draft :draft} _p2 _m2 [v2]]
+(defn check-property-$anchor [_property {draft :draft} _p2 _m2 v2]
   (fn [c1 p1 _m1]
     (if (contains? (draft->draft? draft) "draft2019-09")
       (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
@@ -462,7 +462,7 @@
         (log/warn (str "$anchor: ignored in unsupported draft: " draft))
         [c1 nil]))))
 
-(defmethod check-property "$recursiveAnchor" [_property {draft :draft} _p2 _m2 [v2]]
+(defn check-property-$recursiveAnchor [_property {draft :draft} _p2 _m2 v2]
   (fn [c1 p1 _m1]
     (if (= "draft2019-09" draft)
       (if (true? v2)
@@ -473,7 +473,7 @@
         (log/warn (str "$recursiveAnchor: ignored in unsupported draft: " draft))
         [c1 nil]))))
 
-(defmethod check-property "$dynamicAnchor" [_property {draft :draft} _p2 _m2 [v2]]
+(defn check-property-$dynamicAnchor [_property {draft :draft} _p2 _m2 v2]
   (fn [c1 p1 _m1]
     (if (contains? (draft->draft? draft) "draft2020-12")
       (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
@@ -482,27 +482,30 @@
         (log/warn (str "$dynamicAnchor: ignored in unsupported draft: " draft))
         [c1 nil]))))
 
-(defmethod check-property "$comment" [_property _c2 _p2 _m2 [v2]]
+(defn check-property-$comment [_property _c2 _p2 _m2 v2]
   (fn [c1 p1 _m1]
     ;;(log/info (str "$comment:" v2 " : " p1))
     [c1 nil]))
 
-(defmethod check-property "description"      [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property "title"            [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property "readOnly"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property "writeOnly"        [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defn check-property-description      [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
+(defn check-property-title            [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
+(defn check-property-readOnly         [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
+(defn check-property-writeOnly        [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
 
-(defmethod check-property "default"          [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property "$schema"          [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil])) ;; TODO: switch drafts in context...
-(defmethod check-property "examples"         [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
-(defmethod check-property "$vocabulary"      [_property _c2 _p2 _m2 _v2s] (fn [c1 _p1 _m1] [c1 nil]))
+(defn check-property-default          [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
+(defn check-property-$schema          [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil])) ;; TODO: switch drafts in context...
+(defn check-property-examples         [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
+
+(defn check-property-$vocabulary [_property _c2 _p2 _m2 _v2]
+  ;;(prn "VOCABULARY:" _v2)
+  (fn [c1 _p1 _m1] [c1 nil]))
 
 ;; TODO: issue a warning somehow
-(defmethod check-property "deprecated"  [_property _c2 _p2 _m2 _v2s] (fn [_c1 _p1 _m1])) ;; TODO: issue a warning or error ?
+(defn check-property-deprecated  [_property _c2 _p2 _m2 _v2] (fn [_c1 _p1 _m1])) ;; TODO: issue a warning or error ?
 
 ;; standard number properties
 
-(defmethod check-property "minimum" [_property {d :draft} p2 m2 [v2]]
+(defn check-property-minimum [_property {d :draft} p2 m2 v2]
   (case d
     ("draft3" "draft4")
     (let [e? (m2 "exclusiveMinimum")
@@ -523,7 +526,7 @@
          []
          [(make-error "minimum: value to low" p2 m2 p1 m1)])])))
 
-(defmethod check-property "exclusiveMinimum" [_property {d :draft} p2 {m "minimum" :as m2} [v2]]
+(defn check-property-exclusiveMinimum [_property {d :draft} p2 {m "minimum" :as m2} v2]
   (case d
     ("draft3" "draft4")
     (fn [c1 _p1 _m1]
@@ -538,7 +541,7 @@
          []
          [(make-error "minimum: value to low" p2 m2 p1 m1)])])))
 
-(defmethod check-property "maximum" [_property {d :draft} p2 m2 [v2]]
+(defn check-property-maximum [_property {d :draft} p2 m2 v2]
   (case d
     ("draft3" "draft4")
     (let [e? (m2 "exclusiveMaximum")
@@ -559,7 +562,7 @@
          []
          [(make-error "maximum: value too high" p2 m2 p1 m1)])])))
 
-(defmethod check-property "exclusiveMaximum" [_property {d :draft} p2 {m "maximum" :as m2} [v2]]
+(defn check-property-exclusiveMaximum [_property {d :draft} p2 {m "maximum" :as m2} v2]
   (case d
     ("draft3" "draft4")
     (fn [c1 _p1 _m1]
@@ -574,7 +577,7 @@
          []
          [(make-error "maximum: value too high" p2 m2 p1 m1)])])))
 
-(defmethod check-property "multipleOf" [_property _c2 p2 m2 [v2]]
+(defn check-property-multipleOf [_property _c2 p2 m2 v2]
   (let [v2-bd (bigdec v2)]
     (fn [c1 p1 m1]
       [c1
@@ -603,7 +606,7 @@
       (if (<= 0xD800 (int (char-code-at s i)) 0xDBFF) (+ i 2) (inc i))
       (inc acc)))))
 
-(defmethod check-property "minLength" [_property _c2 p2 m2 [v2]]
+(defn check-property-minLength [_property _c2 p2 m2 v2]
   (let [ml2 (quot v2 2)]
     (fn [c1 p1 m1]
       [c1
@@ -614,7 +617,7 @@
                (< (json-length m1) v2)))
          [(make-error "minLength: string too short" p2 m2 p1 m1)])])))
 
-(defmethod check-property "maxLength" [_property _c2 p2 m2 [v2]]
+(defn check-property-maxLength [_property _c2 p2 m2 v2]
   (let [ml2 (* v2 2)]
     (fn [c1 p1 m1]
       [c1
@@ -625,13 +628,13 @@
                (> (json-length m1) v2)))
          [(make-error "maxLength: string too long" p2 m2 p1 m1)])])))
 
-(defmethod check-property "pattern" [_property c2 p2 m2 [v2]]
+(defn check-property-pattern [_property c2 p2 m2 v2]
   (if (starts-with? v2 "$format:")
     ;; N.B.
     ;; this is an extension to allow patternProperties to
     ;; leverage formats since the spec does not provide a
     ;; formatProperties...
-    (check-property "format" c2 p2 m2 [(subs v2 (count "$format:"))])
+    (check-property "format" c2 p2 m2 (subs v2 (count "$format:")))
     (let [p (ecma-pattern v2)]
 
       (fn [c1 p1 m1]
@@ -661,7 +664,7 @@
    "application/json" json-decode
    })
 
-(defmethod check-property "contentEncoding" [_property {d :draft} p2 m2 [v2]]
+(defn check-property-contentEncoding [_property {d :draft} p2 m2 v2]
   (let [strict? (#{"draft7"} d) ;; TODO: check a context flag aswell
         ce-decoder (ce->decoder v2)
         pp2 (butlast p2)]
@@ -683,7 +686,7 @@
             [c1 es]))
         [old-m1 nil]))))
 
-(defmethod check-property "contentMediaType" [_property {d :draft} p2 m2 [v2]]
+(defn check-property-contentMediaType [_property {d :draft} p2 m2 v2]
   (let [strict? (#{"draft7"} d) ;; TODO: check a context flag aswell
         cmt v2
         cmt-decoder (cmt->decoder cmt)
@@ -707,7 +710,7 @@
               [c1 es]))
           [old-m1 nil])))))
 
-(defmethod check-property "contentSchema" [_property {d :draft :as c2} p2 {cmt "contentMediaType"} [v2]]
+(defn check-property-contentSchema [_property {d :draft :as c2} p2 {cmt "contentMediaType"} v2]
   (let [strict? (#{"draft7"} d) ;; TODO: check a context flag aswell
         checker (check-schema c2 p2 v2)
         pp2 (butlast p2)]
@@ -724,14 +727,14 @@
            (catch Exception e
              (:errors (ex-data e))))]))))
 
-(defmethod check-property "format" [_property {strict? :strict-format? cfs :check-format :or {cfs {}} :as c2} p2 m2 [v2]]
+(defn check-property-format [_property {strict? :strict-format? cfs :check-format :or {cfs {}} :as c2} p2 m2 v2]
   (let [f (if strict?
             (fn [f2] (fn [c p m] [c (f2 c p m)]))
             (fn [f2] (fn [c p m] (when-let [[{m :message}] (f2 c p m)] [c (log/warn m)]))))]
     ;; we do this here so that user may override default format checkers...
     (f ((or (cfs v2) check-format) v2 c2 p2 m2))))
 
-(defmethod check-property "dependencies" [_property {d :draft :as c2} p2 m2 [v2]]
+(defn check-property-dependencies [_property {d :draft :as c2} p2 m2 v2]
   (case d
     ("draft2019-09" "draft2020-12" "draft2021-12" "draft-next")
     ;; this keyword no longer exists - it was split into "dependentRequired" and "dependentSchemas"...
@@ -772,7 +775,7 @@
         [c1 []]))))
 
 ;; do same for dependencies
-(defmethod check-property "dependentSchemas" [_property {d :draft :as c2} p2 m2 [v2]]
+(defn check-property-dependentSchemas [_property {d :draft :as c2} p2 m2 v2]
   (case d
     ("draft3" "draft4" "draft6" "draft7")
     ;; this keyword didn't exist - it arose from the splitting of "dependencies'
@@ -803,7 +806,7 @@
                [(make-error ["dependentSchemas: missing properties (at least):" missing] p2 m2 p1 m1)])])
           [c1 nil])))))
 
-(defmethod check-property "propertyDependencies" [_property c2 p2 _m2 [v2]]
+(defn check-property-propertyDependencies [_property c2 p2 _m2 v2]
   (let [checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] (check-schema c2 p2 s)]) vs)) v2))
         ks (keys v2)]
     (fn [c1 p1 m1]
@@ -820,7 +823,7 @@
         [c1 []]))))
 
 ;; TODO: share more code with dependencies
-(defmethod check-property "dependentRequired" [_property {d :draft} p2 m2 [v2]]
+(defn check-property-dependentRequired [_property {d :draft} p2 m2 v2]
   (case d
     ("draft3" "draft4" "draft6" "draft7")
     (fn [c1 _p1 _m1]
@@ -853,7 +856,7 @@
 
 ;;------------------------------------------------------------------------------
 
-(defmethod check-property "if" [_property c2 p2 _m2 [v2]]
+(defn check-property-if [_property c2 p2 _m2 v2]
   (let [checker (check-schema c2 p2 v2)
         pp2 (butlast p2)]
     (fn [old-c1 p1 m1]
@@ -861,7 +864,7 @@
             success? (empty? es)]
         [(update (if success? new-c1 old-c1) :if assoc pp2 success?) []]))))
 
-(defmethod check-property "then" [_property c2 p2 _m2 [v2]]
+(defn check-property-then [_property c2 p2 _m2 v2]
   (let [checker (check-schema c2 p2 v2)
         pp2 (butlast p2)]
     (fn [c1 p1 m1]
@@ -869,7 +872,7 @@
         (checker c1 p1 m1)
         [c1 []]))))
 
-(defmethod check-property "else" [_property c2 p2 _m2 [v2]]
+(defn check-property-else [_property c2 p2 _m2 v2]
   (let [checker (check-schema c2 p2 v2)
         pp2 (butlast p2)]
     (fn [c1 p1 m1]
@@ -877,11 +880,11 @@
         (checker c1 p1 m1)
         [c1 []]))))
 
-(defmethod check-property "definitions" [_property c2 p2 _m2 [v2]]
+(defn check-property-definitions [_property c2 p2 _m2 v2]
   (mapv (fn [[k v]] (check-schema c2 (conj p2 k) v)) v2)
   (fn [c1 _p1 _m1] [c1 nil]))
 
-(defmethod check-property "$defs" [_property c2 p2 _m2 [v2]]
+(defn check-property-$defs [_property c2 p2 _m2 v2]
   (mapv (fn [[k v]] (check-schema c2 (conj p2 k) v)) v2)
   (fn [c1 _p1 _m1] [c1 nil]))
 
@@ -903,7 +906,7 @@
                (update :evaluated update p1 into-set ks)))
          (make-error-on-failure message p2 m2 p1 m1 es)]))))
 
-(defmethod check-property "properties" [_property c2 p2 m2 [ps]]
+(defn check-property-properties [_property c2 p2 m2 ps]
   (let [k-and-css (mapv (fn [[k v]] [k (check-schema c2 (conj p2 k) v)]) ps)
         cp (check-properties c2 p2 m2)]
     (fn [c1 p1 m1]
@@ -914,7 +917,7 @@
 
 ;; what is opposite of "additional" - "matched" - used by spec to refer to properties matched by "properties" or "patternProperties"
 
-(defmethod check-property "patternProperties" [_property c2 p2 m2 [pps]]
+(defn check-property-patternProperties [_property c2 p2 m2 pps]
   (let [cp-and-pattern-and-ks (mapv (fn [[k v]] [(check-schema c2 (conj p2 k) v) (ecma-pattern k) k]) pps)
         cp (check-properties c2 p2 m2)]
     (fn [c1 p1 m1]
@@ -924,7 +927,7 @@
         [c1 []]))))
 
 
-(defmethod check-property "additionalProperties" [_property c2 p2 m2 [v2]]
+(defn check-property-additionalProperties [_property c2 p2 m2 v2]
   (let [cs (check-schema c2 p2 v2)
         pp2 (butlast p2)
         cp (check-properties c2 p2 m2)]
@@ -936,7 +939,7 @@
           (cp c1 p1 m1 p-and-css "additionalProperties: at least one property did not conform to schema"))
         [c1 []]))))
 
-(defmethod check-property "unevaluatedProperties" [_property c2 p2 m2 [v2]]
+(defn check-property-unevaluatedProperties [_property c2 p2 m2 v2]
   (let [cs (check-schema c2 p2 v2)
         cp (check-properties c2 p2 m2)]
     (fn [c1 p1 m1]
@@ -947,7 +950,7 @@
           (cp c1 p1 m1 p-and-css "unevaluatedProperties: at least one property did not conform to schema"))
         [c1 []]))))
 
-(defmethod check-property "propertyNames" [_property c2 p2 m2 [v2]]
+(defn check-property-propertyNames [_property c2 p2 m2 v2]
   (fn [c1 p1 m1]
     [c1
      (when (json-object? m1)
@@ -961,14 +964,14 @@
          []
          m1)))]))
 
-(defmethod check-property "required" [_property _c2 p2 m2 [v2]]
+(defn check-property-required [_property _c2 p2 m2 v2]
   (fn [c1 p1 m1]
     [c1
      (when (json-object? m1)
        (when-let [missing (seq (reduce (fn [acc k] (if (contains? m1 k) acc (conj acc k))) [] v2))]
          [(make-error ["required: missing properties (at least):" missing] p2 m2 p1 m1)]))]))
 
-(defmethod check-property "minProperties" [_property _c2 p2 m2 [v2]]
+(defn check-property-minProperties [_property _c2 p2 m2 v2]
   (fn [c1 p1 m1]
     [c1
      (when (and
@@ -976,7 +979,7 @@
             (< (count m1) v2))
        [(make-error "minProperties: document contains too few properties" p2 m2 p1 m1)])]))
 
-(defmethod check-property "maxProperties" [_property _c2 p2 m2 [v2]]
+(defn check-property-maxProperties [_property _c2 p2 m2 v2]
   (fn [c1 p1 m1]
     [c1
      (when (and
@@ -1010,7 +1013,7 @@
         [c1 (make-error-on-failure message p2 m2 p1 m1 es)]))))
 
 ;; TODO: consider warning if using tuple form of items post draft2020-12
-(defmethod check-property "prefixItems" [_property {d :draft :as c2}  p2 m2 [v2]]
+(defn check-property-prefixItems [_property {d :draft :as c2}  p2 m2 v2]
   (case d
     ("draft3" "draft4" "draft6" "draft7" "draft2019-09")
     (fn [c1 p1 m1]
@@ -1024,7 +1027,7 @@
           (ci c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")
           [c1 []])))))
 
-(defmethod check-property "items" [_property {d :draft :as c2}  p2 m2 [v2]]
+(defn check-property-items [_property {d :draft :as c2}  p2 m2 v2]
   (let [n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
         [m css] (if (json-array? v2)
                   (do
@@ -1043,7 +1046,7 @@
           (ci c1 p1 items i-and-css (str "items: at least one item did not conform to " m "schema")))
         [c1 []]))))
 
-(defmethod check-property "additionalItems" [_property c2 p2 {is "items" :as m2} [v2]]
+(defn check-property-additionalItems [_property c2 p2 {is "items" :as m2} v2]
   (if (json-array? is) ;; additionalItems is only used when items is a tuple
     (let [cs (check-schema c2 p2 v2)
           ;;pp2 (butlast p2)
@@ -1062,7 +1065,7 @@
     (fn [c1 _p1 _m1]
       [c1 nil])))
     
-(defmethod check-property "unevaluatedItems" [_property c2 p2 m2 [v2]]
+(defn check-property-unevaluatedItems [_property c2 p2 m2 v2]
   (let [css (repeat (check-schema c2 p2 v2))
         ci (check-items c2 p2 m2)]
     (fn [{p->eis :evaluated :as c1} p1 m1]
@@ -1073,7 +1076,7 @@
           (ci c1 p1 (map second index-and-items) i-and-css "unevaluatedItems: at least one item did not conform to schema"))
         [c1 []]))))
 
-(defmethod check-property "contains" [_property c2 p2 {mn "minContains" :as m2} [v2]]
+(defn check-property-contains [_property c2 p2 {mn "minContains" :as m2} v2]
   (let [cs (check-schema c2 p2 v2)
         base (if mn mn 1)
         ci (check-items c2 p2 v2)]
@@ -1087,7 +1090,7 @@
             [new-c1 nil]
             [c1 [(make-error "contains: document has no matches" p2 m2 p1 m1)]]))))))
 
-(defmethod check-property "minContains" [_property _c2 p2 m2 [v2]]
+(defn check-property-minContains [_property _c2 p2 m2 v2]
   (let [pp2 (butlast p2)]
     (fn [{matched :matched :as c1} p1 m1]
       (if-let [matches (and (json-array? m1) (get matched pp2))]
@@ -1100,7 +1103,7 @@
             [c1 [(make-error (str "minContains: document has too few matches - " n) p2 m2 p1 m1)]]))
         [c1 nil]))))
 
-(defmethod check-property "maxContains" [_property _c2 p2 m2 [v2]]
+(defn check-property-maxContains [_property _c2 p2 m2 v2]
   (let [pp2 (butlast p2)]
     (fn [{matched :matched :as c1} p1 m1]
       (if-let [matches (and (json-array? m1) (get matched pp2))]
@@ -1110,7 +1113,7 @@
             [c1 [(make-error (str "maxContains: document has too many matches - " n) p2 m2 p1 m1)]]))
         [c1 nil]))))
 
-(defmethod check-property "minItems" [_property _c2 p2 m2 [v2]]
+(defn check-property-minItems [_property _c2 p2 m2 v2]
   (fn [c1 p1 m1]
     [c1
      (when (and
@@ -1118,7 +1121,7 @@
             (< (count m1) v2))
        [(make-error "minItems: document contains too few items" p2 m2 p1 m1)])]))
 
-(defmethod check-property "maxItems" [_property _c2 p2 m2 [v2]]
+(defn check-property-maxItems [_property _c2 p2 m2 v2]
   (fn [c1 p1 m1]
     [c1
      (when (and
@@ -1129,7 +1132,7 @@
 ;; TODO: should be unique according to json equality
 ;; TODO: could be more efficient - only needs to find one duplicate before it bails..
 ;; TODO: use sorted-set-by and put items in 1 at a time until one is rejected then bail - reduced
-(defmethod check-property "uniqueItems" [_property _c2 p2 m2 [v2]]
+(defn check-property-uniqueItems [_property _c2 p2 m2 v2]
   (if v2
     (fn [c1 p1 m1]
       [c1
@@ -1156,7 +1159,7 @@
         [c1
          (make-error-on message p2 m2 p1 m1 failed? es)]))))
 
-(defmethod check-property "oneOf" [_property c2 p2 m2 [v2]]
+(defn check-property-oneOf [_property c2 p2 m2 v2]
   (let [co (check-of c2 p2 m2 v2)
         m2-count (count v2)]
     (fn [c1 p1 m1]
@@ -1165,7 +1168,7 @@
        "oneOf: document failed to conform to one and only one sub-schema"
        (fn [es] (not= 1 (- m2-count (count es))))))))
 
-(defmethod check-property "anyOf" [_property c2 p2 m2 [v2]]
+(defn check-property-anyOf [_property c2 p2 m2 v2]
   (let [co (check-of c2 p2 m2 v2)
         m2-count (count v2)]
     (fn [c1 p1 m1]
@@ -1174,7 +1177,7 @@
        "anyOf: document failed to conform to at least one sub-schema"
        (fn [es] (not (< (count es) m2-count)))))))
          
-(defmethod check-property "allOf" [_property c2 p2 m2 [v2]]
+(defn check-property-allOf [_property c2 p2 m2 v2]
   (let [co (check-of c2 p2 m2 v2)]
     (fn [c1 p1 m1]
       (co
@@ -1183,7 +1186,7 @@
        seq))))
 
 ;; TODO: share check-of
-(defmethod check-property "not" [_property c2 p2 m2 [v2]]
+(defn check-property-not [_property c2 p2 m2 v2]
   (let [c (check-schema c2 p2 v2)]
     (fn [c1 p1 m1]
       (let [old-local-c1 (update c1 :evaluated dissoc p1)
@@ -1195,119 +1198,101 @@
          (when-not failed?
            [(make-error "not: document conformed to sub-schema" p2 m2 p1 m1)])]))))
 
-;; catch-all
-
-(defmethod check-property :default [property {{checker property} :validators :as c2} p2 m2 v2s]
-  (if checker
-    (let [cp (checker property c2 p2 m2 v2s)]
-      (fn [c1 p1 m1]
-        [c1 (cp p1 m1)]))
-    (let [m (str "property: unexpected property encountered: " (pr-str property))]
-      (fn [c1 _p1 _m1]
-        [c1 (log/warn m)]))))
-
 ;;------------------------------------------------------------------------------
 
-(let [property-groups
-      [;; TODO: push quick wins towards lower ranks - type, format etc...
+(def vocab->$vocabulary
+  {:core "https://json-schema.org/draft/2020-12/vocab/core"
+   :validation "https://json-schema.org/draft/2020-12/vocab/validation"
+   :applicator "https://json-schema.org/draft/2020-12/vocab/applicator"
+   :meta-data "https://json-schema.org/draft/2020-12/vocab/meta-data"
+   :content "https://json-schema.org/draft/2020-12/vocab/content"
+   :unevaluated "https://json-schema.org/draft/2020-12/vocab/unevaluated"
+   :format-assertion "https://json-schema.org/draft/2020-12/vocab/format-assertion"})
 
-       ["type"]
-       ["const"]
-       ["minLength"]
-       ["maxLength"]
-       ["multipleOf"]
-       ["format"]
-       ["enum"]
-       ["pattern"]
-
-       ["$ref"]
-       ["$schema"]
-       ["$id"]
-       ["id"]
-       ["$anchor"]
-       ["$recursiveRef"]
-       ["$recursiveAnchor"]
-       ["$dynamicRef"]
-       ["$dynamicAnchor"]
-       ["$vocabulary"]
-       ["title"]
-       ["description"]
-       ["default"]
-       ["examples"]
-       ["deprecated"]
-       ["readOnly"]
-       ["writeOnly"]
-       ["$comment"]
-       ["definitions"]
-       ["$defs"]
-
-       ["propertyNames"]
-       ["propertyDependencies"]
-
-       ["minProperties"]
-       ["maxProperties"]
-
-       ["not"]
-       ["anyOf"]
-       ["oneOf"]
-       ["allOf"]
-
-       ["required"]
-       ["dependentRequired"]
-
-       ["dependencies"]
-       ["dependentSchemas"]
-       ["dependentRequired"]
-
-       ["contains"]
-       ["minContains"]
-       ["maxContains"]
-       
-       ["minimum"]
-       ["exclusiveMinimum"]
-       
-       ["maximum"]
-       ["exclusiveMaximum"]
-
-       ["contentEncoding"]
-       ["contentMediaType"]
-       ["contentSchema"] ;; TODO: unpack
-
-       ["if"]
-       ["then"]
-       ["else"]
-
-       ["minItems"]
-       ["maxItems"]
-       ["uniqueItems"]
-       ["prefixItems"]
-       ["items"]
-       ["additionalItems"]
-       ["unevaluatedItems"]
-
-       ["properties"]
-       ["patternProperties"]
-       ["additionalProperties"]
-       ["unevaluatedProperties"]
+(let [property->check
+      [
+       ["type"                  check-property-type                  #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["const"                 check-property-const                 #{["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["minLength"             check-property-minLength             #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["maxLength"             check-property-maxLength             #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["multipleOf"            check-property-multipleOf            #{["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["format"                check-property-format                #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :format-assertion] ["draft2021-12" :format-assertion]}]
+       ["enum"                  check-property-enum                  #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["pattern"               check-property-pattern               #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+     ;;["$ref"                  check-property-$ref                  #{["draft3" :core] ["draft4" :core] ["draft6" :core] ["draft7" :core] ["draft2019-09" :core] ["draft2020-12" :core] ["draft2021-12" :core]}]
+       ["$schema"               check-property-$schema               #{["draft3" :core] ["draft4" :core] ["draft6" :core] ["draft7" :core] ["draft2019-09" :core] ["draft2020-12" :core] ["draft2021-12" :core]}]
+       ["$id"                   check-property-$id                   #{["draft6" :core] ["draft7" :core] ["draft2019-09" :core] ["draft2020-12" :core] ["draft2021-12" :core]}]
+       ["id"                    check-property-id                    #{["draft3" :core] ["draft4" :core]}]
+       ["$anchor"               check-property-$anchor               #{["draft2019-09" :core] ["draft2020-12" :core] ["draft2021-12" :core]}]
+     ;;["$recursiveRef"         check-property-$recursiveRef         #{["draft2019-09" :core]}]
+       ["$recursiveAnchor"      check-property-$recursiveAnchor      #{["draft2019-09" :core]}]
+     ;;["$dynamicRef"           check-property-$dynamicRef           #{["draft2020-12" :core] ["draft2021-12" :core]}]
+       ["$dynamicAnchor"        check-property-$dynamicAnchor        #{["draft2020-12" :core] ["draft2021-12" :core]}]
+       ["$vocabulary"           check-property-$vocabulary           #{["draft2019-09" :core] ["draft2020-12" :core] ["draft2021-12" :core]}]
+       ["title"                 check-property-title                 #{["draft3" :meta-data] ["draft4" :meta-data] ["draft6" :meta-data] ["draft7" :meta-data] ["draft2019-09" :meta-data] ["draft2020-12" :meta-data] ["draft2021-12" :meta-data]}]
+       ["description"           check-property-description           #{["draft3" :meta-data] ["draft4" :meta-data] ["draft6" :meta-data] ["draft7" :meta-data] ["draft2019-09" :meta-data] ["draft2020-12" :meta-data] ["draft2021-12" :meta-data]}]
+       ["default"               check-property-default               #{["draft3" :meta-data] ["draft4" :meta-data] ["draft6" :meta-data] ["draft7" :meta-data] ["draft2019-09" :meta-data] ["draft2020-12" :meta-data] ["draft2021-12" :meta-data]}]
+       ["examples"              check-property-examples              #{["draft6" :meta-data] ["draft7" :meta-data] ["draft2019-09" :meta-data] ["draft2020-12" :meta-data] ["draft2021-12" :meta-data]}]
+       ["deprecated"            check-property-deprecated            #{["draft2020-12" :meta-data] ["draft2021-12" :meta-data]}]
+       ["readOnly"              check-property-readOnly              #{["draft7" :meta-data] ["draft2019-09" :meta-data] ["draft2020-12" :meta-data] ["draft2021-12" :meta-data]}]
+       ["writeOnly"             check-property-writeOnly             #{["draft7" :meta-data] ["draft2019-09" :meta-data] ["draft2020-12" :meta-data] ["draft2021-12" :meta-data]}]
+       ["$comment"              check-property-$comment              #{["draft2019-09" :core] ["draft2020-12" :core] ["draft2021-12" :core]}]
+       ["definitions"           check-property-definitions           #{["draft3" :core] ["draft4" :core] ["draft6" :core] ["draft7" :core]}]
+       ["$defs"                 check-property-$defs                 #{["draft2019-09" :core] ["draft2020-12" :core] ["draft2021-12" :core]}]
+       ["propertyNames"         check-property-propertyNames         #{["draft6" :applicator] ["draft7" :applicator] ["draft2019-09" :applicator] ["draft2020-12" :applicator] ["draft2021-12" :applicator]}]
+       ["propertyDependencies"  check-property-propertyDependencies  #{["draft3" :applicator] ["draft4" :applicator] ["draft6" :applicator] ["draft7" :applicator]}]
+       ["minProperties"         check-property-minProperties         #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["maxProperties"         check-property-maxProperties         #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["not"                   check-property-not                   #{["draft4" :applicator] ["draft6" :applicator] ["draft7" :applicator] ["draft2019-09" :applicator] ["draft2020-12" :applicator] ["draft2021-12" :applicator]}]
+       ["anyOf"                 check-property-anyOf                 #{["draft4" :applicator] ["draft6" :applicator] ["draft7" :applicator] ["draft2019-09" :applicator] ["draft2020-12" :applicator] ["draft2021-12" :applicator]}]
+       ["oneOf"                 check-property-oneOf                 #{["draft4" :applicator] ["draft6" :applicator] ["draft7" :applicator] ["draft2019-09" :applicator] ["draft2020-12" :applicator] ["draft2021-12" :applicator]}]
+       ["allOf"                 check-property-allOf                 #{["draft4" :applicator] ["draft6" :applicator] ["draft7" :applicator] ["draft2019-09" :applicator] ["draft2020-12" :applicator] ["draft2021-12" :applicator]}]
+       ["required"              check-property-required              #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["dependentRequired"     check-property-dependentRequired     #{["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["dependencies"          check-property-dependencies          #{["draft3" :applicator] ["draft4" :applicator] ["draft6" :applicator] ["draft7" :applicator]}]
+       ["dependentSchemas"      check-property-dependentSchemas      #{["draft2019-09" :applicator] ["draft2020-12" :applicator] ["draft2021-12" :applicator]}]
+       ["contains"              check-property-contains              #{["draft6" :applicator] ["draft7" :applicator] ["draft2019-09" :applicator] ["draft2020-12" :applicator] ["draft2021-12" :applicator]}]
+       ["minContains"           check-property-minContains           #{["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["maxContains"           check-property-maxContains           #{["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["minimum"               check-property-minimum               #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["exclusiveMinimum"      check-property-exclusiveMinimum      #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["maximum"               check-property-maximum               #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["exclusiveMaximum"      check-property-exclusiveMaximum      #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["contentEncoding"       check-property-contentEncoding       #{["draft7" :content] ["draft2019-09" :content] ["draft2020-12" :content] ["draft2021-12" :content]}]
+       ["contentMediaType"      check-property-contentMediaType      #{["draft7" :content] ["draft2019-09" :content] ["draft2020-12" :content] ["draft2021-12" :content]}]
+       ["contentSchema"         check-property-contentSchema         #{["draft2020-12" :content] ["draft2021-12" :content]}]
+       ["if"                    check-property-if                    #{["draft7" :applicator] ["draft2019-09" :applicator] ["draft2020-12" :applicator] ["draft2021-12" :applicator]}]
+       ["then"                  check-property-then                  #{["draft7" :applicator] ["draft2019-09" :applicator] ["draft2020-12" :applicator] ["draft2021-12" :applicator]}]
+       ["else"                  check-property-else                  #{["draft7" :applicator] ["draft2019-09" :applicator] ["draft2020-12" :applicator] ["draft2021-12" :applicator]}]
+       ["minItems"              check-property-minItems              #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["maxItems"              check-property-maxItems              #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["uniqueItems"           check-property-uniqueItems           #{["draft3" :validation] ["draft4" :validation] ["draft6" :validation] ["draft7" :validation] ["draft2019-09" :validation] ["draft2020-12" :validation] ["draft2021-12" :validation]}]
+       ["prefixItems"           check-property-prefixItems           #{["draft2020-12" :applicator] ["draft2021-12" :applicator]}]
+       ["items"                 check-property-items                 #{["draft3" :applicator] ["draft4" :applicator] ["draft6" :applicator] ["draft7" :applicator] ["draft2019-09" :applicator] ["draft2020-12" :applicator] ["draft2021-12" :applicator]}]
+       ["additionalItems"       check-property-additionalItems       #{["draft3" :applicator] ["draft4" :applicator] ["draft6" :applicator] ["draft7" :applicator] ["draft2019-09" :applicator]}]
+       ["unevaluatedItems"      check-property-unevaluatedItems      #{["draft2019-09" :unevaluated] ["draft2020-12" :unevaluated] ["draft2021-12" :unevaluated]}]
+       ["properties"            check-property-properties            #{["draft3" :applicator] ["draft4" :applicator] ["draft6" :applicator] ["draft7" :applicator] ["draft2019-09" :applicator] ["draft2020-12" :applicator] ["draft2021-12" :applicator]}]
+       ["patternProperties"     check-property-patternProperties     #{["draft3" :applicator] ["draft4" :applicator] ["draft6" :applicator] ["draft7" :applicator] ["draft2019-09" :applicator] ["draft2020-12" :applicator] ["draft2021-12" :applicator]}]
+       ["additionalProperties"  check-property-additionalProperties  #{["draft3" :applicator] ["draft4" :applicator] ["draft6" :applicator] ["draft7" :applicator] ["draft2019-09" :applicator] ["draft2020-12" :applicator] ["draft2021-12" :applicator]}]
+       ["unevaluatedProperties" check-property-unevaluatedProperties #{["draft2019-09" :unevaluated] ["draft2020-12" :unevaluated] ["draft2021-12" :unevaluated]}]
        ]
-      property->ranks-and-group
-      (into {} (mapcat (fn [i ps] (map-indexed (fn [j p] [p [[i j] ps]]) ps)) (range) property-groups))]
+      property->index-and-check
+      (into {} (map-indexed (fn [i [p c]] [p [i c]]) property->check))]
 
-  (defn compile-m2 [m2]
-    (mapv
-     second
+  (defn compile-m2 [c2 old-p2 m2]
+    (map
+     rest
      (sort-by
       first
-      (reduce
-       (fn [acc [k v]]
-         (let [[[r1 r2] g] (property->ranks-and-group k [[0 0] [k]])]
-           (update
-            acc
-            r1
-            (fnil (fn [[k v] & args] [k (apply assoc v args)]) [g (vec (repeat (count g) :absent))])
-            r2
-            v)))
-       {}
+      (reduce-kv
+       (fn [acc k v]
+         (if-let [[i c] (property->index-and-check k)]
+           (let [new-p2 (conj old-p2 k)]
+             (conj acc (list i new-p2 (c k c2 new-p2 m2 v))))
+           (do
+             (log/warn (str "property: unexpected property encountered: " (pr-str k)))
+             acc)))
+       nil
        m2)))))
 
 ;;------------------------------------------------------------------------------
@@ -1360,26 +1345,19 @@
          [(make-error "schema is false: nothing will match" p2 m2 p1 m1)])])
 
     :else
-    (let [p2-and-cps
-          (mapv
-           (fn [[ks vs]]
-             (let [ks (if (= 1 (count ks)) (first ks) ks) ;; hack - lose later
-                   new-p2 (conj p2 ks)]
-               [new-p2 (check-property ks c2 new-p2 m2 vs)]))
-           (compile-m2 m2))]
-      (fn [c1 p1 m1]
-        (if (present? m1)
-          (let [[new-c1 es]
-                (reduce
-                 (fn [[old-c1 acc] [new-p2 cp]]
-                   (let [[new-c1 [{m :message} :as es]] (cp old-c1 p1 m1)]
-                     (when t? (println (pr-str new-p2) (pr-str p1) (if (seq es) ["❌" m] "✅")))
-                     [new-c1 (concatv acc es)]))
-                 [c1 []]
-                 p2-and-cps)]
-            [new-c1 ;; (first (stash new-c1 {} m1 p1))
-             (make-error-on-failure "schema: document did not conform" p2 m2 p1 m1 es)])
-          [c1 []])))))
+    (fn [c1 p1 m1]
+      (if (present? m1)
+        (let [[new-c1 es]
+              (reduce
+               (fn [[old-c1 acc] [new-p2 cp]]
+                 (let [[new-c1 [{m :message} :as es]] (cp old-c1 p1 m1)]
+                   (when t? (println (pr-str new-p2) (pr-str p1) (if (seq es) ["❌" m] "✅")))
+                   [new-c1 (concatv acc es)]))
+               [c1 []]
+               (compile-m2 c2 p2 m2))]
+          [new-c1 ;; (first (stash new-c1 {} m1 p1))
+           (make-error-on-failure "schema: document did not conform" p2 m2 p1 m1 es)])
+        [c1 []]))))
 
 ;; quicker than actual 'apply' [?]
 (defn apply3 [f [c p m]]
