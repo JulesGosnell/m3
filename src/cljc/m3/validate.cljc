@@ -1662,24 +1662,26 @@
     [:applicator "additionalProperties" check-property-additionalProperties]
     [:unevaluated "unevaluatedProperties" check-property-unevaluatedProperties]]})
 
+(defn make-property->index-and-check-2 [d]
+  (into {} (map-indexed (fn [i [p c]] [p [i c]]) (map rest (draft->vocab-and-property-and-semantics d)))))
+
+(def make-property->index-and-check (memoize make-property->index-and-check-2))
+
 (defn compile-m2 [{d :draft :as c2} old-p2 m2]
-  (let [property-and-checks (map rest (draft->vocab-and-property-and-semantics d))
-        property->index-and-check (into {} (map-indexed (fn [i [p c]] [p [i c]]) property-and-checks))]
-    ;; cache
-    (map
-     rest
-     (sort-by
-      first
-      (reduce-kv
-       (fn [acc k v]
-         (if-let [[i c] (property->index-and-check k)]
-           (let [new-p2 (conj old-p2 k)]
-             (conj acc (list i new-p2 (c k c2 new-p2 m2 v))))
-           (do
-             (log/warn (str "property: unexpected property encountered: " (pr-str k)))
-             acc)))
-       nil
-       m2)))))
+  (map
+   rest
+   (sort-by
+    first
+    (reduce-kv
+     (fn [acc k v]
+       (if-let [[i c] ((make-property->index-and-check d) k)]
+         (let [new-p2 (conj old-p2 k)]
+           (conj acc (list i new-p2 (c k c2 new-p2 m2 v))))
+         (do
+           (log/warn (str "property: unexpected property encountered: " (pr-str k)))
+           acc)))
+     nil
+     m2))))
 
 ;;------------------------------------------------------------------------------
 ;; tmp solution - does not understand about schema structure
