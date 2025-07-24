@@ -123,11 +123,6 @@
     ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches second anyOf, which has a real schema in it"]
 
     ;; draft3
-    ["disallow.json" "disallow" "disallowed"]
-    ["disallow.json" "multiple disallow" "mismatch"]
-    ["disallow.json" "multiple disallow" "other mismatch"]
-    ["disallow.json" "multiple disallow subschema" "mismatch"]
-    ["disallow.json" "multiple disallow subschema" "other mismatch"]
     ["enum.json" "enums in properties" "missing required property is invalid"]
     ["enum.json" "enums in properties" "missing all properties is invalid"]
     ["extends.json" "extends" "mismatch extends"]

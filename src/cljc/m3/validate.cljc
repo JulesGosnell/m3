@@ -406,9 +406,11 @@
         ;; we need to decide whether we are going to nest or flatten errors...
         ;; I guess some errors rely on their context to be errors ?
         [c1
-         (when-not (some (fn [checker] (nil? (second (checker c1 p1 m1)))) checkers)
-           [(make-error (format "type: none matched: %s" ts) p2 m2 p1 m1)])]))
-
+         (make-error-on
+          (format "type: none matched: %s" ts)
+          p2 m2 p1 m1
+          (fn [es] (not (some nil? es)))
+          (mapv (fn [checker] (second (checker c1 p1 m1))) checkers))]))
     (fn [c1 p1 m1]
       [c1 [(make-error (format "type: unrecognised: %s" ts) p2 m2 p1 m1)]])))
 
@@ -416,18 +418,12 @@
 
 ;; standard common properties
 
-;; (defn check-property-disallow [_property c2 p2 m2 v2]
-;;   (let [cts (map (fn [t] (if (json-string? t) (check-type t c2 p2 m2) (check-schema c2 p2 t))) (if (vector? v2) v2 [v2]))]
-;;     (fn [c1 p1 m1]
-;;       (prn "DISALLOW:" v2 m1)
-;;       [c1
-;;        (when (> 0 (count (filter
-;;                           (fn [ct]
-;;                             (let [r (empty? (second (ct c1 p1 m1)))
-;;                                   ;;_ (prn "RESULTS:" r)
-;;                                   ]
-;;                             r)) cts)))
-;;          [(make-error "disallow: document was of disallowed type" p2 m2 p1 m1)])])))
+(defn check-property-disallow [_property c2 p2 m2 v2]
+  (let [ct (check-type v2 c2 p2 m2)]
+    (fn [c1 p1 m1]
+      (let [[c1 es] (ct c1 p1 m1)]
+        [c1
+         (when (nil? es) [(make-error "disallow: type matched" p2 m2 p1 m1)])]))))
 
 (defn check-property-type [_property c2 p2 m2 v2]
   (check-type v2 c2 p2 m2))
@@ -1204,7 +1200,7 @@
   {"draft3"
    [
     ;; ["https://json-schema.org/draft-03/vocab/applicator"              "extends"                 check-property-extends]
-    ;; ["https://json-schema.org/draft-03/vocab/validation"              "disallow"                check-property-disallow]
+    ["https://json-schema.org/draft-03/vocab/validation"              "disallow"                check-property-disallow]
     ["https://json-schema.org/draft-03/vocab/validation"              "divisibleBy"             check-property-divisibleBy]
     ["https://json-schema.org/draft-03/vocab/validation"              "type"                    check-property-type]
     ["https://json-schema.org/draft-03/vocab/validation"              "const"                   check-property-const]
