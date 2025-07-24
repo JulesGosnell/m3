@@ -9,7 +9,7 @@ It is based upon a validator for a subset of JSON which I wrote for [Agora Digit
 
 I aspire to it becoming a complete and fully featured JSON validator which can be run and produce identical[^1] results in both the backend and frontend of any Clojure[Script] application including errors expressed as native types for easy integration.
 
-It is tested against [JSON-Schema-Test-Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite). There are still a few holes in fn-ality (vcabulary is NYI and a couple of the more esoteric reference types have failing tests) - I hope to plug these soon.
+It is tested against [JSON-Schema-Test-Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite). There are still a few holes in fn-ality (disallow and extends in draft3 and a couple of the more esoteric reference types have failing tests) - I hope to plug these soon.
 
 Here is a table of M3's current [features](https://julesgosnell.github.io/m3/features.html) which should allow you to see whether we support the functionality that your project requires.
 
@@ -256,3 +256,24 @@ cljs.user>
 
 This means that there will be edge cases which will validate in CLJS but not CLJ and vice-versa.
 I could add a layer of my own number types on top of CLJS to try to get it to behave like CLJ but I think this would intrude too heavily on the user's JSON docs and violate the principle of least surprise. So, unless anyone can suggest a better solution, I am going to live with the JS number stack and the inconsistency between platforms for the present.
+
+
+To develop with Claude
+
+- run `./bin/nrepl.sh` in a terminal
+- run `./mcp-claude.sh` in another terminal
+- run claude-desktop (https://claude.ai/download, https://github.com/bsneed/claude-desktop-fedora) in a third terminal
+
+I found that Claude seemed to understand the code and was fun to talk to but soon got lost in refactoring and didn't create anything useful
+
+
+To develop with Grok [4] (WIP)
+
+- run `./bin/nrepl.sh` in a terminal
+- run `./bin/mcp-grok.sh` in another terminal
+- install MCP SuperAssistant plugin in Chrome
+- login in to x.com or grok.com
+
+Currently, MCP button fails to show on Grok page although extension seems to be talking to local proxy very happily. I've opened an issue on github (https://github.com/srbhptl39/MCP-SuperAssistant)
+
+
