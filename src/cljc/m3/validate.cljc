@@ -27,7 +27,7 @@
    [m3.util :refer [absent present? concatv into-set conj-set seq-contains? when-assoc]]
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.ref :refer [meld resolve-uri try-path]]
-   [m3.pattern :refer [email-pattern ipv4-pattern ipv6-pattern hostname-pattern json-pointer-pattern relative-pointer-pattern uri-pattern uri-reference-pattern uri-template-pattern idn-email-pattern iri-pattern iri-reference-pattern uuid-pattern json-duration-pattern]]
+   [m3.pattern :refer [email-pattern ipv4-pattern ipv6-pattern hostname-pattern json-pointer-pattern relative-pointer-pattern uri-pattern uri-reference-pattern uri-template-pattern idn-email-pattern iri-pattern iri-reference-pattern uuid-pattern json-duration-pattern time-pattern ip-address-pattern color-pattern]]
    [m3.idn-hostname :refer [json-idn-hostname?]]
    )
   #?(:clj
@@ -256,6 +256,17 @@
 
 ;; standard formats
 
+(defmethod check-format "host-name" [f c2 p2 m2]
+  (check-pattern hostname-pattern f c2 p2 m2))
+
+(defmethod check-format "ip-address" [f c2 p2 m2]
+  (check-pattern ip-address-pattern f c2 p2 m2))
+
+(defmethod check-format "color" [f c2 p2 m2]
+  ;; TODO:
+  ;; need to or this with a complete set of CSS2/CSS3 color names
+  (check-pattern color-pattern f c2 p2 m2))
+
 (defmethod check-format "email" [f c2 p2 m2]
   (check-pattern email-pattern f c2 p2 m2))
 
@@ -274,8 +285,10 @@
 (defmethod check-format "date" [f c2 p2 m2]
   (check-parse local-date-parse f c2 p2 m2))
 
-(defmethod check-format "time" [f c2 p2 m2]
-  (check-parse offset-time-parse f c2 p2 m2))
+(defmethod check-format "time" [f {d :draft :as c2} p2 m2]
+  (if (= "draft3" d)
+    (check-pattern time-pattern f c2 p2 m2)
+    (check-parse offset-time-parse f c2 p2 m2)))
 
 (defmethod check-format "json-pointer" [f c2 p2 m2]
   (check-pattern json-pointer-pattern f c2 p2 m2))
@@ -295,10 +308,6 @@
 (defmethod check-format "idn-email" [f c2 p2 m2]
   (check-pattern idn-email-pattern f c2 p2 m2))
 
-;; this is really difficult.
-;; I can't find a java, javascript, clojure or clojurescript library which comes close
-;; writing my own seems like an unreasable amount of work just to pass this one part of the spec
-;; wait for someone else to do it or AI to get good enough to generate the code....
 (defmethod check-format "idn-hostname" [_format _c2 p2 m2]
   (fn [_c1 p1 m1]
     (when (and (string? m1) (not (json-idn-hostname? m1)))
@@ -391,7 +400,12 @@
             ts))]
 
       (fn [c1 p1 m1]
-         ;; TODO: we should report all the errors...
+        ;; TODO:
+        ;; we should report all the errors...
+        ;; then we cn implement disallow on to f this code
+        ;; we should consider marking items as evaluated ?
+        ;; we need to decide whether we are going to nest or flatten errors...
+        ;; I guess some errors rely on their context to be errors ?
         [c1
          (when-not (some (fn [checker] (nil? (second (checker c1 p1 m1)))) checkers)
            [(make-error (format "type: none matched: %s" ts) p2 m2 p1 m1)])]))
@@ -402,6 +416,19 @@
 ;;------------------------------------------------------------------------------
 
 ;; standard common properties
+
+;; (defn check-property-disallow [_property c2 p2 m2 v2]
+;;   (let [cts (map (fn [t] (if (json-string? t) (check-type t c2 p2 m2) (check-schema c2 p2 t))) (if (vector? v2) v2 [v2]))]
+;;     (fn [c1 p1 m1]
+;;       (prn "DISALLOW:" v2 m1)
+;;       [c1
+;;        (when (> 0 (count (filter
+;;                           (fn [ct]
+;;                             (let [r (empty? (second (ct c1 p1 m1)))
+;;                                   ;;_ (prn "RESULTS:" r)
+;;                                   ]
+;;                             r)) cts)))
+;;          [(make-error "disallow: document was of disallowed type" p2 m2 p1 m1)])])))
 
 (defn check-property-type [_property c2 p2 m2 v2]
   (check-type v2 c2 p2 m2))
@@ -468,10 +495,9 @@
 (defn check-property-$recursiveRef    [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
 (defn check-property-$dynamicRef      [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
 (defn check-property-description      [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-title            [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
 (defn check-property-readOnly         [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
 (defn check-property-writeOnly        [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-
+(defn check-property-title            [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
 (defn check-property-default          [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
 (defn check-property-$schema          [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
 (defn check-property-examples         [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
@@ -568,6 +594,15 @@
           (> v2 m1))
        []
        [(make-error "maximum: value too high" p2 m2 p1 m1)])]))
+
+(defn check-property-divisibleBy [_property _c2 p2 m2 v2]
+  (let [v2-bd (bigdec v2)]
+    (fn [c1 p1 m1]
+      [c1
+       (when (and
+              (json-number? m1)
+              (not (big-zero? (big-mod (bigdec m1) v2-bd))))
+         [(make-error (format "%s is not divisible by of %s" m1 v2) p2 m2 p1 m1)])])))
 
 (defn check-property-multipleOf [_property _c2 p2 m2 v2]
   (let [v2-bd (bigdec v2)]
@@ -1168,7 +1203,10 @@
 
 (def draft->vocab-and-property-and-semantics
   {"draft3"
-   [["https://json-schema.org/draft-03/vocab/validation" "type" check-property-type]
+   [;; [:applicator "extends" check-property-extends]  ; In applicator vocab
+    ;; ["https://json-schema.org/draft-03/vocab/validation" "disallow" check-property-disallow]
+    ["https://json-schema.org/draft-03/vocab/validation" "divisibleBy" check-property-divisibleBy]
+    ["https://json-schema.org/draft-03/vocab/validation" "type" check-property-type]
     ["https://json-schema.org/draft-03/vocab/validation" "const" check-property-const]
     ["https://json-schema.org/draft-03/vocab/validation" "minLength" check-property-minLength]
     ["https://json-schema.org/draft-03/vocab/validation" "maxLength" check-property-maxLength]

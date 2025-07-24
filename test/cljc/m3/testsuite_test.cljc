@@ -122,9 +122,33 @@
     ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches non-schema in third anyOf"]
     ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches second anyOf, which has a real schema in it"]
 
+    ;; draft3
+    ["disallow.json" "disallow" "disallowed"]
+    ["disallow.json" "multiple disallow" "mismatch"]
+    ["disallow.json" "multiple disallow" "other mismatch"]
+    ["disallow.json" "multiple disallow subschema" "mismatch"]
+    ["disallow.json" "multiple disallow subschema" "other mismatch"]
+    ["enum.json" "enums in properties" "missing required property is invalid"]
+    ["enum.json" "enums in properties" "missing all properties is invalid"]
+    ["extends.json" "extends" "mismatch extends"]
+    ["extends.json" "extends" "mismatch extended"]
+    ["extends.json" "multiple extends" "mismatch first extends"]
+    ["extends.json" "multiple extends" "mismatch second extends"]
+    ["extends.json" "multiple extends" "mismatch both"]
+    ["extends.json" "extends simple types" "mismatch extends"]
+    ["color.json" "validation of CSS colors" "an invalid CSS color name"]
+    ["ecmascript-regex.json" "ECMA 262 regex dialect recognition" "ECMA 262 has no support for lookbehind"]
+    ["ref.json" "nested refs" "nested ref invalid"]
+    ["ref.json" "$ref prevents a sibling id from changing the base uri" "$ref resolves to /definitions/base_foo, data does not validate"]
+    ["ref.json" "$ref prevents a sibling id from changing the base uri" "$ref resolves to /definitions/base_foo, data validates"]
+    ["refRemote.json" "change resolution scope" "changed scope ref valid"]
+    ["refRemote.json" "change resolution scope" "changed scope ref invalid"]
+    ["required.json" "required validation" "non-present required property is invalid"]
+
     #?@(:cljs
-        [["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]
-         ["content.json" "validation of binary string-encoding" "an invalid base64 string (% is not a valid character)"]])})
+        [["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]])
+
+    })
 
 (defn load-schema [s]
   (json-decode (slurp (format "resources/schemas/%s/schema.json" s))))
@@ -186,7 +210,7 @@
 (def json-schema-test-suite-root "test-resources/JSON-Schema-Test-Suite/tests/")
 
 (deftest json-schema-test-suite
-  (doseq [[draft dir] [;;["draft3"       "draft3" "draft3/optional" "draft3/optional/format"] - exists but we are not setup for it yet - need to reclassify stuff out of draft4
+  (doseq [[draft dir] [["draft3"       "draft3" "draft3/optional" "draft3/optional/format"]
                        ["draft4"       "draft4"]
                        ;;"draft5" - does not exist !
                        ["draft6"       "draft6"]
