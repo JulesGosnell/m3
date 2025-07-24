@@ -1,3 +1,4 @@
+
 ;; Copyright 2025 Julian Gosnell
 ;;
 ;; Licensed under the Apache License, Version 2.0 (the "License");
@@ -433,7 +434,7 @@
 
 (defn check-property-$id [_property _c2 _p2 _m2 v2]
   (fn [c1 p1 _m1]
-    (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
+    (let [uri (inherit-uri (:id-uri c1) (parse-uri v2))]
       [(-> c1
            (update :path->uri assoc p1 uri)  ; Stash path to uri
            (update :uri->path assoc uri p1)  ; Stash uri to path
@@ -477,19 +478,23 @@
 
 (declare draft->vocab-and-property-and-semantics)
 
+(defn make-vocabularies [d v->b]
+  (reduce
+   (fn [acc [v p f]]
+     (let [b (v->b v)]
+       (if (nil? b)
+         acc
+         (conj acc [p f]))))
+   []
+   ;; N.B. important to preserve evaluation order of vocabulary
+   ;; properties...
+   (draft->vocab-and-property-and-semantics d)))
+  
+
 (defn check-property-$vocabulary [_property {d :draft} _p2 _m2 v2]
-  (let [vocabulary
-        (mapcat
-         (fn [[k1 r?]]
-           (map
-            (fn [[v p f]]
-              [p f r?])
-            (filter
-             (fn [[k2]]
-               (= k1 k2))
-             (draft->vocab-and-property-and-semantics d))))
-         v2)]
-    (fn [c1 _p1 _m1] [(update c1 :vocabularies concat vocabulary) nil])))
+  (let [vocabularies (make-vocabularies d v2)]
+    (fn [c1 _p1 _m1]
+      [(assoc c1 :vocabularies vocabularies) nil])))
 
 ;; TODO: issue a warning somehow
 (defn check-property-deprecated  [_property _c2 _p2 _m2 _v2] (fn [_c1 _p1 _m1])) ;; TODO: issue a warning or error ?
@@ -615,12 +620,13 @@
                (> (json-length m1) v2)))
          [(make-error "maxLength: string too long" p2 m2 p1 m1)])])))
 
-(defn check-property-format [_property {strict? :strict-format? cfs :check-format :or {cfs {}} :as c2} p2 m2 v2]
-  (let [f (if strict?
-            (fn [f2] (fn [c p m] [c (f2 c p m)]))
-            (fn [f2] (fn [c p m] (when-let [[{m :message}] (f2 c p m)] [c (log/warn m)]))))]
+(defn make-check-property-format [strict?]
+  (fn [_property {cfs :check-format :or {cfs {}} strict-format? :strict-format? :as c2} p2 m2 v2]
+    (let [f (if (or strict? strict-format?)
+              (fn [f2] (fn [c p m] [c (f2 c p m)]))
+              (fn [f2] (fn [c p m] (when-let [[{m :message}] (f2 c p m)] [c (log/warn m)]))))]
     ;; we do this here so that user may override default format checkers...
-    (f ((or (cfs v2) check-format) v2 c2 p2 m2))))
+      (f ((or (cfs v2) check-format) v2 c2 p2 m2)))))
 
 (defn check-property-pattern [_property c2 p2 m2 v2]
   (if (starts-with? v2 "$format:")
@@ -628,7 +634,7 @@
     ;; this is an extension to allow patternProperties to
     ;; leverage formats since the spec does not provide a
     ;; formatProperties...
-    (check-property-format "format" c2 p2 m2 (subs v2 (count "$format:")))
+    ((make-check-property-format false) "format" c2 p2 m2 (subs v2 (count "$format:"))) ;; TODO: decide strictness from context somehow
     (let [p (ecma-pattern v2)]
 
       (fn [c1 p1 m1]
@@ -1167,7 +1173,7 @@
     ["https://json-schema.org/draft-03/vocab/validation" "minLength" check-property-minLength]
     ["https://json-schema.org/draft-03/vocab/validation" "maxLength" check-property-maxLength]
     ["https://json-schema.org/draft-03/vocab/validation" "multipleOf" check-property-multipleOf]
-    ["https://json-schema.org/draft-03/vocab/validation" "format" check-property-format]
+    ["https://json-schema.org/draft-03/vocab/validation" "format" (make-check-property-format false)]
     ["https://json-schema.org/draft-03/vocab/validation" "enum" check-property-enum]
     ["https://json-schema.org/draft-03/vocab/validation" "pattern" check-property-pattern]
     ["https://json-schema.org/draft-03/vocab/core" "$ref" check-property-$ref]
@@ -1230,7 +1236,7 @@
     ["https://json-schema.org/draft-04/vocab/validation" "minLength" check-property-minLength]
     ["https://json-schema.org/draft-04/vocab/validation" "maxLength" check-property-maxLength]
     ["https://json-schema.org/draft-04/vocab/validation" "multipleOf" check-property-multipleOf]
-    ["https://json-schema.org/draft-04/vocab/validation" "format" check-property-format]
+    ["https://json-schema.org/draft-04/vocab/validation" "format" (make-check-property-format true)]
     ["https://json-schema.org/draft-04/vocab/validation" "enum" check-property-enum]
     ["https://json-schema.org/draft-04/vocab/validation" "pattern" check-property-pattern]
     ["https://json-schema.org/draft-04/vocab/core" "$ref" check-property-$ref]
@@ -1293,7 +1299,7 @@
     ["https://json-schema.org/draft-06/vocab/validation" "minLength" check-property-minLength]
     ["https://json-schema.org/draft-06/vocab/validation" "maxLength" check-property-maxLength]
     ["https://json-schema.org/draft-06/vocab/validation" "multipleOf" check-property-multipleOf]
-    ["https://json-schema.org/draft-06/vocab/validation" "format" check-property-format]
+    ["https://json-schema.org/draft-06/vocab/validation" "format" (make-check-property-format true)]
     ["https://json-schema.org/draft-06/vocab/validation" "enum" check-property-enum]
     ["https://json-schema.org/draft-06/vocab/validation" "pattern" check-property-pattern]
     ["https://json-schema.org/draft-06/vocab/core" "$ref" check-property-$ref]
@@ -1356,7 +1362,7 @@
     ["https://json-schema.org/draft-07/vocab/validation" "minLength" check-property-minLength]
     ["https://json-schema.org/draft-07/vocab/validation" "maxLength" check-property-maxLength]
     ["https://json-schema.org/draft-07/vocab/validation" "multipleOf" check-property-multipleOf]
-    ["https://json-schema.org/draft-07/vocab/validation" "format" check-property-format]
+    ["https://json-schema.org/draft-07/vocab/validation" "format" (make-check-property-format true)]
     ["https://json-schema.org/draft-07/vocab/validation" "enum" check-property-enum]
     ["https://json-schema.org/draft-07/vocab/validation" "pattern" check-property-pattern]
     ["https://json-schema.org/draft-07/vocab/core" "$ref" check-property-$ref]
@@ -1419,7 +1425,7 @@
     ["https://json-schema.org/draft/2019-09/vocab/validation" "minLength" check-property-minLength]
     ["https://json-schema.org/draft/2019-09/vocab/validation" "maxLength" check-property-maxLength]
     ["https://json-schema.org/draft/2019-09/vocab/validation" "multipleOf" check-property-multipleOf]
-    ["https://json-schema.org/draft/2019-09/vocab/validation" "format" check-property-format]
+    ["https://json-schema.org/draft/2019-09/vocab/validation" "format" (make-check-property-format true)]
     ["https://json-schema.org/draft/2019-09/vocab/validation" "enum" check-property-enum]
     ["https://json-schema.org/draft/2019-09/vocab/validation" "pattern" check-property-pattern]
     ["https://json-schema.org/draft/2019-09/vocab/core" "$ref" check-property-$ref]
@@ -1470,18 +1476,19 @@
     ["https://json-schema.org/draft/2019-09/vocab/validation" "uniqueItems" check-property-uniqueItems]
     ["https://json-schema.org/draft/2019-09/vocab/applicator" "items" check-property-items]
     ["https://json-schema.org/draft/2019-09/vocab/applicator" "additionalItems" check-property-additionalItems]
-    ["https://json-schema.org/draft/2019-09/vocab/unevaluated" "unevaluatedItems" check-property-unevaluatedItems]
+    ["https://json-schema.org/draft/2019-09/vocab/applicator" "unevaluatedItems" check-property-unevaluatedItems]
     ["https://json-schema.org/draft/2019-09/vocab/applicator" "properties" check-property-properties]
     ["https://json-schema.org/draft/2019-09/vocab/applicator" "patternProperties" check-property-patternProperties]
     ["https://json-schema.org/draft/2019-09/vocab/applicator" "additionalProperties" check-property-additionalProperties]
-    ["https://json-schema.org/draft/2019-09/vocab/unevaluated" "unevaluatedProperties" check-property-unevaluatedProperties]]
+    ["https://json-schema.org/draft/2019-09/vocab/applicator" "unevaluatedProperties" check-property-unevaluatedProperties]]
    "draft2020-12"
    [["https://json-schema.org/draft/2020-12/vocab/validation" "type" check-property-type]
     ["https://json-schema.org/draft/2020-12/vocab/validation" "const" check-property-const]
     ["https://json-schema.org/draft/2020-12/vocab/validation" "minLength" check-property-minLength]
     ["https://json-schema.org/draft/2020-12/vocab/validation" "maxLength" check-property-maxLength]
     ["https://json-schema.org/draft/2020-12/vocab/validation" "multipleOf" check-property-multipleOf]
-    ["https://json-schema.org/draft/2020-12/vocab/format-assertion" "format" check-property-format]
+    ["https://json-schema.org/draft/2020-12/vocab/format-annotation" "format" (make-check-property-format false)]
+    ["https://json-schema.org/draft/2020-12/vocab/format-assertion" "format" (make-check-property-format true)]
     ["https://json-schema.org/draft/2020-12/vocab/validation" "enum" check-property-enum]
     ["https://json-schema.org/draft/2020-12/vocab/validation" "pattern" check-property-pattern]
     ["https://json-schema.org/draft/2020-12/vocab/core" "$ref" check-property-$ref]
@@ -1544,7 +1551,8 @@
     ["https://json-schema.org/draft/2020-12/vocab/validation" "minLength" check-property-minLength]
     ["https://json-schema.org/draft/2020-12/vocab/validation" "maxLength" check-property-maxLength]
     ["https://json-schema.org/draft/2020-12/vocab/validation" "multipleOf" check-property-multipleOf]
-    ["https://json-schema.org/draft/2020-12/vocab/format-assertion" "format" check-property-format]
+    ["https://json-schema.org/draft/2020-12/vocab/format-annotation" "format" (make-check-property-format false)]
+    ["https://json-schema.org/draft/2020-12/vocab/format-assertion" "format" (make-check-property-format true)]
     ["https://json-schema.org/draft/2020-12/vocab/validation" "enum" check-property-enum]
     ["https://json-schema.org/draft/2020-12/vocab/validation" "pattern" check-property-pattern]
     ["https://json-schema.org/draft/2020-12/vocab/core" "$ref" check-property-$ref]
@@ -1607,7 +1615,8 @@
     ["https://json-schema.org/draft/next/vocab/validation" "minLength" check-property-minLength]
     ["https://json-schema.org/draft/next/vocab/validation" "maxLength" check-property-maxLength]
     ["https://json-schema.org/draft/next/vocab/validation" "multipleOf" check-property-multipleOf]
-    ["https://json-schema.org/draft/next/vocab/format-assertion" "format" check-property-format]
+    ["https://json-schema.org/draft/next/vocab/format-annotation" "format" (make-check-property-format false)]
+    ["https://json-schema.org/draft/next/vocab/format-assertion" "format" (make-check-property-format true)]
     ["https://json-schema.org/draft/next/vocab/validation" "enum" check-property-enum]
     ["https://json-schema.org/draft/next/vocab/validation" "pattern" check-property-pattern]
     ["https://json-schema.org/draft/next/vocab/core" "$ref" check-property-$ref]
@@ -1665,19 +1674,22 @@
     ["https://json-schema.org/draft/next/vocab/applicator" "additionalProperties" check-property-additionalProperties]
     ["https://json-schema.org/draft/next/vocab/unevaluated" "unevaluatedProperties" check-property-unevaluatedProperties]]})
 
-(defn make-property->index-and-check-2 [d]
-  (into {} (map-indexed (fn [i [p c]] [p [i c]]) (map rest (draft->vocab-and-property-and-semantics d)))))
+(defn make-property->index-and-check-2 [vs d]
+  (into {} (map-indexed (fn [i [p c]] [p [i c]]) (or vs
+                                                     ;; TODO - inject into initial context ?
+                                                     ;; how do we decide vocabulary for a self-descriptive schema ?
+                                                     (map rest (draft->vocab-and-property-and-semantics d))))))
 
 (def make-property->index-and-check (memoize make-property->index-and-check-2))
 
-(defn compile-m2 [{d :draft :as c2} old-p2 m2]
+(defn compile-m2 [{vs :vocabularies d :draft :as c2} old-p2 m2]
   (map
    rest
    (sort-by
     first
     (reduce-kv
      (fn [acc k v]
-       (if-let [[i c] ((make-property->index-and-check d) k)]
+       (if-let [[i c] ((make-property->index-and-check vs d) k)]
          (let [new-p2 (conj old-p2 k)]
            (conj acc (list i new-p2 (c k c2 new-p2 m2 v))))
          (do
@@ -1759,7 +1771,11 @@
 ;; if m2-fn returned [new-c2 m2] perhaps we would not need interceptors !
 ;; but we would have to thread m2 as well - can we do it - consider...
 
+;; if validation was also a c2 reduction we could use that for vocabularies and maybe the marker-stash
+;; investigate...
+
 (defn make-draft-interceptor []
+  ;; TODO: should we be resetting :vocabularies here ?
   (fn [delegate]
     (fn [c2 p2 {s "$schema" :as m2}]
       (delegate 
@@ -1873,7 +1889,6 @@
      :original-root m2
      :recursive-anchor []
      :root m2
-     :strict-format? (let [f? (get c2 :strict-format?)] (if (nil? f?) true f?)) ;; pull this out into some default fn
      :strict-integer? (let [f? (get c2 :strict-integer?)] (if (nil? f?) false f?)) ;; pull this out into some default fn
      )))  
 
@@ -1905,16 +1920,24 @@
     (if-let [m2 ($schema->m2 s)]
       (if (= m2 m1)
         ;; we are at the top
-        (let [v (validate-2 c2 m2)
-              ;; self-validate - we need lower level api that returns c1 with marker stash...
+        (let [draft ($schema->draft s)
+              ;; initialise c2`
+              c2 (assoc
+                  c2
+                  :vocabularies
+                  (make-vocabularies
+                   draft
+                   (or (m2 "$vocabulary")
+                       (into {} (map (fn [[v]][v true])  (draft->vocab-and-property-and-semantics draft))))))
+              v (validate-2 c2 m2)
               [_ es :as r] (v {} m1)]
           (if (empty? es)
             v
             (constantly r)))
-        ;; keep going
-        (let [[c3 es :as r] ((validate-m2 c2 m2) {} m1)]
+        ;; keep going - inheriting relevant parts of c1
+        (let [[{vs :vocabularies :as c3} es :as r] ((validate-m2 c2 m2) {} m1)]
           (if (empty? es)
-            (validate-2 (assoc c2 :marker-stash (marker-stash c3)) m1)
+            (validate-2 (assoc c2 :marker-stash (marker-stash c3) :vocabularies vs) m1)
             (constantly r))))
       (constantly [c2 [(str "could not resolve $schema: " s)]]))))
 

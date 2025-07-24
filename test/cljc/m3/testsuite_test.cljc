@@ -20,6 +20,7 @@
    #?(:cljs [goog.string :as gstring])
    #?(:cljs [goog.string.format])
    [clojure.pprint :refer [pprint]]
+   [clojure.string :refer [ends-with?]]
    [m3.validate :refer [validate validate-2 uri->continuation json-decode]]]
   [:import
    #?(:clj  [java.io File])])
@@ -35,8 +36,12 @@
 
 (defn file-name [f]
   #?(:clj (.getName ^File f)
-     :cljs (.basename node-path f)))   
+     :cljs (.basename node-path f)))
 
+(defn directory-name [f]
+  #?(:clj (.getParent ^File f)
+     :cljs (.dirname node-path f)))
+  
 (defn directory? [f]
   #?(:clj (.isDirectory ^File f)
      :cljs (-> (.statSync fs f) .isDirectory)))
@@ -71,7 +76,6 @@
 
 ;; TODO:
 ;; - make sure that we are recursing into all subdirectories
-;; - implement vocabularies
 ;; - fix dynamic anchors, refs...
 ;; - maybe fix remaining tests
 
@@ -117,7 +121,6 @@
     ["unevaluatedProperties.json" "unevaluatedProperties with $dynamicRef" "with no unevaluated properties"]
     ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches non-schema in third anyOf"]
     ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches second anyOf, which has a real schema in it"]
-    ["vocabulary.json" "schema that uses custom metaschema with with no validation vocabulary" "no validation: invalid number, but it still validates"]
 
     #?@(:cljs
         [["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]
@@ -163,11 +166,7 @@
                     (do
                       (let [c2 (-> c2
                                    (assoc
-                                    :strict-format?
-                                    ;; there are a bunch of tests which insist that a bad format should not break validation
-                                    (not (and (= "format.json" feature)
-                                              (re-matches #"^invalid .* string is only an annotation by default$" d2))))
-                                   (assoc
+                                    :strict-format? (ends-with? (directory-name f) "optional/format")
                                     :strict-integer?
                                     (and (= "zeroTerminatedFloats.json" feature)
                                          (= "a float is not an integer even without fractional part" d2))))]
