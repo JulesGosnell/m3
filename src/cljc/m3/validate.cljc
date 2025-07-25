@@ -418,6 +418,9 @@
 
 ;; standard common properties
 
+(defn check-property-extends [property c2 p2 m2 v2]
+  (check-schema c2 (conj p2 property) v2))
+
 (defn check-property-disallow [_property c2 p2 m2 v2]
   (let [ct (check-type v2 c2 p2 m2)]
     (fn [c1 p1 m1]
@@ -1199,7 +1202,7 @@
 (def draft->vocab-and-property-and-semantics
   {"draft3"
    [
-    ;; ["https://json-schema.org/draft-03/vocab/applicator"              "extends"                 check-property-extends]
+    ["https://json-schema.org/draft-03/vocab/applicator"              "extends"                 check-property-extends]
     ["https://json-schema.org/draft-03/vocab/validation"              "disallow"                check-property-disallow]
     ["https://json-schema.org/draft-03/vocab/validation"              "divisibleBy"             check-property-divisibleBy]
     ["https://json-schema.org/draft-03/vocab/validation"              "type"                    check-property-type]
