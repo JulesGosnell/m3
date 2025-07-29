@@ -449,22 +449,30 @@
        [(make-error "enum: does not contain value" p2 m2 p1 m1)])]))
 
 (defn check-property-id [_property _c2 _p2 _m2 v2]
-  (fn [c1 p1 _m1]
-    (let [uri (inherit-uri (c1 :id-uri) (parse-uri v2))]
-      [(-> c1
-           (update :path->uri assoc p1 uri)  ; Stash path to uri
-           (update :uri->path assoc uri p1)  ; Stash uri to path
-           (assoc :id-uri uri))
-       nil])))
+  (fn [{old-id-uri :id-uri :as c1} p1 {id "id" :as m1}]
+    [(if-let [new-id-uri (and id (inherit-uri old-id-uri (parse-uri id)))]
+       (do
+         ;;(prn "ID:" old-id-uri "+" id "->" new-id-uri)
+         (-> c1
+             (update :path->uri assoc p1 new-id-uri)
+             (update :uri->path assoc new-id-uri p1)
+             (assoc :id-uri new-id-uri)))
+       (-> c1
+           (update :path->uri assoc p1 old-id-uri)))
+     nil]))
 
 (defn check-property-$id [_property _c2 _p2 _m2 v2]
-  (fn [c1 p1 _m1]
-    (let [uri (inherit-uri (:id-uri c1) (parse-uri v2))]
-      [(-> c1
-           (update :path->uri assoc p1 uri)  ; Stash path to uri
-           (update :uri->path assoc uri p1)  ; Stash uri to path
-           (assoc :id-uri uri))
-       nil])))
+  (fn [{old-id-uri :id-uri :as c1} p1 {id "$id" :as m1}]
+    [(if-let [new-id-uri (and id (inherit-uri old-id-uri (parse-uri id)))]
+       (do
+         ;;(prn "$ID:" old-id-uri "+" id "->" new-id-uri)
+         (-> c1
+             (update :path->uri assoc p1 new-id-uri)
+             (update :uri->path assoc new-id-uri p1)
+             (assoc :id-uri new-id-uri)))
+       (-> c1
+           (update :path->uri assoc p1 old-id-uri)))
+     nil]))
 
 ;; Anchors only need :uri->path (no change, but included for completeness)
 (defn check-property-$anchor [_property _c2 _p2 _m2 v2]
@@ -489,7 +497,14 @@
     ;;(log/info (str "$comment:" v2 " : " p1))
     [c1 nil]))
 
-(defn check-property-$ref             [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
+;; hopefully during the f1 of an m2 we can precompile the $ref...
+;; will never be called because a $ref in the m2 is intercepted and expanded...
+;; TODO: think again...
+(defn check-property-$ref [_property _c2 _p2 _m2 _v2]
+  (fn [c1 _p1 _m1]
+    ;;(prn "$REF:")
+    [c1 nil]))
+
 (defn check-property-$recursiveRef    [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
 (defn check-property-$dynamicRef      [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
 (defn check-property-description      [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
@@ -1646,6 +1661,36 @@
     ["https://json-schema.org/draft/next/vocab/applicator"            "patternProperties"       check-property-patternProperties]
     ["https://json-schema.org/draft/next/vocab/applicator"            "additionalProperties"    check-property-additionalProperties]
     ["https://json-schema.org/draft/next/vocab/unevaluated"           "unevaluatedProperties"   check-property-unevaluatedProperties]]})
+
+;; marker-stashes for the builtin meta-schemas
+(let [draft3       (parse-uri "http://json-schema.org/draft-03/schema#")
+      draft4       (parse-uri "http://json-schema.org/draft-04/schema#")
+      draft6       (parse-uri "http://json-schema.org/draft-06/schema#")
+      draft7       (parse-uri "http://json-schema.org/draft-07/schema#")
+      draft2019-09 (parse-uri "https://json-schema.org/draft/2019-09/schema")
+      draft2020-12 (parse-uri "https://json-schema.org/draft/2020-12/schema")]
+  (def uri->marker-stash
+    {draft3
+     {:uri->path {draft3 []},
+      :path->uri (constantly draft3)},
+     draft4
+     {:uri->path {draft4 []},
+      :path->uri (constantly draft4)},
+     draft6
+     {:uri->path {draft6 []},
+      :path->uri (constantly draft6)},
+     draft7
+     {:uri->path {draft7 []},
+      :path->uri (constantly draft7)},
+     draft2019-09
+     {:uri->path {draft2019-09 []},
+      :path->uri (constantly draft2019-09)},
+     draft2020-12
+     {:uri->path {draft2020-12 [],
+                  ;; there is a $dynamicAnchor at top-level - figure it out later...
+                  {:type :url, :origin "https://json-schema.org", :path "/draft/2020-12/schema", :fragment "meta"} []},
+      ;; should this be returning the dynamic anchor?
+      :path->uri (constantly draft2020-12)}}))
 
 (defn make-property->index-and-check-2 [vs d]
   (into {} (map-indexed (fn [i [p c]] [p [i c]]) (or vs
