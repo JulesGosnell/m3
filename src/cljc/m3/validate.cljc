@@ -1938,10 +1938,14 @@
     (if-let [m2 ($schema->m2 s)]
       (if (= m2 m1)
         ;; we are at the top
-        (let [draft ($schema->draft s)
+        (let [uri (parse-uri s) ;; duplicate work
+              stash (uri->marker-stash uri)
+              _ (when-not stash (prn "NO STASH FOR:" s))
+              draft ($schema->draft s)
               ;; initialise c2`
               c2 (assoc
-                  c2
+                  (merge c2 stash)
+                  :id-uri uri
                   :vocabularies
                   (make-vocabularies
                    draft
@@ -1953,9 +1957,12 @@
             v
             (constantly r)))
         ;; keep going - inheriting relevant parts of c1
-        (let [[{vs :vocabularies :as c3} es :as r] ((validate-m2 c2 m2) {} m1)]
+        (let [[{vs :vocabularies u->p :uri->path p->u :path->uri :as c3} es :as r] ((validate-m2 c2 m2) {} m1)]
+          ;;(prn "STASH:" u->p p->u)
           (if (empty? es)
-            (validate-2 (assoc c2 :marker-stash (marker-stash c3) :vocabularies vs) m1)
+            (validate-2 (assoc c2
+                               :marker-stash {:uri->path (or u->p {}) :path->uri (or p->u {})}
+                               :vocabularies vs) m1)
             (constantly r))))
       (constantly [c2 [(str "could not resolve $schema: " s)]]))))
 
