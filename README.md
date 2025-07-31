@@ -260,8 +260,17 @@ I could add a layer of my own number types on top of CLJS to try to get it to be
 
 To develop with Claude
 
+- put something like this (fixup the path to mcp-claude.sh) in your ~/.config/Claude/claude_desktop_config.json:
+```
+{
+  "mcpServers": {
+    "clojure-mcp": {
+        "command": "~/src/m3/bin/mcp-claude.sh"
+    }
+  }
+}
+```
 - run `./bin/nrepl.sh` in a terminal
-- run `./mcp-claude.sh` in another terminal
 - run claude-desktop (https://claude.ai/download, https://github.com/bsneed/claude-desktop-fedora) in a third terminal
 
 I found that Claude seemed to understand the code and was fun to talk to but soon got lost in refactoring and didn't create anything useful
