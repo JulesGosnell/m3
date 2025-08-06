@@ -546,22 +546,20 @@
 (defn check-property-minimum-old [_property _c2 p2 m2 v2]
   (let [e? (m2 "exclusiveMinimum")
         p? (if e? < <=)]
-    (fn [c1 p1 m1]
-      [c1
-       (if (or
-            (not (number? m1))
-            (p? v2 m1))
-         []
-         [(make-error (str "minimum" (when e? "(with exclusiveMinimum)") ": value to low") p2 m2 p1 m1)])])))
+    (make-type-checker
+     json-number?
+     (fn [c1 p1 m1]
+       [c1
+        (when-not (p? v2 m1)
+          [(make-error (str "minimum" (when e? "(with exclusiveMinimum)") ": value to low") p2 m2 p1 m1)])]))))
 
 (defn check-property-minimum-new [_property _c2 p2 m2 v2]
-  (fn [c1 p1 m1]
-    [c1
-     (if (or
-          (not (number? m1))
-          (<= v2 m1))
-       []
-       [(make-error "minimum: value to low" p2 m2 p1 m1)])]))
+  (make-type-checker
+   json-number?
+   (fn [c1 p1 m1]
+     [c1
+      (when-not (<= v2 m1)
+        [(make-error "minimum: value to low" p2 m2 p1 m1)])])))
 
 (defn check-property-exclusiveMinimum-old [_property _c2 p2 {m "minimum" :as m2} v2]
   (fn [c1 _p1 _m1]
@@ -569,33 +567,30 @@
     [c1 []]))
 
 (defn check-property-exclusiveMinimum-new [_property _c2 p2 {m "minimum" :as m2} v2]
-  (fn [c1 p1 m1]
-    [c1
-     (if (or
-          (not (number? m1))
-          (< v2 m1))
-       []
-       [(make-error "minimum: value to low" p2 m2 p1 m1)])]))
+  (make-type-checker
+   json-number?
+   (fn [c1 p1 m1]
+     [c1
+      (when-not (< v2 m1)
+        [(make-error "minimum: value to low" p2 m2 p1 m1)])])))
 
 (defn check-property-maximum-old [_property _c2 p2 m2 v2]
   (let [e? (m2 "exclusiveMaximum")
         p? (if e? > >=)]
-    (fn [c1 p1 m1]
-      [c1
-       (if (or
-            (not (number? m1))
-            (p? v2 m1))
-         []
-         [(make-error (str "maximum" (when e? "(with exclusiveMaximum)") ": value too high") p2 m2 p1 m1)])])))
+    (make-type-checker
+     json-number?
+     (fn [c1 p1 m1]
+       [c1
+        (when-not (p? v2 m1)
+          [(make-error (str "maximum" (when e? "(with exclusiveMaximum)") ": value too high") p2 m2 p1 m1)])]))))
 
 (defn check-property-maximum-new [_property _c2 p2 m2 v2]
-  (fn [c1 p1 m1]
-    [c1
-     (if (or
-          (not (number? m1))
-          (>= v2 m1))
-       []
-       [(make-error "maximum: value too high" p2 m2 p1 m1)])]))
+  (make-type-checker
+   json-number?
+   (fn [c1 p1 m1]
+     [c1
+      (when-not (>= v2 m1)
+        [(make-error "maximum: value too high" p2 m2 p1 m1)])])))
 
 (defn check-property-exclusiveMaximum-old [_property _c2 p2 {m "maximum" :as m2} v2]
   (fn [c1 _p1 _m1]
@@ -603,31 +598,30 @@
     [c1 []]))
 
 (defn check-property-exclusiveMaximum-new [_property _c2 p2 {m "maximum" :as m2} v2]
-  (fn [c1 p1 m1]
-    [c1
-     (if (or
-          (not (number? m1))
-          (> v2 m1))
-       []
-       [(make-error "maximum: value too high" p2 m2 p1 m1)])]))
+  (make-type-checker
+   json-number?
+   (fn [c1 p1 m1]
+     [c1
+      (when-not (> v2 m1)
+        [(make-error "maximum: value too high" p2 m2 p1 m1)])])))
 
 (defn check-property-divisibleBy [_property _c2 p2 m2 v2]
   (let [v2-bd (bigdec v2)]
-    (fn [c1 p1 m1]
-      [c1
-       (when (and
-              (json-number? m1)
-              (not (big-zero? (big-mod (bigdec m1) v2-bd))))
-         [(make-error (format "%s is not divisible by of %s" m1 v2) p2 m2 p1 m1)])])))
+    (make-type-checker
+     json-number?
+     (fn [c1 p1 m1]
+       [c1
+        (when (not (big-zero? (big-mod (bigdec m1) v2-bd)))
+          [(make-error (format "%s is not divisible by of %s" m1 v2) p2 m2 p1 m1)])]))))
 
 (defn check-property-multipleOf [_property _c2 p2 m2 v2]
   (let [v2-bd (bigdec v2)]
-    (fn [c1 p1 m1]
-      [c1
-       (when (and
-              (json-number? m1)
-              (not (big-zero? (big-mod (bigdec m1) v2-bd))))
-         [(make-error (format "%s is not a multiple of %s" m1 v2) p2 m2 p1 m1)])])))
+    (make-type-checker
+     json-number?
+     (fn [c1 p1 m1]
+       [c1
+        (when (not (big-zero? (big-mod (bigdec m1) v2-bd)))
+          [(make-error (format "%s is not a multiple of %s" m1 v2) p2 m2 p1 m1)])]))))
 
 ;; standard string properties
 
@@ -715,47 +709,47 @@
   (fn [_property _c2 p2 m2 v2]
     (let [ce-decoder (ce->decoder v2)
           pp2 (butlast p2)]
-      (fn [c1 p1 old-m1]
-        (if (string? old-m1)
-          (let [[new-m1 es]
-                (try
-                  [(ce-decoder old-m1) nil]
-                  (catch Exception e
-                    [nil
-                     (let [m (str "contentEncoding: could not " v2 " decode: " (pr-str old-m1) " - " (ex-message e))]
-                       (if strict?
-                         [(make-error m p2 m2 p1 old-m1)]
-                         (do
-                           (log/warn (string-replace m #"\n" " - "))
-                           [])))]))]
-            (if new-m1
-              [(update c1 :content assoc pp2 new-m1) nil]
-              [c1 es]))
-          [old-m1 nil])))))
+      (make-type-checker
+       string?
+       (fn [c1 p1 old-m1]
+         (let [[new-m1 es]
+               (try
+                 [(ce-decoder old-m1) nil]
+                 (catch Exception e
+                   [nil
+                    (let [m (str "contentEncoding: could not " v2 " decode: " (pr-str old-m1) " - " (ex-message e))]
+                      (if strict?
+                        [(make-error m p2 m2 p1 old-m1)]
+                        (do
+                          (log/warn (string-replace m #"\n" " - "))
+                          [])))]))]
+           (if new-m1
+             [(update c1 :content assoc pp2 new-m1) nil]
+             [c1 es])))))))
 
 (defn make-check-property-contentMediaType [strict?]
   (fn [_property _c2 p2 m2 v2]
     (let [cmt v2
           cmt-decoder (cmt->decoder cmt)
           pp2 (butlast p2)]
-      (fn [c1 p1 m1]
-        (let [old-m1 (or (get (get c1 :content) pp2) m1)]
-          (if (string? old-m1)
-            (let [[new-m1 es]
-                  (try
-                    [(cmt-decoder old-m1) nil]
-                    (catch Exception e
-                      [nil
-                       (let [m (str "contentMediaType: could not " v2 " decode: " (pr-str old-m1) " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
-                         (if strict?
-                           [(make-error m p2 m2 p1 old-m1)]
-                           (do
-                             (log/warn (string-replace m #"\n" " - "))
-                             [])))]))]
-              (if new-m1
-                [(update c1 :content assoc pp2 new-m1) nil]
-                [c1 es]))
-            [old-m1 nil]))))))
+      (make-type-checker
+       string?
+       (fn [c1 p1 m1]
+         (let [old-m1 (or (get (get c1 :content) pp2) m1)]
+           (let [[new-m1 es]
+                 (try
+                   [(cmt-decoder old-m1) nil]
+                   (catch Exception e
+                     [nil
+                      (let [m (str "contentMediaType: could not " v2 " decode: " (pr-str old-m1) " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
+                        (if strict?
+                          [(make-error m p2 m2 p1 old-m1)]
+                          (do
+                            (log/warn (string-replace m #"\n" " - "))
+                            [])))]))]
+             (if new-m1
+               [(update c1 :content assoc pp2 new-m1) nil]
+               [c1 es]))))))))
 
 (defn make-check-property-contentSchema [strict?]
   (fn [_property c2 p2 {cmt "contentMediaType"} v2]
@@ -793,21 +787,21 @@
               )))
          {}
          v2)]
-    (fn [c1 p1 m1]
-      (if (json-object? m1)
-        (let [[c1 es]
-              (reduce
-               (fn [[c old-es] [k v]]
-                 (if (contains? m1 k)
-                   (let [[c new-es] ((property->checker k) c p1 m1)]
-                     [c (concatv old-es new-es)])
-                   [c old-es]))
-               [c1 []]
-               v2)]
-          [c1
-           (when-let [missing (seq es)]
-             [(make-error ["dependencies: missing properties (at least):" missing] p2 m2 p1 m1)])])
-        [c1 []]))))
+    (make-type-checker
+     json-object?
+     (fn [c1 p1 m1]
+       (let [[c1 es]
+             (reduce
+              (fn [[c old-es] [k v]]
+                (if (contains? m1 k)
+                  (let [[c new-es] ((property->checker k) c p1 m1)]
+                    [c (concatv old-es new-es)])
+                  [c old-es]))
+              [c1 []]
+              v2)]
+         [c1
+          (when-let [missing (seq es)]
+            [(make-error ["dependencies: missing properties (at least):" missing] p2 m2 p1 m1)])])))))
 
 (defn check-property-dependentSchemas [_property c2 p2 m2 v2]
   (let [property->checker
@@ -816,37 +810,37 @@
            (assoc acc k (check-schema c2 p2 v)))
          {}
          v2)]
-    (fn [c1 p1 m1]
-      (if (json-object? m1)
-        (let [[c1 es]
-              (reduce
-               (fn [[c old-es] [k v]]
-                 (if (contains? m1 k)
-                   (let [[c new-es] ((property->checker k) c p1 m1)]
-                     [c (concatv old-es new-es)])
-                   [c old-es]))
-               [c1 []]
-               v2)]
-          [c1
-           (when-let [missing (seq es)]
-             [(make-error ["dependentSchemas: missing properties (at least):" missing] p2 m2 p1 m1)])])
-        [c1 nil]))))
+    (make-type-checker
+     json-object?
+     (fn [c1 p1 m1]
+       (let [[c1 es]
+             (reduce
+              (fn [[c old-es] [k v]]
+                (if (contains? m1 k)
+                  (let [[c new-es] ((property->checker k) c p1 m1)]
+                    [c (concatv old-es new-es)])
+                  [c old-es]))
+              [c1 []]
+              v2)]
+         [c1
+          (when-let [missing (seq es)]
+            [(make-error ["dependentSchemas: missing properties (at least):" missing] p2 m2 p1 m1)])])))))
 
 (defn check-property-propertyDependencies [_property c2 p2 _m2 v2]
   (let [checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] (check-schema c2 p2 s)]) vs)) v2))
         ks (keys v2)]
-    (fn [c1 p1 m1]
-      (if (json-object? m1)
-        (reduce
-         (fn [[c old-es] k]
-           (let [v (m1 k)]
-             (if-let [checker (and (json-string? v) (checkers [k v]))]
-               (let [[c new-es] (checker c p1 m1)]
-                 [c (concatv old-es new-es)])
-               [c old-es])))
-         [c1 []]
-         ks)
-        [c1 []]))))
+    (make-type-checker
+     json-object?
+     (fn [c1 p1 m1]
+       (reduce
+        (fn [[c old-es] k]
+          (let [v (m1 k)]
+            (if-let [checker (and (json-string? v) (checkers [k v]))]
+              (let [[c new-es] (checker c p1 m1)]
+                [c (concatv old-es new-es)])
+              [c old-es])))
+        [c1 []]
+        ks)))))
 
 ;; TODO: share more code with dependencies
 (defn check-property-dependentRequired [_property _c2 p2 m2 v2]
@@ -859,19 +853,20 @@
             (fn [c1 p1 m1] (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v))))
          {}
          v2)]
-    (fn [c1 p1 m1]
-      [c1
-       (when (json-object? m1)
-         (when-let [missing
-                    (seq
-                     (reduce
-                      (fn [acc [k v]]
-                        (if (contains? m1 k)
-                          (concatv acc ((property->checker k) c1 p1 m1))
-                          acc))
-                      []
-                      v2))]
-           [(make-error ["dependentRequired: missing properties (at least):" missing] p2 m2 p1 m1)]))])))
+    (make-type-checker
+     json-object?
+     (fn [c1 p1 m1]
+       [c1
+        (when-let [missing
+                   (seq
+                    (reduce
+                     (fn [acc [k v]]
+                       (if (contains? m1 k)
+                         (concatv acc ((property->checker k) c1 p1 m1))
+                         acc))
+                     []
+                     v2))]
+          [(make-error ["dependentRequired: missing properties (at least):" missing] p2 m2 p1 m1)])]))))
 
 ;;------------------------------------------------------------------------------
 
@@ -960,13 +955,13 @@
 (defn check-property-unevaluatedProperties [_property c2 p2 m2 v2]
   (let [cs (check-schema c2 p2 v2)
         cp (check-properties c2 p2 m2)]
-    (fn [c1 p1 m1]
-      (if (json-object? m1)
-        (let [eps (get (get c1 :evaluated) p1 #{})
-              ups (remove (fn [[k]] (contains? eps k)) m1) ;; k might be nil
-              p-and-css (mapv (fn [[k]] [k cs]) ups)] ; TODO: feels inefficient
-          (cp c1 p1 m1 p-and-css "unevaluatedProperties: at least one property did not conform to schema"))
-        [c1 []]))))
+    (make-type-checker
+     json-object?
+     (fn [c1 p1 m1]
+       (let [eps (get (get c1 :evaluated) p1 #{})
+             ups (remove (fn [[k]] (contains? eps k)) m1) ;; k might be nil
+             p-and-css (mapv (fn [[k]] [k cs]) ups)] ; TODO: feels inefficient
+         (cp c1 p1 m1 p-and-css "unevaluatedProperties: at least one property did not conform to schema"))))))
 
 (defn check-property-propertyNames [_property c2 p2 m2 v2]
   (fn [c1 p1 m1]
@@ -1034,10 +1029,10 @@
 (defn check-property-prefixItems [_property c2 p2 m2 v2]
   (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema c2 (conj p2 i) sub-schema)]) v2))
         ci (check-items c2 p2 m2)]
-    (fn [c1 p1 m1]
-      (if (json-array? m1)
-        (ci c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")
-        [c1 []]))))
+    (make-type-checker
+     json-array?
+     (fn [c1 p1 m1]
+       (ci c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")))))
 
 (defn check-property-items [_property {d :draft :as c2} p2 m2 v2]
   (let [n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
@@ -1051,79 +1046,83 @@
                     ["respective " (map-indexed (fn [i v] (check-schema c2 (conj p2 i) v)) v2)])
                   ["" (repeat (check-schema c2 p2 v2))])
         ci (check-items c2 p2 m2)]
-    (fn [c1 p1 m1]
-      (if (json-array? m1)
-        (let [items (drop n m1)
-              i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
-          (ci c1 p1 items i-and-css (str "items: at least one item did not conform to " m "schema")))
-        [c1 []]))))
+    (make-type-checker
+     json-array?
+     (fn [c1 p1 m1]
+       (let [items (drop n m1)
+             i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
+         (ci c1 p1 items i-and-css (str "items: at least one item did not conform to " m "schema")))))))
 
 (defn check-property-additionalItems [_property c2 p2 {is "items" :as m2} v2]
   (if (json-array? is) ;; additionalItems is only used when items is a tuple
     (let [cs (check-schema c2 p2 v2)
           ;;pp2 (butlast p2)
           ci (check-items c2 p2 m2)]
-      (fn [c1 p1 m1]
-        (if (json-array? m1)
-          (let [;; this is how it should be done, but cheaper to just look at items (must be array for additionalItems to be meaningful) in m2 time
+      (make-type-checker
+       json-array?
+       (fn [c1 p1 m1]
+         (let [;; this is how it should be done, but cheaper to just look at items (must be array for additionalItems to be meaningful) in m2 time
                  ;;mis (get (get c1 :matched) pp2 #{})
                  ;;ais  (remove (fn [[k]] (contains? mis k)) (map-indexed vector m1))
                  ;;i-and-css (mapv (fn [[k]] [k cs]) ais) ; TODO: feels inefficient
-                n (count is)
-                ais (drop n m1)
-                i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) (repeat cs) ais)]
-            (ci c1 p1 ais i-and-css "additionalItems: at least one item did not conform to schema"))
-          [c1 []])))
+               n (count is)
+               ais (drop n m1)
+               i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) (repeat cs) ais)]
+           (ci c1 p1 ais i-and-css "additionalItems: at least one item did not conform to schema")))))
     (fn [c1 _p1 _m1]
       [c1 nil])))
 
 (defn check-property-unevaluatedItems [_property c2 p2 m2 v2]
   (let [css (repeat (check-schema c2 p2 v2))
         ci (check-items c2 p2 m2)]
-    (fn [{p->eis :evaluated :as c1} p1 m1]
-      (if (json-array? m1)
-        (let [eis (or (get p->eis p1) #{})
-              index-and-items (filter (fn [[k]] (not (eis k))) (map-indexed (fn [i v] [i v]) m1))
-              i-and-css (mapv (fn [cs [i]] [i cs]) css index-and-items)] ;; TODO: item not used
-          (ci c1 p1 (map second index-and-items) i-and-css "unevaluatedItems: at least one item did not conform to schema"))
-        [c1 []]))))
+    (make-type-checker
+     json-array?
+     (fn [{p->eis :evaluated :as c1} p1 m1]
+       (let [eis (or (get p->eis p1) #{})
+             index-and-items (filter (fn [[k]] (not (eis k))) (map-indexed (fn [i v] [i v]) m1))
+             i-and-css (mapv (fn [cs [i]] [i cs]) css index-and-items)] ;; TODO: item not used
+         (ci c1 p1 (map second index-and-items) i-and-css "unevaluatedItems: at least one item did not conform to schema"))))))
 
 (defn check-property-contains [_property c2 p2 {mn "minContains" :as m2} v2]
   (let [cs (check-schema c2 p2 v2)
         base (if mn mn 1)
         ci (check-items c2 p2 v2)]
-    (fn [c1 p1 m1]
-      (if (json-array? m1)
-        (let [i-and-css (map (fn [i _] [i cs]) (range) m1)
-              [new-c1 [{es :errors}]]
-              (ci c1 p1 m1 i-and-css "contains: at least one item did not conform to schema")
-              matches (- (count m1) (count es))]
-          (if (<= (min base 1) matches)
-            [new-c1 nil]
-            [c1 [(make-error "contains: document has no matches" p2 m2 p1 m1)]]))))))
+    (make-type-checker
+     json-array?
+     (fn [c1 p1 m1]
+       (let [i-and-css (map (fn [i _] [i cs]) (range) m1)
+             [new-c1 [{es :errors}]]
+             (ci c1 p1 m1 i-and-css "contains: at least one item did not conform to schema")
+             matches (- (count m1) (count es))]
+         (if (<= (min base 1) matches)
+           [new-c1 nil]
+           [c1 [(make-error "contains: document has no matches" p2 m2 p1 m1)]]))))))
 
 (defn check-property-minContains [_property _c2 p2 m2 v2]
   (let [pp2 (butlast p2)]
-    (fn [{matched :matched :as c1} p1 m1]
-      (if-let [matches (and (json-array? m1) (get matched pp2))]
-        (let [n (count matches)]
-          (if (and
-               matches
-               (json-array? m1)
-               (<= v2 n))
-            [c1 nil]
-            [c1 [(make-error (str "minContains: document has too few matches - " n) p2 m2 p1 m1)]]))
-        [c1 nil]))))
+    (make-type-checker
+     json-array?
+     (fn [{matched :matched :as c1} p1 m1]
+       (if-let [matches (get matched pp2)]
+         (let [n (count matches)]
+           (if (and
+                matches
+                (<= v2 n))
+             [c1 nil]
+             [c1 [(make-error (str "minContains: document has too few matches - " n) p2 m2 p1 m1)]]))
+         [c1 nil])))))
 
 (defn check-property-maxContains [_property _c2 p2 m2 v2]
   (let [pp2 (butlast p2)]
-    (fn [{matched :matched :as c1} p1 m1]
-      (if-let [matches (and (json-array? m1) (get matched pp2))]
-        (let [n (count matches)]
-          (if (<= n v2)
-            [c1 nil]
-            [c1 [(make-error (str "maxContains: document has too many matches - " n) p2 m2 p1 m1)]]))
-        [c1 nil]))))
+    (make-type-checker
+     json-array?
+     (fn [{matched :matched :as c1} p1 m1]
+       (if-let [matches (get matched pp2)]
+         (let [n (count matches)]
+           (if (<= n v2)
+             [c1 nil]
+             [c1 [(make-error (str "maxContains: document has too many matches - " n) p2 m2 p1 m1)]]))
+         [c1 nil])))))
 
 (defn check-property-minItems [_property _c2 p2 m2 v2]
   (make-type-checker
