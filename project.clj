@@ -55,7 +55,9 @@
                           :devtools {:autoload true}}}}
 
   :profiles {:dev
-             {:repl-options {:init-ns m3.repl}
+             {:repl-options {
+                             ;;:init-ns m3.repl
+                             }
               :dependencies [[cider/piggieback "0.6.0"]
                              [binaryage/devtools "1.0.7"]
                              [prone "2021-04-23"]
@@ -84,8 +86,10 @@
              {:cloverage {:fail-threshold 90}}
 
              :nrepl {:dependencies [[nrepl "1.3.1"]
-                                    [ch.qos.logback/logback-classic "1.4.14"]]
-                     :jvm-opts ["-Djdk.attach.allowAttachSelf"]}
+                                    ;;[ch.qos.logback/logback-classic "1.4.14"]
+                                    ]
+                     :jvm-opts ["-Djdk.attach.allowAttachSelf"]
+                     }
 
              :mcp {:dependencies [[org.slf4j/slf4j-nop "2.0.16"]
                                   [com.bhauman/clojure-mcp "0.1.6-SNAPSHOT"]] ;; only currently available on my local box :-(
