@@ -241,17 +241,15 @@
 
 (defn check-pattern [pattern format c2 p2 m2]
   (fn [_c1 p1 m1]
-    (when (string? m1)
-      (match format pattern c2 p2 m2 p1 m1))))
+    (match format pattern c2 p2 m2 p1 m1)))
 
 (defn check-parse [p f _c2 p2 m2]
   (fn [_c1 p1 m1]
-    (when (string? m1)
-      (try
-        (p m1)
-        nil
-        (catch Exception e
-          [(make-error (str "format: not a valid " f ": " (ex-message e)) p2 m2 p1 m1)])))))
+    (try
+      (p m1)
+      nil
+      (catch Exception e
+        [(make-error (str "format: not a valid " f ": " (ex-message e)) p2 m2 p1 m1)]))))
 
 ;; standard formats
 
@@ -358,13 +356,13 @@
     [c1 (when-not (p? m1) [(make-error (str "type: not a[n] " t) p2 m2 p1 m1)])]))
 
 (defmethod check-type "object" [t c2 p2 m2]
-  (check-type-3 map? t c2 p2 m2))
+  (check-type-3 json-object? t c2 p2 m2))
 
 (defmethod check-type "array" [t c2 p2 m2]
-  (check-type-3 vector? t c2 p2 m2))
+  (check-type-3 json-array? t c2 p2 m2))
 
 (defmethod check-type "string" [t c2 p2 m2]
-  (check-type-3 string? t c2 p2 m2))
+  (check-type-3 json-string? t c2 p2 m2))
 
 (defmethod check-type "integer" [t {si? :strict-integer? :as c2} p2 m2]
   (check-type-3 (if si? integer? json-integer?) t c2 p2 m2))
@@ -706,7 +704,7 @@
     (let [ce-decoder (ce->decoder v2)
           pp2 (butlast p2)]
       (make-type-checker
-       string?
+       json-string?
        (fn [c1 p1 old-m1]
          (let [[new-m1 es]
                (try
@@ -729,7 +727,7 @@
           cmt-decoder (cmt->decoder cmt)
           pp2 (butlast p2)]
       (make-type-checker
-       string?
+       json-string?
        (fn [c1 p1 m1]
          (let [old-m1 (or (get (get c1 :content) pp2) m1)
                [new-m1 es]
@@ -823,6 +821,7 @@
           (when-let [missing (seq es)]
             [(make-error ["dependentSchemas: missing properties (at least):" missing] p2 m2 p1 m1)])])))))
 
+;; TODO: wrap make-type-checker around each checker ?
 (defn check-property-propertyDependencies [_property c2 p2 _m2 v2]
   (let [checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] (check-schema c2 p2 s)]) vs)) v2))
         ks (keys v2)]
