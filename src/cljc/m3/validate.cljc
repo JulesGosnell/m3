@@ -652,7 +652,7 @@
 (defn check-property-minLength [_property _c2 p2 m2 v2]
   (let [ml2 (quot v2 2)]
     (make-type-checker
-     string?
+     json-string?
      (fn [c1 p1 m1]
        [c1
         (when (or
@@ -663,7 +663,7 @@
 (defn check-property-maxLength [_property _c2 p2 m2 v2]
   (let [ml2 (* v2 2)]
     (make-type-checker
-     string?
+     json-string?
      (fn [c1 p1 m1]
        [c1
         (when (or
