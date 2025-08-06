@@ -24,7 +24,7 @@
    [cljc.java-time.offset-time :refer [parse] :rename {parse offset-time-parse}]
    [clojure.string :refer [starts-with? ends-with? replace] :rename {replace string-replace}]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
-   [m3.util :refer [absent present? concatv into-set conj-set seq-contains? when-assoc]]
+   [m3.util :refer [absent present? concatv into-set conj-set seq-contains?]]
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.ref :refer [meld resolve-uri try-path]]
    [m3.pattern :refer [email-pattern ipv4-pattern ipv6-pattern hostname-pattern json-pointer-pattern relative-pointer-pattern uri-pattern uri-reference-pattern uri-template-pattern idn-email-pattern iri-pattern iri-reference-pattern uuid-pattern json-duration-pattern time-pattern ip-address-pattern color-pattern]]
@@ -52,10 +52,6 @@
 (def big-zero?
   #?(:cljs (fn [^js/Big b] (.eq b 0))
      :clj zero?))
-
-(def long-max-value
-  #?(:clj Long/MAX_VALUE
-     :cljs js/Number.MAX_SAFE_INTEGER))
 
 #?(:cljs (def fs (js/require "fs")))
 
@@ -422,7 +418,7 @@
 
 ;; standard common properties
 
-(defn check-property-extends [property c2 p2 m2 v2]
+(defn check-property-extends [property c2 p2 _m2 v2]
   (check-schema c2 (conj p2 property) v2))
 
 (defn check-property-disallow [_property c2 p2 m2 v2]
@@ -452,8 +448,8 @@
      (when-not (seq-contains? v2 json-= m1)
        [(make-error "enum: does not contain value" p2 m2 p1 m1)])]))
 
-(defn check-property-id [_property _c2 _p2 _m2 v2]
-  (fn [{old-id-uri :id-uri :as c1} p1 {id "id" :as m1}]
+(defn check-property-id [_property _c2 _p2 _m2 _v2]
+  (fn [{old-id-uri :id-uri :as c1} p1 {id "id"}]
     [(if-let [new-id-uri (and id (inherit-uri old-id-uri (parse-uri id)))]
        (do
          ;;(prn "ID:" old-id-uri "+" id "->" new-id-uri)
@@ -465,8 +461,8 @@
            (update :path->uri assoc p1 old-id-uri)))
      nil]))
 
-(defn check-property-$id [_property _c2 _p2 _m2 v2]
-  (fn [{old-id-uri :id-uri :as c1} p1 {id "$id" :as m1}]
+(defn check-property-$id [_property _c2 _p2 _m2 _v2]
+  (fn [{old-id-uri :id-uri :as c1} p1 {id "$id"}]
     [(if-let [new-id-uri (and id (inherit-uri old-id-uri (parse-uri id)))]
        (do
          ;;(prn "$ID:" old-id-uri "+" id "->" new-id-uri)
@@ -496,9 +492,9 @@
     (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
       [(update c1 :$dynamic-anchor assoc anchor-uri p1) nil])))
 
-(defn check-property-$comment [_property _c2 _p2 _m2 v2]
-  (fn [c1 p1 _m1]
-    ;;(log/info (str "$comment:" v2 " : " p1))
+(defn check-property-$comment [_property _c2 _p2 _m2 _v2]
+  (fn [c1 _p1 _m1]
+    ;;(log/info (str "$comment:" v2 " : " _p1))
     [c1 nil]))
 
 ;; hopefully during the f1 of an m2 we can precompile the $ref...
@@ -561,12 +557,12 @@
       (when-not (<= v2 m1)
         [(make-error "minimum: value to low" p2 m2 p1 m1)])])))
 
-(defn check-property-exclusiveMinimum-old [_property _c2 p2 {m "minimum" :as m2} v2]
+(defn check-property-exclusiveMinimum-old [_property _c2 _p2 {m "minimum"} _v2]
   (fn [c1 _p1 _m1]
     (when-not m (log/warn "exclusiveMinimum: no minimum present to modify"))
     [c1 []]))
 
-(defn check-property-exclusiveMinimum-new [_property _c2 p2 {m "minimum" :as m2} v2]
+(defn check-property-exclusiveMinimum-new [_property _c2 p2 m2 v2]
   (make-type-checker
    json-number?
    (fn [c1 p1 m1]
@@ -592,12 +588,12 @@
       (when-not (>= v2 m1)
         [(make-error "maximum: value too high" p2 m2 p1 m1)])])))
 
-(defn check-property-exclusiveMaximum-old [_property _c2 p2 {m "maximum" :as m2} v2]
+(defn check-property-exclusiveMaximum-old [_property _c2 _p2 {m "maximum"} _v2]
   (fn [c1 _p1 _m1]
     (when-not m (log/warn "exclusiveMaximum: no maximum present to modify"))
     [c1 []]))
 
-(defn check-property-exclusiveMaximum-new [_property _c2 p2 {m "maximum" :as m2} v2]
+(defn check-property-exclusiveMaximum-new [_property _c2 p2 m2 v2]
   (make-type-checker
    json-number?
    (fn [c1 p1 m1]
@@ -735,21 +731,22 @@
       (make-type-checker
        string?
        (fn [c1 p1 m1]
-         (let [old-m1 (or (get (get c1 :content) pp2) m1)]
-           (let [[new-m1 es]
-                 (try
-                   [(cmt-decoder old-m1) nil]
-                   (catch Exception e
-                     [nil
-                      (let [m (str "contentMediaType: could not " v2 " decode: " (pr-str old-m1) " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
-                        (if strict?
-                          [(make-error m p2 m2 p1 old-m1)]
-                          (do
-                            (log/warn (string-replace m #"\n" " - "))
-                            [])))]))]
-             (if new-m1
-               [(update c1 :content assoc pp2 new-m1) nil]
-               [c1 es]))))))))
+         (let [old-m1 (or (get (get c1 :content) pp2) m1)
+               [new-m1 es]
+               (try
+                 [(cmt-decoder old-m1) nil]
+                 (catch Exception e
+                   [nil
+                    (let [m (str "contentMediaType: could not " v2 " decode: " (pr-str old-m1) " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
+                      (if strict?
+                        [(make-error m p2 m2 p1 old-m1)]
+                        (do
+                          (log/warn (string-replace m #"\n" " - "))
+                          [])))]))]
+
+           (if new-m1
+             [(update c1 :content assoc pp2 new-m1) nil]
+             [c1 es])))))))
 
 (defn make-check-property-contentSchema [strict?]
   (fn [_property c2 p2 {cmt "contentMediaType"} v2]
@@ -777,10 +774,10 @@
             k
             (cond
               (json-string? v) ;; a single property dependency
-              (fn [c1 p1 m1] [c1 (when (not (contains? m1 v)) [v v])])
+              (fn [c1 _p1 m1] [c1 (when (not (contains? m1 v)) [v v])])
               (json-array? v) ;; a multiple property dependency
               ;; TODO: this looks very suspect
-              (fn [c1 p1 m1] [c1 (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v)])
+              (fn [c1 _p1 m1] [c1 (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v)])
               (or (json-object? v) (boolean? v)) ;; a schema dependency
               (check-schema c2 p2 v)
               ;; we should not need to check other cases as m2 should have been validated against m3
@@ -792,7 +789,7 @@
      (fn [c1 p1 m1]
        (let [[c1 es]
              (reduce
-              (fn [[c old-es] [k v]]
+              (fn [[c old-es] [k _v]]
                 (if (contains? m1 k)
                   (let [[c new-es] ((property->checker k) c p1 m1)]
                     [c (concatv old-es new-es)])
@@ -815,7 +812,7 @@
      (fn [c1 p1 m1]
        (let [[c1 es]
              (reduce
-              (fn [[c old-es] [k v]]
+              (fn [[c old-es] [k _v]]
                 (if (contains? m1 k)
                   (let [[c new-es] ((property->checker k) c p1 m1)]
                     [c (concatv old-es new-es)])
@@ -850,7 +847,7 @@
            (assoc
             acc
             k
-            (fn [c1 p1 m1] (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v))))
+            (fn [_c1 _p1 m1] (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v))))
          {}
          v2)]
     (make-type-checker
@@ -860,7 +857,7 @@
         (when-let [missing
                    (seq
                     (reduce
-                     (fn [acc [k v]]
+                     (fn [acc [k _v]]
                        (if (contains? m1 k)
                          (concatv acc ((property->checker k) c1 p1 m1))
                          acc))
@@ -1161,7 +1158,7 @@
       (let [old-local-c1 (update c1 :evaluated dissoc p1)
             [c1 es]
             (reduce
-             (fn [[old-c old-es] [i cs]]
+             (fn [[old-c old-es] [_i cs]]
                (let [[new-local-c1 new-es] (cs old-local-c1 p1 m1)
                      new-c (if (empty? new-es) (update old-c :evaluated update p1 into-set (get (get new-local-c1 :evaluated) p1)) old-c)
                      es (concatv old-es new-es)]
@@ -1849,7 +1846,7 @@
    })
 
 ;; TODO: uris in sub-schema must inherit fromuris in super-schema...
-(defn uri->schema [uri-base->dir c p {origin :origin path :path :as url}]
+(defn uri->schema [uri-base->dir _c _p {origin :origin path :path}]
   (if-let [dir (uri-base->dir origin)]
     (let [f (str dir path (if (ends-with? path ".json") "" ".json"))
           s (try (json-decode (slurp f)) (catch Exception _))]
@@ -1952,7 +1949,7 @@
             v
             (constantly r)))
         ;; keep going - inheriting relevant parts of c1
-        (let [[{vs :vocabularies u->p :uri->path p->u :path->uri :as c3} es :as r] ((validate-m2 c2 m2) {} m1)]
+        (let [[{vs :vocabularies u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)]
           ;;(prn "STASH:" u->p p->u)
           (if (empty? es)
             (validate-2 (assoc c2
