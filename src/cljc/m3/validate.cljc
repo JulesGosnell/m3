@@ -309,7 +309,7 @@
 
 (defmethod check-format "idn-hostname" [_format _c2 p2 m2]
   (fn [_c1 p1 m1]
-    (when (and (string? m1) (not (json-idn-hostname? m1)))
+    (when-not (json-idn-hostname? m1)
       [(make-error "format: not a valid idn-hostname:" p2 m2 p1 m1)])))
 
 (defmethod check-format "iri" [f c2 p2 m2]
@@ -331,7 +331,7 @@
 
 (defmethod check-format "duration" [_format _c2 p2 m2]
   (fn [_c1 p1 m1]
-    (when (and (string? m1) (not (json-duration? m1)))
+    (when-not (json-duration? m1)
       [(make-error "format: not a valid duration:" p2 m2 p1 m1)])))
 
 (defmethod check-format "regex" [f c2 p2 m2]
@@ -664,8 +664,8 @@
 (defn make-check-property-format [strict?]
   (fn [_property {cfs :check-format :or {cfs {}} strict-format? :strict-format? :as c2} p2 m2 v2]
     (let [f (if (or strict? strict-format?)
-              (fn [f2] (fn [c p m] [c (f2 c p m)]))
-              (fn [f2] (fn [c p m] (when-let [[{m :message}] (f2 c p m)] [c (log/warn m)]))))]
+              (fn [f2] (make-type-checker json-string? (fn [c p m] [c (f2 c p m)])))
+              (fn [f2] (make-type-checker json-string? (fn [c p m] (when-let [[{m :message}] (f2 c p m)] [c (log/warn m)])))))]
     ;; we do this here so that user may override default format checkers...
       (f ((or (cfs v2) check-format) v2 c2 p2 m2)))))
 
