@@ -17,7 +17,7 @@
   (:require
    #?(:cljs [goog.string :as gstring])
    #?(:cljs [goog.string.format])
-   #?(:clj  [cheshire.core :as cheshire]
+   #?(:clj [cheshire.core :as cheshire]
       :cljs [cljs.core :as cljs])
    [cljc.java-time.local-date :refer [parse] :rename {parse local-date-parse}]
    [cljc.java-time.offset-date-time :refer [parse] :rename {parse offset-date-time-parse}]
@@ -28,12 +28,10 @@
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.ref :refer [meld resolve-uri try-path]]
    [m3.pattern :refer [email-pattern ipv4-pattern ipv6-pattern hostname-pattern json-pointer-pattern relative-pointer-pattern uri-pattern uri-reference-pattern uri-template-pattern idn-email-pattern iri-pattern iri-reference-pattern uuid-pattern json-duration-pattern time-pattern ip-address-pattern color-pattern]]
-   [m3.idn-hostname :refer [json-idn-hostname?]]
-   )
+   [m3.idn-hostname :refer [json-idn-hostname?]])
   #?(:clj
      (:import
-      [org.graalvm.polyglot Context Value]))
-  )
+      [org.graalvm.polyglot Context Value])))
 
 ;; consider https://docs.oracle.com/javase/8/docs/api/java/time/package-summary.html - other time types...
 
@@ -49,11 +47,11 @@
 
 (def big-mod
   #?(:cljs (fn [^js/Big l ^js/Big r] (.mod l r))
-     :clj  mod))
+     :clj mod))
 
 (def big-zero?
   #?(:cljs (fn [^js/Big b] (.eq b 0))
-     :clj  zero?))
+     :clj zero?))
 
 (def long-max-value
   #?(:clj Long/MAX_VALUE
@@ -72,7 +70,7 @@
      (cond
        (.isArray js/Array x) (into [] (map deep-js->clj) x)
        (= (goog.typeOf x) "object") (into {} (map #(vector (aget % 0) (deep-js->clj (aget % 1))))
-                                              (.entries js/Object x))
+                                          (.entries js/Object x))
        :else x)))
 
 (defn json-decode [s]
@@ -115,12 +113,12 @@
 ;; now we can use the same code at both back and front end...
 
 #?(:clj (defonce ^Context js-context (Context/create (into-array ["js"]))))
-#?(:clj (defonce ^Value  RegExp (.getMember (.getBindings js-context "js") "RegExp")))
+#?(:clj (defonce ^Value RegExp (.getMember (.getBindings js-context "js") "RegExp")))
 
-#?(:clj  (defn ecma-pattern [^String s] (.newInstance RegExp (into-array Object [s "u"])))
+#?(:clj (defn ecma-pattern [^String s] (.newInstance RegExp (into-array Object [s "u"])))
    :cljs (defn ecma-pattern [s] (js/RegExp. s "u")))
 
-#?(:clj  (defn ecma-match [^Value r ^String s] (.asBoolean (.invokeMember r "test" (into-array Object [s]))))
+#?(:clj (defn ecma-match [^Value r ^String s] (.asBoolean (.invokeMember r "test" (into-array Object [s]))))
    :cljs (defn ecma-match [r s] (.test r s)))
 
 ;;------------------------------------------------------------------------------
@@ -144,6 +142,12 @@
 (defn json-object? [v]
   (map? v))
 
+(defn make-type-checker [predicate? m1-function]
+  (fn [c1 p1 m1]
+    (if (predicate? m1)
+      (m1-function c1 p1 m1)
+      [c1 []])))
+
 (defn make-error [message schema-path schema document-path document]
   {:schema-path schema-path :message (str message " - " (pr-str document)) :document-path document-path :document document :schema schema})
 
@@ -165,7 +169,7 @@
 (defn merge-helper [old-c parent [c p child :as x]]
   (when x
     [c p (meld old-c parent child)]))
-  
+
 ;;------------------------------------------------------------------------------
 ;; d/$id/$anchor/$ref
 
@@ -176,9 +180,9 @@
    (fn [old new]
      (let [uri (inherit-uri old new)]
        (when t? (prn "base-uri:" old "->" uri))
-       uri))   
+       uri))
    (parse-uri id)))
-  
+
 (defn expand-$ref [{id-uri :id-uri :as old-c} old-p old-m r]
   (when-let [[new-c new-p new-m] (merge-helper old-c old-m (resolve-uri old-c old-p (inherit-uri id-uri (parse-uri r)) r))]
     [(if (= old-c new-c) (assoc-in old-c (concat [:root] old-p) new-m) new-c)
@@ -219,7 +223,7 @@
      (or
       (try-path c p (get da uri) (c :original-root))
       (resolve-uri c p uri r)))))
- 
+
 ;;------------------------------------------------------------------------------
 
 (defn json-= [l r]
@@ -351,7 +355,7 @@
 
 (defmulti check-type (fn [type _c2 _p2 _m2]
                        ;;(println "check-type" type document)
-                         type))
+                       type))
 
 (defn check-type-3 [p? t _c2 p2 m2]
   (fn [c1 p1 m1]
@@ -528,7 +532,6 @@
    ;; N.B. important to preserve evaluation order of vocabulary
    ;; properties...
    (draft->vocab-and-property-and-semantics d)))
-  
 
 (defn check-property-$vocabulary [_property {d :draft} _p2 _m2 v2]
   (let [vocabularies (make-vocabularies d v2)]
@@ -536,7 +539,7 @@
       [(assoc c1 :vocabularies vocabularies) nil])))
 
 ;; TODO: issue a warning somehow
-(defn check-property-deprecated  [_property _c2 _p2 _m2 _v2] (fn [_c1 _p1 _m1])) ;; TODO: issue a warning or error ?
+(defn check-property-deprecated [_property _c2 _p2 _m2 _v2] (fn [_c1 _p1 _m1])) ;; TODO: issue a warning or error ?
 
 ;; standard number properties
 
@@ -631,7 +634,7 @@
 (defn char-code-at [str pos]
   #?(:clj (.charAt str pos)
      :cljs (.charCodeAt str pos)))
-  
+
 ;; we don't need to get to the end of the string to know it is too big...
 (defn json-length
   ;; adapted from: https://lambdaisland.com/blog/2017-06-12-clojure-gotchas-surrogate-pairs
@@ -648,25 +651,25 @@
 
 (defn check-property-minLength [_property _c2 p2 m2 v2]
   (let [ml2 (quot v2 2)]
-    (fn [c1 p1 m1]
-      [c1
-       (when (and
-              (string? m1)
-              (or
+    (make-type-checker
+     string?
+     (fn [c1 p1 m1]
+       [c1
+        (when (or
                (< (count m1) ml2) ;; precheck before using expensive json-length
-               (< (json-length m1) v2)))
-         [(make-error "minLength: string too short" p2 m2 p1 m1)])])))
+               (< (json-length m1) v2))
+          [(make-error "minLength: string too short" p2 m2 p1 m1)])]))))
 
 (defn check-property-maxLength [_property _c2 p2 m2 v2]
   (let [ml2 (* v2 2)]
-    (fn [c1 p1 m1]
-      [c1
-       (when (and
-              (string? m1)
-              (or
+    (make-type-checker
+     string?
+     (fn [c1 p1 m1]
+       [c1
+        (when (or
                (> (count m1) ml2) ;; precheck before using expensive json-length
-               (> (json-length m1) v2)))
-         [(make-error "maxLength: string too long" p2 m2 p1 m1)])])))
+               (> (json-length m1) v2))
+          [(make-error "maxLength: string too long" p2 m2 p1 m1)])]))))
 
 (defn make-check-property-format [strict?]
   (fn [_property {cfs :check-format :or {cfs {}} strict-format? :strict-format? :as c2} p2 m2 v2]
@@ -684,18 +687,17 @@
     ;; formatProperties...
     ((make-check-property-format false) "format" c2 p2 m2 (subs v2 (count "$format:"))) ;; TODO: decide strictness from context somehow
     (let [p (ecma-pattern v2)]
-
-      (fn [c1 p1 m1]
-        [c1
-         (when (and
-                (json-string? m1)
-                (false? (ecma-match p m1)))
-           [(make-error "pattern: doesn't match" p2 m2 p1 m1)])]))))
+      (make-type-checker
+       json-string?
+       (fn [c1 p1 m1]
+         [c1
+          (when (false? (ecma-match p m1))
+            [(make-error "pattern: doesn't match" p2 m2 p1 m1)])])))))
 
 #?(:clj
    (let [^java.util.Base64 decoder (java.util.Base64/getDecoder)]
      (defn base64-decode [^String s] (String. (.decode decoder (.getBytes s "UTF-8")) "UTF-8")))
-   
+
    :cljs
    (defn base64-decode [s] (.toString (js/Buffer.from s "base64") "utf8")))
 
@@ -704,13 +706,10 @@
    "quoted-printable" identity
    "base16" (fn [_] (throw (ex-info "base16/decode: NYI" {})))
    "base32" (fn [_] (throw (ex-info "base32/decode: NYI" {})))
-   "base64" base64-decode
-   })
+   "base64" base64-decode})
 
 (def cmt->decoder
-  {
-   "application/json" json-decode
-   })
+  {"application/json" json-decode})
 
 (defn make-check-property-contentEncoding [strict?]
   (fn [_property _c2 p2 m2 v2]
@@ -808,8 +807,7 @@
           [c1
            (when-let [missing (seq es)]
              [(make-error ["dependencies: missing properties (at least):" missing] p2 m2 p1 m1)])])
-        [c1 []])))
-  )
+        [c1 []]))))
 
 (defn check-property-dependentSchemas [_property c2 p2 m2 v2]
   (let [property->checker
@@ -922,7 +920,7 @@
         [(let [ks (map first k-and-css)]
            (-> c1
            ;; TODO: only record matched if additonalProperties needed later ?
-               (update :matched   update pp2 into-set ks)
+               (update :matched update pp2 into-set ks)
            ;; TODO: only record evaluated if unevaluatedProperties needed later ?
                (update :evaluated update p1 into-set ks)))
          (make-error-on-failure message p2 m2 p1 m1 es)]))))
@@ -930,35 +928,34 @@
 (defn check-property-properties [_property c2 p2 m2 ps]
   (let [k-and-css (mapv (fn [[k v]] [k (check-schema c2 (conj p2 k) v)]) ps)
         cp (check-properties c2 p2 m2)]
-    (fn [c1 p1 m1]
-      (if (json-object? m1)
-        (let [k-and-css (filter (fn [[k]] (contains? m1 k)) k-and-css)]
-          (cp c1 p1 m1 k-and-css "properties: at least one property did not conform to respective schema"))
-        [c1 []]))))
+    (make-type-checker
+     json-object?
+     (fn [c1 p1 m1]
+       (let [k-and-css (filter (fn [[k]] (contains? m1 k)) k-and-css)]
+         (cp c1 p1 m1 k-and-css "properties: at least one property did not conform to respective schema"))))))
 
 ;; what is opposite of "additional" - "matched" - used by spec to refer to properties matched by "properties" or "patternProperties"
 
 (defn check-property-patternProperties [_property c2 p2 m2 pps]
   (let [cp-and-pattern-and-ks (mapv (fn [[k v]] [(check-schema c2 (conj p2 k) v) (ecma-pattern k) k]) pps)
         cp (check-properties c2 p2 m2)]
-    (fn [c1 p1 m1]
-      (if (json-object? m1)
-        (let [k-and-css (apply concat (keep (fn [[k]] (keep (fn [[cs p]] (when (ecma-match p k) [k cs])) cp-and-pattern-and-ks)) m1))]
-          (cp c1 p1 m1 k-and-css "patternProperties: at least one property did not conform to respective schema"))
-        [c1 []]))))
-
+    (make-type-checker
+     json-object?
+     (fn [c1 p1 m1]
+       (let [k-and-css (apply concat (keep (fn [[k]] (keep (fn [[cs p]] (when (ecma-match p k) [k cs])) cp-and-pattern-and-ks)) m1))]
+         (cp c1 p1 m1 k-and-css "patternProperties: at least one property did not conform to respective schema"))))))
 
 (defn check-property-additionalProperties [_property c2 p2 m2 v2]
   (let [cs (check-schema c2 p2 v2)
         pp2 (butlast p2)
         cp (check-properties c2 p2 m2)]
-    (fn [c1 p1 m1]
-      (if (json-object? m1)
-        (let [mps (get (get c1 :matched) pp2 #{})
-              aps (remove (fn [[k]] (contains? mps k)) m1) ;; k might be nil
-              p-and-css (mapv (fn [[k]] [k cs]) aps)] ; TODO: feels inefficient
-          (cp c1 p1 m1 p-and-css "additionalProperties: at least one property did not conform to schema"))
-        [c1 []]))))
+    (make-type-checker
+     json-object?
+     (fn [c1 p1 m1]
+       (let [mps (get (get c1 :matched) pp2 #{})
+             aps (remove (fn [[k]] (contains? mps k)) m1) ;; k might be nil
+             p-and-css (mapv (fn [[k]] [k cs]) aps)] ; TODO: feels inefficient
+         (cp c1 p1 m1 p-and-css "additionalProperties: at least one property did not conform to schema"))))))
 
 (defn check-property-unevaluatedProperties [_property c2 p2 m2 v2]
   (let [cs (check-schema c2 p2 v2)
@@ -986,27 +983,28 @@
          m1)))]))
 
 (defn check-property-required [_property _c2 p2 m2 v2]
-  (fn [c1 p1 m1]
-    [c1
-     (when (json-object? m1)
-       (when-let [missing (seq (reduce (fn [acc k] (if (contains? m1 k) acc (conj acc k))) [] v2))]
-         [(make-error ["required: missing properties (at least):" missing] p2 m2 p1 m1)]))]))
+  (make-type-checker
+   json-object?
+   (fn [c1 p1 m1]
+     [c1
+      (when-let [missing (seq (reduce (fn [acc k] (if (contains? m1 k) acc (conj acc k))) [] v2))]
+        [(make-error ["required: missing properties (at least):" missing] p2 m2 p1 m1)])])))
 
 (defn check-property-minProperties [_property _c2 p2 m2 v2]
-  (fn [c1 p1 m1]
-    [c1
-     (when (and
-            (json-object? m1)
-            (< (count m1) v2))
-       [(make-error "minProperties: document contains too few properties" p2 m2 p1 m1)])]))
+  (make-type-checker
+   json-object?
+   (fn [c1 p1 m1]
+     [c1
+      (when (< (count m1) v2)
+        [(make-error "minProperties: document contains too few properties" p2 m2 p1 m1)])])))
 
 (defn check-property-maxProperties [_property _c2 p2 m2 v2]
-  (fn [c1 p1 m1]
-    [c1
-     (when (and
-            (json-object? m1)
-            (> (count m1) v2))
-       [(make-error "maxProperties: document has too many properties" p2 m2 p1 m1)])]))
+  (make-type-checker
+   json-object?
+   (fn [c1 p1 m1]
+     [c1
+      (when (> (count m1) v2)
+        [(make-error "maxProperties: document has too many properties" p2 m2 p1 m1)])])))
 
 ;; standard array properties
 
@@ -1033,7 +1031,7 @@
              (map vector i-and-css m1))]
         [c1 (make-error-on-failure message p2 m2 p1 m1 es)]))))
 
-(defn check-property-prefixItems [_property c2  p2 m2 v2]
+(defn check-property-prefixItems [_property c2 p2 m2 v2]
   (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i (check-schema c2 (conj p2 i) sub-schema)]) v2))
         ci (check-items c2 p2 m2)]
     (fn [c1 p1 m1]
@@ -1041,7 +1039,7 @@
         (ci c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")
         [c1 []]))))
 
-(defn check-property-items [_property {d :draft :as c2}  p2 m2 v2]
+(defn check-property-items [_property {d :draft :as c2} p2 m2 v2]
   (let [n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
         [m css] (if (json-array? v2)
                   (do
@@ -1078,7 +1076,7 @@
           [c1 []])))
     (fn [c1 _p1 _m1]
       [c1 nil])))
-    
+
 (defn check-property-unevaluatedItems [_property c2 p2 m2 v2]
   (let [css (repeat (check-schema c2 p2 v2))
         ci (check-items c2 p2 m2)]
@@ -1128,31 +1126,32 @@
         [c1 nil]))))
 
 (defn check-property-minItems [_property _c2 p2 m2 v2]
-  (fn [c1 p1 m1]
-    [c1
-     (when (and
-            (json-array? m1)
-            (< (count m1) v2))
-       [(make-error "minItems: document contains too few items" p2 m2 p1 m1)])]))
+  (make-type-checker
+   json-array?
+   (fn [c1 p1 m1]
+     [c1
+      (when (< (count m1) v2)
+        [(make-error "minItems: document contains too few items" p2 m2 p1 m1)])])))
 
 (defn check-property-maxItems [_property _c2 p2 m2 v2]
-  (fn [c1 p1 m1]
-    [c1
-     (when (and
-            (json-array? m1)
-            (> (count m1) v2))
-       [(make-error "maxItems: document contains too many items" p2 m2 p1 m1)])]))
+  (make-type-checker
+   json-array?
+   (fn [c1 p1 m1]
+     [c1
+      (when (> (count m1) v2)
+        [(make-error "maxItems: document contains too many items" p2 m2 p1 m1)])])))
 
 ;; TODO: should be unique according to json equality
 ;; TODO: could be more efficient - only needs to find one duplicate before it bails..
 ;; TODO: use sorted-set-by and put items in 1 at a time until one is rejected then bail - reduced
 (defn check-property-uniqueItems [_property _c2 p2 m2 v2]
   (if v2
-    (fn [c1 p1 m1]
-      [c1
-       (when (json-array? m1)
-         (when (not (= (count m1) (count (distinct m1))))
-           [(make-error "uniqueItems: document contains duplicate items" p2 m2 p1 m1)]))])
+    (make-type-checker
+     json-array?
+     (fn [c1 p1 m1]
+       [c1
+        (when (not (= (count m1) (count (distinct m1))))
+          [(make-error "uniqueItems: document contains duplicate items" p2 m2 p1 m1)])]))
     (fn [c1 _p1 _m1]
       [c1 nil])))
 
@@ -1190,7 +1189,7 @@
        c1 p1 m1
        "anyOf: document failed to conform to at least one sub-schema"
        (fn [es] (not (< (count es) m2-count)))))))
-         
+
 (defn check-property-allOf [_property c2 p2 m2 v2]
   (let [co (check-of c2 p2 m2 v2)]
     (fn [c1 p1 m1]
@@ -1216,8 +1215,7 @@
 
 (def draft->vocab-and-property-and-semantics
   {"draft3"
-   [
-    ["https://json-schema.org/draft-03/vocab/applicator"              "extends"                 check-property-extends]
+   [["https://json-schema.org/draft-03/vocab/applicator"              "extends"                 check-property-extends]
     ["https://json-schema.org/draft-03/vocab/validation"              "disallow"                check-property-disallow]
     ["https://json-schema.org/draft-03/vocab/validation"              "divisibleBy"             check-property-divisibleBy]
     ["https://json-schema.org/draft-03/vocab/validation"              "type"                    check-property-type]
@@ -1663,10 +1661,10 @@
     ["https://json-schema.org/draft/next/vocab/unevaluated"           "unevaluatedProperties"   check-property-unevaluatedProperties]]})
 
 ;; marker-stashes for the builtin meta-schemas
-(let [draft3       (parse-uri "http://json-schema.org/draft-03/schema#")
-      draft4       (parse-uri "http://json-schema.org/draft-04/schema#")
-      draft6       (parse-uri "http://json-schema.org/draft-06/schema#")
-      draft7       (parse-uri "http://json-schema.org/draft-07/schema#")
+(let [draft3 (parse-uri "http://json-schema.org/draft-03/schema#")
+      draft4 (parse-uri "http://json-schema.org/draft-04/schema#")
+      draft6 (parse-uri "http://json-schema.org/draft-06/schema#")
+      draft7 (parse-uri "http://json-schema.org/draft-07/schema#")
       draft2019-09 (parse-uri "https://json-schema.org/draft/2019-09/schema")
       draft2020-12 (parse-uri "https://json-schema.org/draft/2020-12/schema")]
   (def uri->marker-stash
@@ -1749,7 +1747,7 @@
       (stash-anchor path false true (get-id acc m))
       (stash-anchor path true false a)
       (stash-anchor path true false da)))
-      
+
 ;;------------------------------------------------------------------------------
 
 (defn check-schema-2 [{t? :trace? :as c2} p2 m2]
@@ -1796,14 +1794,14 @@
   ;; TODO: should we be resetting :vocabularies here ?
   (fn [delegate]
     (fn [c2 p2 {s "$schema" :as m2}]
-      (delegate 
+      (delegate
        (if-let [d (and s ($schema->draft s))]
          (update
           c2
           :draft
           (fn [old-d new-d]
             (when (not= old-d new-d)
-              (log/info (str "switching draft: " old-d " -> "  new-d)))
+              (log/info (str "switching draft: " old-d " -> " new-d)))
             new-d)
           d)
          c2)
@@ -1824,7 +1822,7 @@
   (fn [delegate]
     (fn this [c2 p2 old-m2]
       (let [k (kf c2)]
-        (if-let [a (get old-m2 k)]      ;; TODO - how can m2 be nil ?
+        (if-let [a (get old-m2 k)] ;; TODO - how can m2 be nil ?
           ;; TODO: not sure we should be deleting anchor...
           (let [new-m2
                 old-m2 ;;(dissoc old-m2 k)
@@ -1899,8 +1897,7 @@
         c2 (if-not u->s (assoc c2 :uri->schema (uri->continuation uri-base->dir)) c2) ;; TODO
         c2 (assoc c2 :draft draft)
         c2 (assoc c2 :id-key id-key)
-        c2 (add-marker-stash c2 m2 sid)
-        ]
+        c2 (add-marker-stash c2 m2 sid)]
     (assoc
      c2
      :id-uri (or (:id-uri c2) (when sid (parse-uri sid))) ;; should be receiver uri - but seems to default to id/$id - yeugh
@@ -1908,7 +1905,7 @@
      :recursive-anchor []
      :root m2
      :strict-integer? (let [f? (get c2 :strict-integer?)] (if (nil? f?) false f?)) ;; pull this out into some default fn
-     )))  
+     )))
 
 ;; TODO: rename :root to ?:expanded?
 (defn validate-2 [c2 schema]
@@ -1925,9 +1922,8 @@
                 :recursive-anchor []
                 :root document
                 :draft draft
-                :melder (:melder c2))
-            ](cs c1 [] document)))))
-  
+                :melder (:melder c2))] (cs c1 [] document)))))
+
 (defn $schema->m2 [s]
   (uri->schema-2 {} [] (parse-uri s)))
 
@@ -1950,7 +1946,7 @@
                   (make-vocabularies
                    draft
                    (or (m2 "$vocabulary")
-                       (into {} (map (fn [[v]][v true])  (draft->vocab-and-property-and-semantics draft))))))
+                       (into {} (map (fn [[v]] [v true]) (draft->vocab-and-property-and-semantics draft))))))
               v (validate-2 c2 m2)
               [_ es :as r] (v {} m1)]
           (if (empty? es)
@@ -1984,4 +1980,4 @@
   ;; ([c2 m1]
   ;;  (validate-m1 c2 m1))
   ([c2 m2 c1 m1]
-   (reformat ((validate-m2 (assoc c2 :m2? true)  m2) c1 m1))))
+   (reformat ((validate-m2 (assoc c2 :m2? true) m2) c1 m1))))
