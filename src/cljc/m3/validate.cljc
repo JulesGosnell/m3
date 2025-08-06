@@ -821,7 +821,6 @@
           (when-let [missing (seq es)]
             [(make-error ["dependentSchemas: missing properties (at least):" missing] p2 m2 p1 m1)])])))))
 
-;; TODO: wrap make-type-checker around each checker ?
 (defn check-property-propertyDependencies [_property c2 p2 _m2 v2]
   (let [checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] (check-schema c2 p2 s)]) vs)) v2))
         ks (keys v2)]
