@@ -76,32 +76,32 @@
 ;;------------------------------------------------------------------------------
 
 (def draft->draft?
-  {"draft3"       #{"draft3"}
-   "draft4"       #{"draft3" "draft4"}
-   "draft6"       #{"draft3" "draft4" "draft6"}
-   "draft7"       #{"draft3" "draft4" "draft6" "draft7"}
-   "draft2019-09" #{"draft3" "draft4" "draft6" "draft7" "draft2019-09"}
-   "draft2020-12" #{"draft3" "draft4" "draft6" "draft7" "draft2019-09" "draft2020-12"}
-   "latest"       #{"draft3" "draft4" "draft6" "draft7" "draft2019-09" "draft2020-12"}
-   "draft-next"   #{"draft3" "draft4" "draft6" "draft7" "draft2019-09" "draft2020-12" "draft-next"}})
+  {:draft3       #{:draft3}
+   :draft4       #{:draft3 :draft4}
+   :draft6       #{:draft3 :draft4 :draft6}
+   :draft7       #{:draft3 :draft4 :draft6 :draft7}
+   :draft2019-09 #{:draft3 :draft4 :draft6 :draft7 :draft2019-09}
+   :draft2020-12 #{:draft3 :draft4 :draft6 :draft7 :draft2019-09 :draft2020-12}
+   :latest       #{:draft3 :draft4 :draft6 :draft7 :draft2019-09 :draft2020-12}
+   :draft-next   #{:draft3 :draft4 :draft6 :draft7 :draft2019-09 :draft2020-12 :draft-next}})
 
 (def draft->$schema
-  {"draft3"       "http://json-schema.org/draft-03/schema"
-   "draft4"       "http://json-schema.org/draft-04/schema"
-   "draft6"       "http://json-schema.org/draft-06/schema"
-   "draft7"       "http://json-schema.org/draft-07/schema"
-   "draft2019-09" "https://json-schema.org/draft/2019-09/schema"
-   "draft2020-12" "https://json-schema.org/draft/2020-12/schema"
-   "latest"       "https://json-schema.org/draft/2020-12/schema"
-   "draft-next"   "https://json-schema.org/draft/next/schema"})
+  {:draft3       "http://json-schema.org/draft-03/schema"
+   :draft4       "http://json-schema.org/draft-04/schema"
+   :draft6       "http://json-schema.org/draft-06/schema"
+   :draft7       "http://json-schema.org/draft-07/schema"
+   :draft2019-09 "https://json-schema.org/draft/2019-09/schema"
+   :draft2020-12 "https://json-schema.org/draft/2020-12/schema"
+   :latest       "https://json-schema.org/draft/2020-12/schema"
+   :draft-next   "https://json-schema.org/draft/next/schema"})
 
 (def $schema->draft
-  (reduce-kv (fn [acc k v] (conj (conj acc [v k]) [(str v "#") k])) {} (dissoc draft->$schema "latest")))
+  (reduce-kv (fn [acc k v] (conj (conj acc [v k]) [(str v "#") k])) {} (dissoc draft->$schema :latest)))
 
 (def $schema-uri->draft
   (reduce-kv (fn [acc k v] (conj acc [(parse-uri k) v])) {} $schema->draft))
 
-(def latest-$schema (draft->$schema "latest"))
+(def latest-$schema (draft->$schema :latest))
 
 ;;------------------------------------------------------------------------------
 
@@ -283,7 +283,7 @@
   (check-parse local-date-parse f c2 p2 m2))
 
 (defmethod check-format "time" [f {d :draft :as c2} p2 m2]
-  (if (= "draft3" d)
+  (if (= :draft3 d)
     (check-pattern time-pattern f c2 p2 m2)
     (check-parse offset-time-parse f c2 p2 m2)))
 
@@ -1034,9 +1034,9 @@
         [m css] (if (json-array? v2)
                   (do
                     (case d
-                      ("draft3" "draft4" "draft6" "draft7" "draft2019-09")
+                      (:draft3 :draft4 :draft6 :draft7 :draft2019-09)
                       nil
-                      ("draft2020-12" "draft-next")
+                      (:draft2020-12 :draft-next)
                       (log/info (str "prefixItems: was introduced in draft2020-12 to handle tuple version of items - you are using: " d)))
                     ["respective " (map-indexed (fn [i v] (check-schema c2 (conj p2 i) v)) v2)])
                   ["" (repeat (check-schema c2 p2 v2))])
@@ -1208,7 +1208,7 @@
 ;;------------------------------------------------------------------------------
 
 (def draft->vocab-and-group-and-property-and-semantics
-  {"draft3"
+  {:draft3
    [["https://json-schema.org/draft-03/vocab/applicator"              :applicator             "extends"                 check-property-extends]
     ["https://json-schema.org/draft-03/vocab/validation"              :validation             "disallow"                check-property-disallow]
     ["https://json-schema.org/draft-03/vocab/validation"              :validation             "divisibleBy"             check-property-divisibleBy]
@@ -1274,7 +1274,7 @@
     ["https://json-schema.org/draft-03/vocab/applicator"              :applicator             "patternProperties"       check-property-patternProperties]
     ["https://json-schema.org/draft-03/vocab/applicator"              :applicator             "additionalProperties"    check-property-additionalProperties]
     ["https://json-schema.org/draft-03/vocab/unevaluated"             :unevaluated            "unevaluatedProperties"   check-property-unevaluatedProperties]]
-   "draft4"
+   :draft4
    [["https://json-schema.org/draft-04/vocab/validation"              :validation             "type"                    check-property-type]
     ["https://json-schema.org/draft-04/vocab/validation"              :validation             "const"                   check-property-const]
     ["https://json-schema.org/draft-04/vocab/validation"              :validation             "minLength"               check-property-minLength]
@@ -1337,7 +1337,7 @@
     ["https://json-schema.org/draft-04/vocab/applicator"              :applicator             "patternProperties"       check-property-patternProperties]
     ["https://json-schema.org/draft-04/vocab/applicator"              :applicator             "additionalProperties"    check-property-additionalProperties]
     ["https://json-schema.org/draft-04/vocab/unevaluated"             :unevaluated            "unevaluatedProperties"   check-property-unevaluatedProperties]]
-   "draft6"
+   :draft6
    [["https://json-schema.org/draft-06/vocab/validation"              :validation             "type"                    check-property-type]
     ["https://json-schema.org/draft-06/vocab/validation"              :validation             "const"                   check-property-const]
     ["https://json-schema.org/draft-06/vocab/validation"              :validation             "minLength"               check-property-minLength]
@@ -1400,7 +1400,7 @@
     ["https://json-schema.org/draft-06/vocab/applicator"              :applicator             "patternProperties"       check-property-patternProperties]
     ["https://json-schema.org/draft-06/vocab/applicator"              :applicator             "additionalProperties"    check-property-additionalProperties]
     ["https://json-schema.org/draft-06/vocab/unevaluated"             :unevaluated            "unevaluatedProperties"   check-property-unevaluatedProperties]]
-   "draft7"
+   :draft7
    [["https://json-schema.org/draft-07/vocab/validation"              :validation             "type"                    check-property-type]
     ["https://json-schema.org/draft-07/vocab/validation"              :validation             "const"                   check-property-const]
     ["https://json-schema.org/draft-07/vocab/validation"              :validation             "minLength"               check-property-minLength]
@@ -1463,7 +1463,7 @@
     ["https://json-schema.org/draft-07/vocab/applicator"              :applicator             "patternProperties"       check-property-patternProperties]
     ["https://json-schema.org/draft-07/vocab/applicator"              :applicator             "additionalProperties"    check-property-additionalProperties]
     ["https://json-schema.org/draft-07/vocab/unevaluated"             :unevaluated            "unevaluatedProperties"   check-property-unevaluatedProperties]]
-   "draft2019-09"
+   :draft2019-09
    [["https://json-schema.org/draft/2019-09/vocab/validation"         :validation        "type"                    check-property-type]
     ["https://json-schema.org/draft/2019-09/vocab/validation"         :validation        "const"                   check-property-const]
     ["https://json-schema.org/draft/2019-09/vocab/validation"         :validation        "minLength"               check-property-minLength]
@@ -1525,7 +1525,7 @@
     ["https://json-schema.org/draft/2019-09/vocab/applicator"         :applicator        "patternProperties"       check-property-patternProperties]
     ["https://json-schema.org/draft/2019-09/vocab/applicator"         :applicator        "additionalProperties"    check-property-additionalProperties]
     ["https://json-schema.org/draft/2019-09/vocab/applicator"         :applicator        "unevaluatedProperties"   check-property-unevaluatedProperties]]
-   "draft2020-12"
+   :draft2020-12
    [["https://json-schema.org/draft/2020-12/vocab/validation"         :validation        "type"                    check-property-type]
     ["https://json-schema.org/draft/2020-12/vocab/validation"         :validation        "const"                   check-property-const]
     ["https://json-schema.org/draft/2020-12/vocab/validation"         :validation        "minLength"               check-property-minLength]
@@ -1589,7 +1589,7 @@
     ["https://json-schema.org/draft/2020-12/vocab/applicator"         :applicator        "patternProperties"       check-property-patternProperties]
     ["https://json-schema.org/draft/2020-12/vocab/applicator"         :applicator        "additionalProperties"    check-property-additionalProperties]
     ["https://json-schema.org/draft/2020-12/vocab/unevaluated"        :unevaluated       "unevaluatedProperties"   check-property-unevaluatedProperties]]
-   "draft-next"
+   :draft-next
    [["https://json-schema.org/draft/next/vocab/validation"            :validation           "type"                    check-property-type]
     ["https://json-schema.org/draft/next/vocab/validation"            :validation           "const"                   check-property-const]
     ["https://json-schema.org/draft/next/vocab/validation"            :validation           "minLength"               check-property-minLength]
@@ -1737,7 +1737,7 @@
 
 (defn get-id [{d :draft} m]
   (case d
-    ("draft3" "draft4") (get m "id")
+    (:draft3 :draft4) (get m "id")
     (or (get m "$id") (get m "id"))))
 
 (defn stash [acc stuff {a "$anchor" da "$dynamicAnchor" :as m} path]
@@ -1890,8 +1890,8 @@
 (defn make-context [{draft :draft u->s :uri->schema :as c2} {s "$schema" :as m2}]
   (let [draft (or draft
                   (when s ($schema-uri->draft (uri-base (parse-uri s))))
-                  "latest")
-        id-key (if (#{"draft3" "draft4"} draft) "id" "$id")
+                  :latest)
+        id-key (if (#{:draft3 :draft4} draft) "id" "$id")
         sid (get m2 id-key)
         c2 (if-not u->s (assoc c2 :uri->schema (uri->continuation uri-base->dir)) c2) ;; TODO
         c2 (assoc c2 :draft draft)

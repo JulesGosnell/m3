@@ -206,24 +206,23 @@
 (def json-schema-test-suite-root "test-resources/JSON-Schema-Test-Suite/tests/")
 
 (deftest json-schema-test-suite
-  (doseq [[draft dir] [["draft3"       "draft3" "draft3/optional" "draft3/optional/format"]
-                       ["draft4"       "draft4"]
-                       ;;"draft5" - does not exist !
-                       ["draft6"       "draft6"]
-                       ["draft6"       "draft6/optional"]
-                       ["draft6"       "draft6/optional/format"]
-                       ["draft7"       "draft7"]
-                       ["draft7"       "draft7/optional"]
-                       ["draft7"       "draft7/optional/format"]
-                       ["draft2019-09" "draft2019-09"]
-                       ["draft2019-09" "draft2019-09/optional"]
-                       ["draft2019-09" "draft2019-09/optional/format"]
-                       ["draft2020-12" "draft2020-12"]
-                       ["draft2020-12" "draft2020-12/optional"]
-                       ["draft2020-12" "draft2020-12/optional/format"]
-                       ["draft-next"  "draft-next"]
-                       ["draft-next"  "draft-next/optional"]
-                       ["draft-next"  "draft-next/optional/format"]]]
+  (doseq [[draft dir] [[:draft3       "draft3" "draft3/optional" "draft3/optional/format"]
+                       [:draft4       "draft4"]
+                       [:draft6       "draft6"]
+                       [:draft6       "draft6/optional"]
+                       [:draft6       "draft6/optional/format"]
+                       [:draft7       "draft7"]
+                       [:draft7       "draft7/optional"]
+                       [:draft7       "draft7/optional/format"]
+                       [:draft2019-09 "draft2019-09"]
+                       [:draft2019-09 "draft2019-09/optional"]
+                       [:draft2019-09 "draft2019-09/optional/format"]
+                       [:draft2020-12 "draft2020-12"]
+                       [:draft2020-12 "draft2020-12/optional"]
+                       [:draft2020-12 "draft2020-12/optional/format"]
+                       [:draft-next  "draft-next"]
+                       [:draft-next  "draft-next/optional"]
+                       [:draft-next  "draft-next/optional/format"]]]
     (test-directory (file (str json-schema-test-suite-root dir)) draft)))
 
 ;;------------------------------------------------------------------------------
