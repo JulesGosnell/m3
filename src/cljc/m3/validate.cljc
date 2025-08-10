@@ -95,6 +95,8 @@
    :latest       "https://json-schema.org/draft/2020-12/schema"
    :draft-next   "https://json-schema.org/draft/next/schema"})
 
+(def drafts (keys draft->$schema))
+
 (def $schema->draft
   (reduce-kv (fn [acc k v] (conj (conj acc [v k]) [(str v "#") k])) {} (dissoc draft->$schema :latest)))
 
@@ -515,7 +517,7 @@
 
 (declare draft->vocab-and-group-and-property-and-semantics)
 
-(defn make-dialect [d v->b]
+(defn make-dialect-2 [d v->b]
   (reduce
    (fn [acc [v g p f]]
      (let [b (v->b v)]
@@ -526,6 +528,8 @@
    ;; N.B. important to preserve evaluation order of vocabulary
    ;; properties...
    (draft->vocab-and-group-and-property-and-semantics d)))
+
+(def make-dialect (memoize make-dialect-2))
 
 (defn check-property-$vocabulary [_property {d :draft} _p2 _m2 v2]
   (let [vocabularies (make-dialect d v2)]
@@ -1791,7 +1795,8 @@
 ;; investigate...
 
 (defn make-draft-interceptor []
-  ;; TODO: should we be resetting :dialect here ?
+  ;; TODO:
+  ;; we should be recursing up our own schema hierarchy to reet our marker stash, dialect etc
   (fn [delegate]
     (fn [c2 p2 {s "$schema" :as m2}]
       (delegate
@@ -1929,29 +1934,42 @@
 
 (declare validate-m2)
 
+(def default-$vocabulary
+  (into {} (map (fn [draft] (into {} (map (fn [[v]] [v true]) (draft->vocab-and-group-and-property-and-semantics draft)))) drafts)))
+
+;; TODO: simplify dialect code
+;; - recurse to top of schema hierarchy
+;; - make a [default] dialect
+;; - on way back down hierarchy
+;;  - if $vocabulary present build new dialect otherwise inherit from meta-schema
+;; - we should probably be recalculating draft at each level as well
+;; I think this function needs decomposing and unit testing - it's too complicated...
+;; and we need to be able to reuse the code when switching drafts or schema contexts...
+;; switching context will affect dialect, marker stash, draft etc... - consider
 (defn validate-m2-2 [{draft :draft :as c2} m1]
   (let [s (or (and (json-object? m1) (m1 "$schema")) (draft->$schema draft))]
-    (if-let [m2 ($schema->m2 s)]
+    (if-let [{$vocabulary "$vocabulary" :as m2} ($schema->m2 s)]
       (if (= m2 m1)
         ;; we are at the top
-        (let [uri (parse-uri s) ;; duplicate work
+        (let [draft ($schema->draft s)
+              c2 (assoc c2 :dialect (make-dialect draft (or $vocabulary default-$vocabulary))) ;; handle drafts that are too early to know about $vocabulary
+              uri (parse-uri s) ;; duplicate work
               stash (uri->marker-stash uri)
               _ (when-not stash (prn "NO STASH FOR:" s))
-              draft ($schema->draft s)
               ;; initialise c2`
               ;; only a meta-schema defines a dialect;; this is inherited by its instances
               c2 (assoc
                   (merge c2 stash)
-                  :id-uri uri
-                  :dialect
-                  (make-dialect
-                   draft
-                   (or (m2 "$vocabulary")
-                       (into {} (map (fn [[v]] [v true]) (draft->vocab-and-group-and-property-and-semantics draft))))))
+                  :id-uri uri)
               v (validate-2 c2 m2)
               [_ es :as r] (v {} m1)]
           (if (empty? es)
-            v
+            ;; return a validator (f1) that will build its own dialect or inherit its meta-schema's
+            (fn [c1 {$vocabulary "$vocabulary" :as m1}]
+              (v
+               (assoc c1 :dialect (or (and $vocabulary (make-dialect draft $vocabulary)) ;; think about draft
+                                      (c2 :dialect)))
+               m1))
             (constantly r)))
         ;; keep going - inheriting relevant parts of c1
         (let [[{vs :dialect u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)]
