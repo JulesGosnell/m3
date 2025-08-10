@@ -515,7 +515,7 @@
 
 (declare draft->vocab-and-group-and-property-and-semantics)
 
-(defn make-vocabularies [d v->b]
+(defn make-dialect [d v->b]
   (reduce
    (fn [acc [v g p f]]
      (let [b (v->b v)]
@@ -528,9 +528,9 @@
    (draft->vocab-and-group-and-property-and-semantics d)))
 
 (defn check-property-$vocabulary [_property {d :draft} _p2 _m2 v2]
-  (let [vocabularies (make-vocabularies d v2)]
+  (let [vocabularies (make-dialect d v2)]
     (fn [c1 _p1 _m1]
-      [(assoc c1 :vocabularies vocabularies) nil])))
+      [(assoc c1 :dialect vocabularies) nil])))
 
 ;; TODO: issue a warning somehow
 (defn check-property-deprecated [_property _c2 _p2 _m2 _v2] (fn [_c1 _p1 _m1])) ;; TODO: issue a warning or error ?
@@ -1693,11 +1693,12 @@
      vs
      ;; TODO - inject into initial context ?
      ;; how do we decide vocabulary for a self-descriptive schema ?
-     (map (fn [l] (drop 2 l)) (draft->vocab-and-group-and-property-and-semantics d))))))
+     (map (fn [l] (drop 2 l)) (draft->vocab-and-group-and-property-and-semantics d))
+     ))))
 
 (def make-property->index-and-check (memoize make-property->index-and-check-2))
 
-(defn compile-m2 [{vs :vocabularies d :draft :as c2} old-p2 m2]
+(defn compile-m2 [{vs :dialect d :draft :as c2} old-p2 m2]
   (map
    rest
    (sort-by
@@ -1790,7 +1791,7 @@
 ;; investigate...
 
 (defn make-draft-interceptor []
-  ;; TODO: should we be resetting :vocabularies here ?
+  ;; TODO: should we be resetting :dialect here ?
   (fn [delegate]
     (fn [c2 p2 {s "$schema" :as m2}]
       (delegate
@@ -1938,11 +1939,12 @@
               _ (when-not stash (prn "NO STASH FOR:" s))
               draft ($schema->draft s)
               ;; initialise c2`
+              ;; only a meta-schema defines a dialect;; this is inherited by its instances
               c2 (assoc
                   (merge c2 stash)
                   :id-uri uri
-                  :vocabularies
-                  (make-vocabularies
+                  :dialect
+                  (make-dialect
                    draft
                    (or (m2 "$vocabulary")
                        (into {} (map (fn [[v]] [v true]) (draft->vocab-and-group-and-property-and-semantics draft))))))
@@ -1952,12 +1954,12 @@
             v
             (constantly r)))
         ;; keep going - inheriting relevant parts of c1
-        (let [[{vs :vocabularies u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)]
+        (let [[{vs :dialect u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)]
           ;;(prn "STASH:" u->p p->u)
           (if (empty? es)
             (validate-2 (assoc c2
                                :marker-stash {:uri->path (or u->p {}) :path->uri (or p->u {})}
-                               :vocabularies vs) m1)
+                               :dialect vs) m1)
             (constantly r))))
       (constantly [c2 [(str "could not resolve $schema: " s)]]))))
 
