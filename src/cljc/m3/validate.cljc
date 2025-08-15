@@ -1210,6 +1210,47 @@
            [(make-error "not: document conformed to sub-schema" p2 m2 p1 m1)])]))))
 
 ;;------------------------------------------------------------------------------
+;; to adapt a c2/p2/m2->c1/p1/m1 (old) l2 fn into new composable shape l2 (new format)
+;; also does l2 path management
+
+(defn old->new [k old-f2]
+  (fn [c2 p2 m2]
+    (let [v2 (get m2 k)
+          old-f1 (if v2 (old-f2 k c2
+                                ;;(conj p2 k)
+                                p2
+                                m2 v2) (fn [c1 p1 m1] [c1 []]))]
+      [c2
+       m2
+       (fn [c1 p1 m1]
+         (let [[c1 es] (old-f1 c1 p1 m1)]
+           [c1 m1 es]))])))
+
+;; to adapt a new checker to the old format
+
+(defn new->old [new-f2]
+  (fn [_ c2 p2 m2 _]
+    (let [[c2 m2 new-f1] (new-f2 c2 p2 m2)]
+      (fn [c1 p1 m1]
+        (let [[c1 m1 es] (new-f1 c1 p1 m1)]
+          [c1 es])))))
+
+;; compose two checkers into a single new checker
+(defn compose-checkers [l2 r2]
+  (fn [c2 p2 m2]
+    (let [[c2 m2 l1] (l2 c2 p2 m2)
+          [c2 m2 r1] (l2 c2 p2 m2)]
+      [c2
+       m2
+       (fn [c1 p1 m1]
+         (let [[c1 m1 les] (l1 c1 p1 m1)
+               [c1 m1 res] (r1 c1 p1 m1)]
+           [c1 m1 (concatv les res)]))])))
+
+;; we should have enough now to adapt all vocab keyword fns to new
+;; format, compose them into a single new format function and then
+;; adapt the back to an old format function to plug into m3...
+;;------------------------------------------------------------------------------
 
 (def draft->vocab-and-group-and-property-and-semantics
   {:draft3
@@ -1274,7 +1315,7 @@
     ["https://json-schema.org/draft-03/vocab/applicator"              :applicator             "items"                   check-property-items]
     ["https://json-schema.org/draft-03/vocab/applicator"              :applicator             "additionalItems"         check-property-additionalItems]
     ["https://json-schema.org/draft-03/vocab/unevaluated"             :unevaluated            "unevaluatedItems"        check-property-unevaluatedItems]
-    ["https://json-schema.org/draft-03/vocab/applicator"              :applicator             "properties"              check-property-properties]
+    ["https://json-schema.org/draft-03/vocab/applicator"              :applicator             "properties"              (new->old (old->new "properties" check-property-properties))]
     ["https://json-schema.org/draft-03/vocab/applicator"              :applicator             "patternProperties"       check-property-patternProperties]
     ["https://json-schema.org/draft-03/vocab/applicator"              :applicator             "additionalProperties"    check-property-additionalProperties]
     ["https://json-schema.org/draft-03/vocab/unevaluated"             :unevaluated            "unevaluatedProperties"   check-property-unevaluatedProperties]]
