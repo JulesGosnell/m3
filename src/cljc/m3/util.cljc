@@ -41,3 +41,24 @@
   (if v
     (assoc c k v)
     c))
+
+;;------------------------------------------------------------------------------
+
+(defn topo-sort-by-2 [f x acc ks]
+  (reduce
+   (fn [[in out :as acc] k]
+     (if-let [v (in k)]
+       (let [entry (x [k v])
+             in (dissoc in k)]
+         (if-let [deps (seq (f v))]
+           (update (topo-sort-by-2 f x [in out] deps) 1 conj entry)
+           [in (conj out entry)]))
+       acc))
+   acc
+   ks))
+
+;; this is a little inefficient as at the first level, we take all the
+;; keys and then look them up again at the second level but... life's
+;; too short...
+(defn topo-sort-by [f x m]
+  (second (topo-sort-by-2 f x [m []] (keys m))))
