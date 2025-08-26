@@ -591,9 +591,11 @@
         [(make-error "maximum: value too high" p2 m2 p1 m1)])])))
 
 (defn check-property-exclusiveMaximum-old [_property _c2 _p2 {m "maximum"} _v2]
-  (fn [c1 _p1 _m1]
-    (when-not m (log/warn "exclusiveMaximum: no maximum present to modify"))
-    [c1 []]))
+  (make-type-checker
+   json-number?
+   (fn [c1 _p1 _m1]
+     (when-not m (log/warn "exclusiveMaximum: no maximum present to modify"))
+     [c1 []])))
 
 (defn check-property-exclusiveMaximum-new [_property _c2 p2 m2 v2]
   (make-type-checker
@@ -901,6 +903,7 @@
   (mapv (fn [[k v]] (check-schema c2 (conj p2 k) v)) v2)
   (fn [c1 _p1 _m1] [c1 nil]))
 
+;; bifurcate upwards to reduce amount of work done to just what it required...
 (defn check-properties [_c2 p2 m2]
   (let [pp2 (butlast p2)]
     (fn [c1 p1 m1 k-and-css message]
@@ -1210,6 +1213,33 @@
            [(make-error "not: document conformed to sub-schema" p2 m2 p1 m1)])]))))
 
 ;;------------------------------------------------------------------------------
+
+;; NOTES
+;;
+;; id/$id
+;; $anchor
+;; $recursiveAnchor
+;; $dynamicAnchor
+;; $ref
+;; $recursiveRef
+;; $dynamicRef
+;; $vocabulary
+;; minimum-old -> exclusiveMinimum
+;; maximum-old -> exclusiveMaximum
+;; contentMediaType -> contentEncoding
+;; contentSchema -> contentMediaType
+;; then -> if
+;; else -> if
+;; additionalProperties -> properties, patternProperties
+;; unevaluatedProperties -> properties, patternProperties, oneOf, anyOf, allOf, not, if, then, else ? others ?
+;; required - draft3
+;; items -> prefixItems
+;; additionalItems -> items
+;; unevaluatedItems -> items - see unevaluatedProperties
+;; contains -> minContains
+;; minContains - why is it looking at :matched ?
+;; maxContains - why is it looking at :matched ?
+
 
 (def draft->vocab-and-group-and-property-and-semantics
   {:draft3
