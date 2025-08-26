@@ -8,8 +8,9 @@
   (testing "without xform"
     (is (=
          [[:d []] [:b [:d]] [:e []] [:c [:e]] [:a [:b :c]]]
-         (topo-sort-by identity identity {:a [:b :c], :b [:d], :c [:e], :e [], :d []}))))
+         (topo-sort-by second identity {:a [:b :c], :b [:d], :c [:e], :e [], :d []}))))
   (testing "with-xform"
     (is (=
          [:d :b :e :c :a]
-         (topo-sort-by identity first {:a [:b :c], :b [:d], :c [:e], :e [], :d []})))))
+         (topo-sort-by second first {:a [:b :c], :b [:d], :c [:e], :e [], :d []}))))
+  )
