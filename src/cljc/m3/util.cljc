@@ -58,3 +58,7 @@
   (second (topo-sort-by-2 f x [m []] (keys m))))
 
 ;;------------------------------------------------------------------------------
+
+(defn make-error [message schema-path schema document-path document]
+  {:schema-path schema-path :message (str message " - " (pr-str document)) :document-path document-path :document document :schema schema})
+
