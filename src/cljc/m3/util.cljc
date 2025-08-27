@@ -62,3 +62,9 @@
 (defn make-error [message schema-path schema document-path document]
   {:schema-path schema-path :message (str message " - " (pr-str document)) :document-path document-path :document document :schema schema})
 
+(defn make-error-on [message schema-path schema document-path document failed? errors]
+  (when (failed? errors)
+    [(assoc (make-error message schema-path schema document-path document) :errors errors)]))
+
+(defn make-error-on-failure [message schema-path schema document-path document errors]
+  (make-error-on message schema-path schema document-path document seq errors))
