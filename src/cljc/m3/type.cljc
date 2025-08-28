@@ -14,7 +14,7 @@
 
 (ns m3.type
   (:require
-   #?(:cljs [goog.string.format])
+   [m3.platform :refer [pformat]]
    [m3.util :refer [make-error make-error-on]]))
 
 ;;------------------------------------------------------------------------------
@@ -102,12 +102,12 @@
         ;; I guess some errors rely on their context to be errors ?
         [c1
          (make-error-on
-          (format "type: none matched: %s" ts)
+          (pformat "type: none matched: %s" ts)
           p2 m2 p1 m1
           (fn [es] (not (some nil? es)))
           (mapv (fn [checker] (second (checker c1 p1 m1))) checkers))]))
     (fn [c1 p1 m1]
-      [c1 [(make-error (format "type: unrecognised: %s" ts) p2 m2 p1 m1)]])))
+      [c1 [(make-error (pformat "type: unrecognised: %s" ts) p2 m2 p1 m1)]])))
 
 ;;------------------------------------------------------------------------------
 

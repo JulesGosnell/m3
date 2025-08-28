@@ -15,12 +15,11 @@
 
 (ns m3.validate
   (:require
-   #?(:cljs [goog.string :as gstring])
-   #?(:cljs [goog.string.format])
    #?(:clj [cheshire.core :as cheshire]
       :cljs [cljs.core :as cljs])
    [clojure.string :refer [starts-with? ends-with? replace] :rename {replace string-replace}]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
+   [m3.platform :refer [pformat]]
    [m3.util :refer [absent present? concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure]]
    [m3.ecma :refer [ecma-pattern ecma-match]]
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
@@ -29,9 +28,6 @@
    [m3.ref :refer [meld resolve-uri try-path]]))
 
 ;; consider https://docs.oracle.com/javase/8/docs/api/java/time/package-summary.html - other time types...
-
-#?(:cljs
-   (def Exception js/Error))
 
 #?(:cljs
    (def Big (js/require "big.js")))
@@ -51,8 +47,6 @@
 #?(:cljs (def fs (js/require "fs")))
 
 #?(:cljs (defn slurp [path] (.readFileSync fs path "utf8")))
-
-#?(:cljs (defn format [fmt & args] (apply gstring/format fmt args)))
 
 ;;------------------------------------------------------------------------------
 
@@ -202,7 +196,7 @@
   (fn [c1 p1 m1]
     [c1
      (when (not (json-= v2 m1))
-       [(make-error (format "const: document does not contain schema value: %s != %s" m1 v2) p2 m2 p1 m1)])]))
+       [(make-error (pformat "const: document does not contain schema value: %s != %s" m1 v2) p2 m2 p1 m1)])]))
 
 (defn check-property-enum [_property _c2 p2 m2 v2]
   (fn [c1 p1 m1]
@@ -379,7 +373,7 @@
      (fn [c1 p1 m1]
        [c1
         (when (not (big-zero? (big-mod (bigdec m1) v2-bd)))
-          [(make-error (format "%s is not divisible by of %s" m1 v2) p2 m2 p1 m1)])]))))
+          [(make-error (pformat "%s is not divisible by of %s" m1 v2) p2 m2 p1 m1)])]))))
 
 (defn check-property-multipleOf [_property _c2 p2 m2 v2]
   (let [v2-bd (bigdec v2)]
@@ -388,7 +382,7 @@
      (fn [c1 p1 m1]
        [c1
         (when (not (big-zero? (big-mod (bigdec m1) v2-bd)))
-          [(make-error (format "%s is not a multiple of %s" m1 v2) p2 m2 p1 m1)])]))))
+          [(make-error (pformat "%s is not a multiple of %s" m1 v2) p2 m2 p1 m1)])]))))
 
 ;; standard string properties
 
@@ -482,7 +476,7 @@
          (let [[new-m1 es]
                (try
                  [(ce-decoder old-m1) nil]
-                 (catch Exception e
+                 (catch #?(:cljs js/Error :clj Exception) e
                    [nil
                     (let [m (str "contentEncoding: could not " v2 " decode: " (pr-str old-m1) " - " (ex-message e))]
                       (if strict?
@@ -506,7 +500,7 @@
                [new-m1 es]
                (try
                  [(cmt-decoder old-m1) nil]
-                 (catch Exception e
+                 (catch #?(:cljs js/Error :clj Exception) e
                    [nil
                     (let [m (str "contentMediaType: could not " v2 " decode: " (pr-str old-m1) " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
                       (if strict?
@@ -533,7 +527,7 @@
                  (if strict?
                    es
                    (log/warn "contentSchema: failed validation - " (prn-str v)))))
-             (catch Exception e
+             (catch #?(:cljs js/Error :clj Exception) e
                (:errors (ex-data e))))])))))
 
 (defn check-property-dependencies [_property c2 p2 m2 v2]
@@ -1655,7 +1649,7 @@
 (defn uri->schema [uri-base->dir _c _p {origin :origin path :path}]
   (if-let [dir (uri-base->dir origin)]
     (let [f (str dir path (if (ends-with? path ".json") "" ".json"))
-          s (try (json-decode (slurp f)) (catch Exception _))]
+          s (try (json-decode (slurp f)) (catch #?(:cljs js/Error :clj Exception) _))]
       ;;(log/info "uri->schema: loaded: " (pr-str (str origin path)) " -> " (pr-str f))
       ;; TODO: ref resolution needs to be done in new context...
       s)
@@ -1715,7 +1709,7 @@
         cs (check-schema c2 [] schema)]
     (fn [c1 {did id-key _dsid "$schema" :as document}]
       ;;(log/info "validate:" sid "/" did)
-      ;;(when (and dsid (not (= sid dsid))) (log/warn (format "document schema id not consistent with schema id: %s != %s" dsid sid)))
+      ;;(when (and dsid (not (= sid dsid))) (log/warn (pformat "document schema id not consistent with schema id: %s != %s" dsid sid)))
       (let [c1 (assoc
                 c1
                 :id-key id-key

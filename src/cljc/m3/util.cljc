@@ -12,10 +12,7 @@
 ;; See the License for the specific language governing permissions and
 ;; limitations under the License.
 
-(ns m3.util
-  (:require
-   [m3.log :as log]
-   ))
+(ns m3.util)
 
 ;;------------------------------------------------------------------------------
 

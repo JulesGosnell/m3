@@ -45,7 +45,7 @@
     (try
       (p m1)
       nil
-      (catch Exception e
+      (catch #?(:cljs js/Error :clj Exception) e
         [(make-error (str "format: not a valid " f ": " (ex-message e)) p2 m2 p1 m1)]))))
 
 ;; standard formats

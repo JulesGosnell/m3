@@ -29,10 +29,6 @@
 ;;------------------------------------------------------------------------------
 ;; common platform
 
-;; TODO: share with validate
-#?(:cljs
-   (def Exception js/Error))
-
 (def code-point-at
   #?(:clj (fn [s i] (Character/codePointAt s i))
      :cljs (fn [s i] (.codePointAt s i))))
@@ -364,12 +360,12 @@
                  encoded (to-ascii u-label)]
              (and (= label (str/lower-case encoded))
                   (validate-u-label u-label)))
-           (catch Exception _ false))
+           (catch #?(:cljs js/Error :clj Exception) _ false))
          (try
            (let [a-label (to-ascii label)]
              (and (<= (count a-label) 63)
                   (validate-u-label label)))
-           (catch Exception _ false)))))
+           (catch #?(:cljs js/Error :clj Exception) _ false)))))
 
 (defn json-idn-hostname? [data]
   (if-not (string? data)
@@ -381,5 +377,5 @@
              (not (str/ends-with? s "."))
              (not (str/includes? s ".."))
              (every? validate-label (str/split s #"\."))))
-      (catch Exception _
+      (catch #?(:cljs js/Error :clj Exception) _
         false))))
