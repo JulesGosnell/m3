@@ -21,7 +21,8 @@
    #?(:cljs [goog.string.format])
    [clojure.pprint :refer [pprint]]
    [clojure.string :refer [ends-with?]]
-   [m3.validate :refer [validate validate-2 uri->continuation json-decode]]]
+   [m3.platform :refer [json-decode]]
+   [m3.validate :refer [validate validate-2 uri->continuation]]]
   [:import
    #?(:clj  [java.io File])])
 

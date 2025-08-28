@@ -37,6 +37,15 @@
 (defn json-object? [v]
   (map? v))
 
+(defn json-= [l r]
+  (cond
+    (and (json-number? l) (json-number? r)) (zero? (- l r))
+    ;; TODO: could be more efficient...
+    (and (json-array? l) (json-array? r) (= (count l) (count r))) (every? (partial apply json-=) (map vector l r))
+    ;; TODO: json-objects
+    :else
+    (= l r)))
+
 ;;------------------------------------------------------------------------------
 
 (defmulti check-type (fn [type _c2 _p2 _m2]
