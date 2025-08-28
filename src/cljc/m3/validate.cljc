@@ -281,8 +281,8 @@
           c2
           :draft
           (fn [old-d new-d]
-            (when (not= old-d new-d)
-              (log/info (str "switching draft: " old-d " -> " new-d)))
+            ;; (when (not= old-d new-d)
+            ;;   (log/info (str "switching draft: " old-d " -> " new-d)))
             new-d)
           d)
          c2)
