@@ -56,6 +56,22 @@
 
 ;;------------------------------------------------------------------------------
 
+;; you'd think that (sort-by f) would return a transducer, in which
+;; case I could use transducers here - but it doesn't...
+
+(defn make-stable-sort-by [k1 e1s]
+  (let [index (into {} (map-indexed (fn [i e1] [(k1 e1) [i e1]]) e1s))]
+    (fn [k2 xform e2s]
+      (map
+       (comp xform second)
+       (sort-by
+        first
+        (map
+         (fn [e2] (let [[i e1] (index (k2 e2))] [i [e2 e1]]))
+         e2s))))))
+
+;;------------------------------------------------------------------------------
+
 (defn make-error [message schema-path schema document-path document]
   {:schema-path schema-path :message (str message " - " (pr-str document)) :document-path document-path :document document :schema schema})
 
