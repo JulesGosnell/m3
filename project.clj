@@ -1,5 +1,5 @@
 (def polyglot-version "24.2.2")
-(def jackson-version "2.20.0-rc1")
+(def jackson-version "2.20.0")
 
 (defproject org.clojars.jules_gosnell/m3 "0.1.0-SNAPSHOT"
   :description "A pure Clojure/ClojureScript JSON validator"
@@ -9,27 +9,28 @@
 
   :dependencies
   [;; java
-   [org.slf4j/slf4j-simple "2.1.0-alpha1"]                                  ;; https://github.com/qos-ch/slf4j
-   [org.graalvm.polyglot/polyglot ~polyglot-version]                        ;; https://github.com/oracle/graal
-   [org.graalvm.polyglot/js ~polyglot-version :extension "pom"]             ;; https://github.com/oracle/graal
-   [com.fasterxml.jackson.core/jackson-core ~jackson-version]               ;; https://github.com/FasterXML/jackson-core
+   [org.slf4j/slf4j-simple "2.1.0-alpha1"] ;; https://github.com/qos-ch/slf4j
+   [org.graalvm.polyglot/polyglot ~polyglot-version] ;; https://github.com/oracle/graal
+   [org.graalvm.polyglot/js ~polyglot-version :extension "pom"] ;; https://github.com/oracle/graal
+   [com.fasterxml.jackson.core/jackson-core ~jackson-version] ;; https://github.com/FasterXML/jackson-core
    [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
    [com.fasterxml.jackson.dataformat/jackson-dataformat-smile ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
    ;; clj
-   [org.clojure/clojure "1.12.2"]                                           ;; https://clojure.org/releases/downloads
-   [org.clojure/tools.logging "1.3.0"]                                      ;; https://github.com/clojure/tools.logging
-   [cheshire/cheshire "6.0.0"]                                              ;; https://github.com/dakrone/cheshire
+   [org.clojure/clojure "1.12.2"] ;; https://clojure.org/releases/downloads
+   [org.clojure/tools.logging "1.3.0"] ;; https://github.com/clojure/tools.logging
+   [cheshire/cheshire "6.0.0"] ;; https://github.com/dakrone/cheshire
    ;; cljs
-   [thheller/shadow-cljs "3.2.0"]                                           ;; https://github.com/thheller/shadow-cljs
+   [thheller/shadow-cljs "3.2.0"] ;; https://github.com/thheller/shadow-cljs
    ;; cljc
-   [com.widdindustries/cljc.java-time "0.1.21"]                             ;; https://github.com/henryw374/cljc.java-time
+   [com.widdindustries/cljc.java-time "0.1.21"] ;; https://github.com/henryw374/cljc.java-time
    ]
 
-  :plugins [[lein-environ "1.2.0"]                                          ;; https://github.com/weavejester/environ
-            [lein-cloverage "1.2.4"]                                        ;; https://github.com/cloverage/cloverage
-            [lein-shadow "0.4.1"]                                           ;; https://gitlab.com/nikperic/lein-shadow
+  :plugins [[lein-environ "1.2.0"] ;; https://github.com/weavejester/environ
+            [lein-cloverage "1.2.4"] ;; https://github.com/cloverage/cloverage
+            [lein-shadow "0.4.1"] ;; https://gitlab.com/nikperic/lein-shadow
             [lein-asset-minifier "0.4.7" :exclusions [org.clojure/clojure]] ;; https://github.com/yogthos/lein-asset-minifier
-            [com.jakemccrary/lein-test-refresh "0.26.0"]                    ;; https://github.com/jakemcc/test-refresh
+            [com.jakemccrary/lein-test-refresh "0.26.0"] ;; https://github.com/jakemcc/test-refresh
+            [lein-ancient "0.7.0"] ;; https://github.com/xsc/lein-ancient
             ]
 
   :min-lein-version "2.5.0"
@@ -55,8 +56,7 @@
                           :devtools {:autoload true}}}}
 
   :profiles {:dev
-             {:repl-options {
-                             ;;:init-ns m3.repl
+             {:repl-options {;;:init-ns m3.repl
                              }
               :dependencies [[cider/piggieback "0.6.0"]
                              [binaryage/devtools "1.0.7"]
@@ -88,10 +88,9 @@
              :nrepl {:dependencies [[nrepl "1.3.1"]
                                     ;;[ch.qos.logback/logback-classic "1.4.14"]
                                     ]
-                     :jvm-opts ["-Djdk.attach.allowAttachSelf"]
-                     }
+                     :jvm-opts ["-Djdk.attach.allowAttachSelf"]}
 
-             :mcp {:dependencies [[org.slf4j/slf4j-nop "2.0.16"]
+             :mcp {:dependencies [[org.slf4j/slf4j-nop "2.0.17"]
                                   [com.bhauman/clojure-mcp "0.1.6-SNAPSHOT"]] ;; only currently available on my local box :-(
                    :source-paths ["mcp/src"]
                    :main ^:skip-aot m3.mcp-runner}}
