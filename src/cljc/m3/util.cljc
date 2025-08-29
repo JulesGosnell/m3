@@ -81,3 +81,11 @@
 
 (defn make-error-on-failure [message schema-path schema document-path document errors]
   (make-error-on message schema-path schema document-path document seq errors))
+
+;;------------------------------------------------------------------------------
+
+(defn third [v]
+  (nth v 2))
+
+(defn fourth [v]
+  (nth v 3))
