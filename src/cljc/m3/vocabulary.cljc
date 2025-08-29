@@ -98,8 +98,7 @@
      ["https://json-schema.org/draft-03/vocab/applicator"              :applicator         "patternProperties"       check-property-patternProperties             #{}]
      ["https://json-schema.org/draft-03/vocab/applicator"              :applicator         "properties"              check-property-properties                    #{}]
      ["https://json-schema.org/draft-03/vocab/applicator"              :applicator         "propertyDependencies"    check-property-propertyDependencies          #{}]
-     ["https://json-schema.org/draft-03/vocab/core"                    :core               "$id"                     check-property-$id                           #{}]
-     ["https://json-schema.org/draft-03/vocab/core"                    :core               "$ref"                    check-property-$ref                          #{"id" "$id"}]
+     ["https://json-schema.org/draft-03/vocab/core"                    :core               "$ref"                    check-property-$ref                          #{"id"}]
      ["https://json-schema.org/draft-03/vocab/core"                    :core               "$schema"                 check-property-$schema                       #{}]
      ["https://json-schema.org/draft-03/vocab/core"                    :core               "$vocabulary"             check-property-$vocabulary                   #{}] ;; TODO - should not be here
      ["https://json-schema.org/draft-03/vocab/core"                    :core               "definitions"             check-property-definitions                   #{}]
@@ -140,8 +139,7 @@
      ["https://json-schema.org/draft-04/vocab/applicator"              :applicator         "patternProperties"       check-property-patternProperties             #{}]
      ["https://json-schema.org/draft-04/vocab/applicator"              :applicator         "properties"              check-property-properties                    #{}]
      ["https://json-schema.org/draft-04/vocab/applicator"              :applicator         "propertyDependencies"    check-property-propertyDependencies          #{}]
-     ["https://json-schema.org/draft-04/vocab/core"                    :core               "$id"                     check-property-$id                           #{}]
-     ["https://json-schema.org/draft-04/vocab/core"                    :core               "$ref"                    check-property-$ref                          #{"id" "$id"}]
+     ["https://json-schema.org/draft-04/vocab/core"                    :core               "$ref"                    check-property-$ref                          #{"id"}]
      ["https://json-schema.org/draft-04/vocab/core"                    :core               "$schema"                 check-property-$schema                       #{}]
      ["https://json-schema.org/draft-04/vocab/core"                    :core               "$vocabulary"             check-property-$vocabulary                   #{}] ; TODO: should not be here
      ["https://json-schema.org/draft-04/vocab/core"                    :core               "definitions"             check-property-definitions                   #{}]
