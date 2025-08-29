@@ -1,5 +1,5 @@
-(def polyglot-version "24.2.1")
-(def jackson-version "2.19.1")
+(def polyglot-version "24.2.2")
+(def jackson-version "2.20.0-rc1")
 
 (defproject org.clojars.jules_gosnell/m3 "0.1.0-SNAPSHOT"
   :description "A pure Clojure/ClojureScript JSON validator"
@@ -16,11 +16,11 @@
    [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
    [com.fasterxml.jackson.dataformat/jackson-dataformat-smile ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
    ;; clj
-   [org.clojure/clojure "1.12.1"]                                           ;; https://clojure.org/releases/downloads
+   [org.clojure/clojure "1.12.2"]                                           ;; https://clojure.org/releases/downloads
    [org.clojure/tools.logging "1.3.0"]                                      ;; https://github.com/clojure/tools.logging
    [cheshire/cheshire "6.0.0"]                                              ;; https://github.com/dakrone/cheshire
    ;; cljs
-   [thheller/shadow-cljs "3.1.7"]                                           ;; https://github.com/thheller/shadow-cljs
+   [thheller/shadow-cljs "3.2.0"]                                           ;; https://github.com/thheller/shadow-cljs
    ;; cljc
    [com.widdindustries/cljc.java-time "0.1.21"]                             ;; https://github.com/henryw374/cljc.java-time
    ]
