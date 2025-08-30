@@ -22,7 +22,7 @@
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.type :refer [json-object?]]
    [m3.ref :refer [meld resolve-uri try-path]]
-   [m3.vocabulary :refer [draft->vocab-and-group-and-property-and-semantics draft->default-$vocabulary make-dialect new-make-dialect]]))
+   [m3.vocabulary :refer [draft->default-$vocabulary make-dialect new-make-dialect]]))
 
 ;; consider https://docs.oracle.com/javase/8/docs/api/java/time/package-summary.html - other time types...
 
@@ -162,38 +162,7 @@
       ;; should this be returning the dynamic anchor?
       :path->uri (constantly draft2020-12)}}))
 
-(defn make-property->index-and-check-2 [vs d]
-  (into
-   {}
-   (map-indexed
-    (fn [i [p c]] [p [i c]])
-    (or
-     vs
-     ;; TODO - inject into initial context ?
-     ;; how do we decide vocabulary for a self-descriptive schema ?
-     (map (fn [l] (drop 2 l)) (draft->vocab-and-group-and-property-and-semantics d))
-     ))))
-
-(def make-property->index-and-check (memoize make-property->index-and-check-2))
-
-(defn old-compile-m2 [{vs :dialect d :draft :as c2} old-p2 m2]
-  ;;(prn "COMPILE-M2:" m2)
-  (map
-   rest
-   (sort-by
-    first
-    (reduce-kv
-     (fn [acc k v]
-       (if-let [[i c] ((make-property->index-and-check vs d) k)]
-         (let [new-p2 (conj old-p2 k)]
-           (conj acc (list i new-p2 (c k c2 new-p2 m2 v))))
-         (do
-           (log/warn (str "property: unexpected property encountered: " (pr-str k)))
-           acc)))
-     nil
-     m2))))
-
-(defn new-compile-m2 [{vs :new-dialect d :draft :as c2} old-p2 m2]
+(defn compile-m2 [{vs :new-dialect d :draft :as c2} old-p2 m2]
   ;;(prn "FIRST:" d (vs m2))
   (let [vs (if vs vs (do
                        ;;(prn "DIALECT MISSING!")
@@ -204,19 +173,6 @@
          (conj acc (list new-p2 (c k c2 new-p2 m2 v)))))
      []
      (when vs (vs m2)))))
-
-(defn compile-m2 [{d :draft od :dialect nd :new-dialect :as c2} p2 m2]
-  (let [old (old-compile-m2 c2 p2 m2)
-        new (new-compile-m2 c2 p2 m2)
-
-        o (map first old)
-        n (map first new)
-        ]
-
-    (when (not (= o n))
-      (prn "AAARGH:" d o n))
-    
-    new))
 
 ;;------------------------------------------------------------------------------
 ;; tmp solution - does not understand about schema structure
