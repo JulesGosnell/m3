@@ -424,7 +424,7 @@
               (v
                (assoc c1
                       ;; think about draft
-                      :dialect (or (and $vocabulary (new-make-dialect draft $vocabulary)) (c2 :new-dialect))
+                      :dialect (or (and $vocabulary (new-make-dialect draft $vocabulary)) (c2 :dialect))
                       )
                m1))
             (constantly r)))
