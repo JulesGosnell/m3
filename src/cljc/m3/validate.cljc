@@ -22,7 +22,7 @@
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.type :refer [json-object?]]
    [m3.ref :refer [meld resolve-uri try-path]]
-   [m3.vocabulary :refer [draft->default-$vocabulary make-dialect]]))
+   [m3.vocabulary :refer [draft->default-dialect make-dialect]]))
 
 ;; consider https://docs.oracle.com/javase/8/docs/api/java/time/package-summary.html - other time types...
 
@@ -166,7 +166,7 @@
   ;;(prn "FIRST:" d (vs m2))
   (let [vs (if vs vs (do
                        ;;(prn "DIALECT MISSING!")
-                       (make-dialect d (draft->default-$vocabulary d))))]
+                       (draft->default-dialect d)))]
     (reduce
      (fn [acc [[k v] c]]
        (let [new-p2 (conj old-p2 k)]
@@ -406,7 +406,7 @@
         ;; we are at the top
         (let [draft ($schema->draft s)
               c2 (assoc c2
-                        :dialect (make-dialect draft (or $vocabulary (draft->default-$vocabulary draft)))
+                        :dialect (if $vocabulary (make-dialect draft $vocabulary) (draft->default-dialect draft))
                         ) ;; handle drafts that are too early to know about $vocabulary
               uri (parse-uri s) ;; duplicate work
               stash (uri->marker-stash uri)

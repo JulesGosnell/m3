@@ -471,12 +471,6 @@
      ["https://json-schema.org/draft/next/vocab/validation" :validation "uniqueItems" check-property-uniqueItems #{}]
      ["https://json-schema.org/draft/next/vocab/validation" :validation "type" check-property-type #{}]])})
 
-(def draft->default-$vocabulary
-  (map-values
-   (fn [k v]
-     (into {} (map (fn [v] [v true]) (distinct (map first v)))))
-   draft->vocab-and-group-and-property-and-semantics))
-
 ;; lets define a dialect as a function that given an m2 will return
 ;; you a correctly ordered sequence of pairs of m2-kv and
 ;; property-checker
@@ -505,4 +499,11 @@
         r))))
 
 (def make-dialect (memoize make-dialect-2))
+
+(def draft->default-dialect
+  (map-values
+   (fn [k v]
+     (make-dialect k (into {} (map (fn [v] [v true]) (distinct (map first v))))))
+   draft->vocab-and-group-and-property-and-semantics))
+
 
