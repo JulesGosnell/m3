@@ -16,7 +16,14 @@
 
 ;;------------------------------------------------------------------------------
 
-;(def absent (Object.))
+(defn third [v]
+  (nth v 2))
+
+(defn fourth [v]
+  (nth v 3))
+
+;;------------------------------------------------------------------------------
+
 (def absent :absent)
 
 (defn absent? [v]
@@ -34,10 +41,8 @@
 (defn seq-contains? [s p? v]
   (boolean (some (partial p? v) s)))
 
-(defn when-assoc [c k v]
-  (if v
-    (assoc c k v)
-    c))
+(defn assoc-when [c k v]
+  (if (not-empty v) (assoc c k v) c))
 
 ;;------------------------------------------------------------------------------
 
@@ -65,9 +70,6 @@
 
 ;;------------------------------------------------------------------------------
 
-;; you'd think that (sort-by f) would return a transducer, in which
-;; case I could use transducers here - but it doesn't...
-
 (defn make-stable-sort-by [k1 e1s]
   (let [index (into {} (map-indexed (fn [i e1] [(k1 e1) [i e1]]) e1s))]
     (fn [k2 xform e2s]
@@ -91,10 +93,3 @@
 (defn make-error-on-failure [message schema-path schema document-path document errors]
   (make-error-on message schema-path schema document-path document seq errors))
 
-;;------------------------------------------------------------------------------
-
-(defn third [v]
-  (nth v 2))
-
-(defn fourth [v]
-  (nth v 3))

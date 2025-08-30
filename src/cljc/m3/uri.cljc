@@ -14,14 +14,12 @@
 
 (ns m3.uri
   (:require
-   [clojure.string :refer [join split starts-with?]]))
-
-(defn assoc-when [c k v]
-  (if (not-empty v) (assoc c k v) c))
+   [clojure.string :refer [join split starts-with?]]
+   [m3.util :refer [assoc-when]]))
 
 ;; not sure I like how paths and fragments fall out on the url side, but ... life is too short...
-;; I don't think we are dealling with the possibility of an :type=:nss...
-(defn parse-uri [s]
+;; I don't think we are dealing with the possibility of a :type=:nss...
+(defn parse-uri-2 [s]
   (if-let [[_ scheme nid nss _query fragment]
            (re-matches #"(?i)^(urn):([^:]+):([^?#]*)(?:\?([^#]*))?(?:#(.*))?" s)]
     ;; regexp insists on schema and nid
@@ -44,6 +42,8 @@
             (assoc-when :fragment fragment)))
       ;; should never happen as id uris should have been validated against meta-schema
       (throw (ex-info "parse-uri failed:" {:uri s})))))
+
+(def parse-uri (memoize parse-uri-2))
 
 (defn strip-path [p]
   (let [s (join "/" (drop-last (split p #"/" -1)))]
@@ -77,7 +77,7 @@
         [:fragment :path]     child
         [:fragment :fragment] child))))
 
-(defn uri-base [{t :type :as uri}]
+(defn uri-base [uri]
   (dissoc uri :fragment))
 
 (defn uri-fragment [{t :type :as uri}]
