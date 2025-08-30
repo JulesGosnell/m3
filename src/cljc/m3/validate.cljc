@@ -15,14 +15,12 @@
 
 (ns m3.validate
   (:require
-   [clojure.string :refer [starts-with? ends-with? replace] :rename {replace string-replace}]
+   [clojure.string :refer [ends-with?]]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
-   [m3.platform :refer [pformat json-decode]]
-   [m3.util :refer [absent present? concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure]]
-   [m3.ecma :refer [ecma-pattern ecma-match]]
+   [m3.platform :refer [json-decode]]
+   [m3.util :refer [present? concatv make-error make-error-on-failure]]
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
-   [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker]]
-   [m3.format :refer [check-format]]
+   [m3.type :refer [json-object?]]
    [m3.ref :refer [meld resolve-uri try-path]]
    [m3.vocabulary :refer [draft->vocab-and-group-and-property-and-semantics make-dialect]]))
 

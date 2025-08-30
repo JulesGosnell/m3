@@ -17,7 +17,7 @@
    [clojure.string :refer [split replace] :rename {replace string-replace}] 
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.util :refer [present? absent]]
-   [m3.uri :refer [parse-uri inherit-uri uri-base uri-fragment]]))
+   [m3.uri :refer [uri-base uri-fragment]]))
 
 
 (defn parse-int [s]

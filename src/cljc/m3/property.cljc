@@ -1,16 +1,29 @@
+;; Copyright 2025 Julian Gosnell
+;;
+;; Licensed under the Apache License, Version 2.0 (the "License");
+;; you may not use this file except in compliance with the License.
+;; You may obtain a copy of the License at
+;;
+;;     http://www.apache.org/licenses/LICENSE-2.0
+;;
+;; Unless required by applicable law or agreed to in writing, software
+;; distributed under the License is distributed on an "AS IS" BASIS,
+;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+;; See the License for the specific language governing permissions and
+;; limitations under the License.
+
 (ns m3.property
   (:require
    #?(:cljs [goog.string.format]
       :cljs [cljs.core :as cljs])
-   [clojure.string :refer [starts-with? ends-with? replace] :rename {replace string-replace}]
+   [clojure.string :refer [starts-with? replace] :rename {replace string-replace}]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.platform :refer [pformat json-decode big-zero? big-mod pbigdec]]
-   [m3.util :refer [absent present? concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure]]
+   [m3.util :refer [absent concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure]]
    [m3.ecma :refer [ecma-pattern ecma-match]]
-   [m3.uri :refer [parse-uri inherit-uri uri-base]]
+   [m3.uri :refer [parse-uri inherit-uri]]
    [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker json-=]]
-   [m3.format :refer [check-format]]
-   [m3.ref :refer [meld resolve-uri try-path]]))
+   [m3.format :refer [check-format]]))
 
 ;;------------------------------------------------------------------------------
 ;; standard common properties
