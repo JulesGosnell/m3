@@ -489,24 +489,21 @@
    ;; properties...
    (draft->vocab-and-group-and-property-and-semantics d)))
 
-(def make-dialect (memoize make-dialect-2))
-
-;;------------------------------------------------------------------------------
-
 ;; lets define a dialect as a function that given an m2 will return
 ;; you a correctly ordered sequence of pairs of m2-kv and
 ;; property-checker
 
 ;; should really convert strings to uris...
-(defn new-make-dialect-2 [d v->b]
-  (prn "NEW-MAKE-DIALECT:" d v->b)
-  (partial
-   (make-stable-sort-by
-    third
-    (filter
-     (comp (into #{} (keys v->b)) first)
-     (draft->vocab-and-group-and-property-and-semantics d)))
-   first
-   (juxt first (comp fourth second))))
+;; (defn make-dialect-2 [d v->b]
+;;   (prn "NEW-MAKE-DIALECT:" d v->b)
+;;   (partial
+;;    (make-stable-sort-by
+;;     third
+;;     (filter
+;;      (comp (into #{} (keys v->b)) first)
+;;      (draft->vocab-and-group-and-property-and-semantics d)))
+;;    first
+;;    (juxt first (comp fourth second))))
 
-(def new-make-dialect (memoize new-make-dialect-2))
+(def make-dialect (memoize make-dialect-2))
+

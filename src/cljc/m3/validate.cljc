@@ -178,6 +178,7 @@
 
   
 (defn compile-m2 [{vs :dialect d :draft :as c2} old-p2 m2]
+  ;;(prn "COMPILE-M2:" m2)
   (map
    rest
    (sort-by
@@ -200,7 +201,7 @@
 ;;      (let [new-p2 (conj old-p2 k)]
 ;;        (conj acc (list new-p2 (c k c2 new-p2 m2 v)))))
 ;;    nil
-;;    (vs m2)))
+;;    (when (json-object? m2) (vs m2))))
 
 ;;------------------------------------------------------------------------------
 ;; tmp solution - does not understand about schema structure
