@@ -14,8 +14,8 @@
 
 (ns m3.log-test
   (:require
-   #?(:clj  [clojure.test :refer [deftest testing is]]
-      :cljs [cljs.test :refer-macros [deftest testing is]])
+   #?(:clj  [clojure.test :refer [deftest is]]
+      :cljs [cljs.test :refer-macros [deftest is]])
    [m3.log :as log]))
 
 ;; for clj coverage - not actually to be used with clj
