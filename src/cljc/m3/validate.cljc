@@ -22,7 +22,7 @@
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.type :refer [json-object?]]
    [m3.ref :refer [meld resolve-uri try-path]]
-   [m3.vocabulary :refer [draft->default-$vocabulary make-dialect new-make-dialect]]))
+   [m3.vocabulary :refer [draft->default-$vocabulary new-make-dialect]]))
 
 ;; consider https://docs.oracle.com/javase/8/docs/api/java/time/package-summary.html - other time types...
 
@@ -162,7 +162,7 @@
       ;; should this be returning the dynamic anchor?
       :path->uri (constantly draft2020-12)}}))
 
-(defn compile-m2 [{vs :new-dialect d :draft :as c2} old-p2 m2]
+(defn compile-m2 [{vs :dialect d :draft :as c2} old-p2 m2]
   ;;(prn "FIRST:" d (vs m2))
   (let [vs (if vs vs (do
                        ;;(prn "DIALECT MISSING!")
@@ -406,8 +406,7 @@
         ;; we are at the top
         (let [draft ($schema->draft s)
               c2 (assoc c2
-                        :dialect (make-dialect draft (or $vocabulary (draft->default-$vocabulary draft)))
-                        :new-dialect (new-make-dialect draft (or $vocabulary (draft->default-$vocabulary draft)))
+                        :dialect (new-make-dialect draft (or $vocabulary (draft->default-$vocabulary draft)))
                         ) ;; handle drafts that are too early to know about $vocabulary
               uri (parse-uri s) ;; duplicate work
               stash (uri->marker-stash uri)
@@ -425,19 +424,17 @@
               (v
                (assoc c1
                       ;; think about draft
-                      :dialect (or (and $vocabulary (make-dialect draft $vocabulary)) (c2 :dialect))
-                      :new-dialect (or (and $vocabulary (new-make-dialect draft $vocabulary)) (c2 :new-dialect))
+                      :dialect (or (and $vocabulary (new-make-dialect draft $vocabulary)) (c2 :new-dialect))
                       )
                m1))
             (constantly r)))
         ;; keep going - inheriting relevant parts of c1
-        (let [[{vs :dialect new-vs :new-dialect u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)]
+        (let [[{vs :dialect u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)]
           ;;(prn "STASH:" u->p p->u)
           (if (empty? es)
             (validate-2 (assoc c2
                                :marker-stash {:uri->path (or u->p {}) :path->uri (or p->u {})}
                                :dialect vs
-                               :new-dialect new-vs
                                ) m1)
             (constantly r))))
       (constantly [c2 [(str "could not resolve $schema: " s)]]))))

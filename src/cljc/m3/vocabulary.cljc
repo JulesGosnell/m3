@@ -477,18 +477,6 @@
      (into {} (map (fn [v] [v true]) (distinct (map first v)))))
    draft->vocab-and-group-and-property-and-semantics))
 
-(defn make-dialect-2 [d v->b]
-  (reduce
-   (fn [acc [v g p f]]
-     (let [b (v->b v)]
-       (if (nil? b)
-         acc
-         (conj acc [p f]))))
-   []
-   ;; N.B. important to preserve evaluation order of vocabulary
-   ;; properties...
-   (draft->vocab-and-group-and-property-and-semantics d)))
-
 ;; lets define a dialect as a function that given an m2 will return
 ;; you a correctly ordered sequence of pairs of m2-kv and
 ;; property-checker
@@ -516,6 +504,5 @@
 
         r))))
 
-(def make-dialect (memoize make-dialect-2))
 (def new-make-dialect (memoize new-make-dialect-2))
 
