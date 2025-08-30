@@ -16,7 +16,13 @@
   (:require
    #?(:clj  [clojure.test :refer [deftest testing is]]
       :cljs [cljs.test :refer-macros [deftest testing is]])
-   [m3.util :refer [topo-sort-by make-stable-sort-by]]))
+   [m3.util :refer [map-values topo-sort-by make-stable-sort-by]]))
+
+(deftest test-map-values
+  (is (=
+       {:a 2, :b 3, :c 4}
+       (map-values inc {:a 1 :b 2 :c 3}))))
+
 
 (deftest test-topo-sort-by
   (testing "without xform"

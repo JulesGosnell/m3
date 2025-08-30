@@ -14,7 +14,7 @@
 
 (ns m3.vocabulary
   (:require
-   [m3.util :refer [topo-sort-by make-stable-sort-by fourth]]
+   [m3.util :refer [map-values topo-sort-by make-stable-sort-by fourth]]
    [m3.property :refer
     [check-property-$anchor
      check-property-$comment
@@ -471,6 +471,12 @@
      ["https://json-schema.org/draft/next/vocab/validation"            :validation         "uniqueItems"             check-property-uniqueItems                   #{}]
      ["https://json-schema.org/draft/next/vocab/validation"            :validation         "type"                    check-property-type                          #{}]])})
 
+(def draft->default-$vocabulary
+  (map-values
+   (fn [v]
+     (into {} (map (fn [v] [v true]) (distinct (map first v)))))
+   draft->vocab-and-group-and-property-and-semantics))
+
 (defn make-dialect-2 [d v->b]
   (reduce
    (fn [acc [v g p f]]
@@ -493,6 +499,7 @@
 
 ;; should really convert strings to uris...
 (defn new-make-dialect-2 [d v->b]
+  (prn "NEW-MAKE-DIALECT:" d v->b)
   (partial
    (make-stable-sort-by
     third
