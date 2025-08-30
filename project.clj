@@ -31,6 +31,7 @@
             [lein-asset-minifier "0.4.7" :exclusions [org.clojure/clojure]] ;; https://github.com/yogthos/lein-asset-minifier
             [com.jakemccrary/lein-test-refresh "0.26.0"] ;; https://github.com/jakemcc/test-refresh
             [lein-ancient "0.7.0"] ;; https://github.com/xsc/lein-ancient
+            [lein-shell "0.5.0"] ;; https://github.com/hypirion/lein-shell
             ]
 
   :min-lein-version "2.5.0"
@@ -45,9 +46,8 @@
                          {:target :node-test
                           :output-dir "target/shadow"
                           :output-to "target/shadow/test.js"
-                          :runner-ns "m3.runner"
                           :ns-regexp "-test$"
-                          :autorun true}
+                          :autorun false}
                          :dev
                          {:target :node-script
                           :output-dir "target/node"
@@ -67,7 +67,7 @@
               :source-paths ["env/dev/clj"]
               :plugins [[cider/cider-nrepl "0.57.0"]
                         [org.clojure/tools.namespace "1.5.0" :exclusions [org.clojure/tools.reader]]
-                        [refactor-nrepl "3.11.0" :exclusions [org.clojure/clojure]]]
+                        [refactor-nrepl "3.11.0" :exclusions [org.clojure/clojure3]]]
 
               :injections [(require 'pjstadig.humane-test-output)
                            (pjstadig.humane-test-output/activate!)]
@@ -95,4 +95,6 @@
                    :source-paths ["mcp/src"]
                    :main ^:skip-aot m3.mcp-runner}}
 
-  :aliases {"test-cljs" ["shadow" "compile" "test"]})
+  :aliases {"test-cljs" ["do"
+                         ["shadow" "compile" "test"]
+                         ["shell" "node" "target/shadow/test.js"]]})
