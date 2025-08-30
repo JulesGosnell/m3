@@ -15,7 +15,7 @@
 (ns m3.vocabulary-test
   (:require
    [m3.property :refer [check-property-const check-property-type]]
-   [m3.vocabulary :refer [make-dialect-2]]
+   [m3.vocabulary :refer [new-make-dialect-2]]
    #?(:clj [clojure.test :refer [deftest testing is]]
       :cljs [cljs.test :refer [deftest testing is] :include-macros true])))
 
