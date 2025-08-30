@@ -163,7 +163,6 @@
       :path->uri (constantly draft2020-12)}}))
 
 (defn compile-m2 [{vs :dialect d :draft :as c2} old-p2 m2]
-  ;;(prn "FIRST:" d (vs m2))
   (let [vs (if vs vs (do
                        ;;(prn "DIALECT MISSING!")
                        (draft->default-dialect d)))]
@@ -172,7 +171,7 @@
        (let [new-p2 (conj old-p2 k)]
          (conj acc (list new-p2 (c k c2 new-p2 m2 v)))))
      []
-     (when vs (vs m2)))))
+     (vs m2))))
 
 ;;------------------------------------------------------------------------------
 ;; tmp solution - does not understand about schema structure

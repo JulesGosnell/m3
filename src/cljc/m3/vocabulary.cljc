@@ -477,26 +477,19 @@
 
 ;; should really convert strings to uris...
 (defn make-dialect-2 [d v->b]
-  ;;(prn "NEW-MAKE-DIALECT:" d v->b)
-
   (fn [m2]
     ;; Guard: only process maps (not booleans true/false)
     (when (map? m2)
-      (let [r ((partial
-                (make-stable-sort-by
-                 third
-                 (filter
-                  (comp (into #{} (keys v->b)) first)
-                  (draft->vocab-and-group-and-property-and-semantics d)))
-                first
-                (juxt first (comp fourth second)))
+      ((partial
+        (make-stable-sort-by
+         third
+         (filter
+          (comp (into #{} (keys v->b)) first)
+          (draft->vocab-and-group-and-property-and-semantics d)))
+        first
+        (juxt first (comp fourth second)))
 
-               m2)]
-
-        (when (nil? r)
-          (prn "GRRR...:" d v->b m2))
-
-        r))))
+       m2))))
 
 (def make-dialect (memoize make-dialect-2))
 
@@ -505,5 +498,3 @@
    (fn [k v]
      (make-dialect k (into {} (map (fn [v] [v true]) (distinct (map first v))))))
    draft->vocab-and-group-and-property-and-semantics))
-
-
