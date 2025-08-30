@@ -41,6 +41,11 @@
          [[:a :a] [:b :b] [:c :c] [:d :d]]
          ((make-stable-sort-by identity [:a :b :c :d :e])
           identity identity [:d :b :c :a]))))
+  (testing "unknown key"
+    (is (=
+         [[:a :a] [:b :b] [:c :c] [:d :d]]
+         ((make-stable-sort-by identity [:a :b :c :d :e])
+          identity identity [:d :b :c :a :f]))))
   (testing "with k1 fn"
     (is (=
          [[:a [:a :A]] [:b [:b :B]] [:c [:c :C]] [:d [:d :D]]]

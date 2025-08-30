@@ -75,8 +75,8 @@
        (comp xform second)
        (sort-by
         first
-        (map
-         (fn [e2] (let [[i e1] (index (k2 e2))] [i [e2 e1]]))
+        (keep
+         (fn [e2] (when-let [[i e1] (index (k2 e2))] [i [e2 e1]]))
          e2s))))))
 
 ;;------------------------------------------------------------------------------

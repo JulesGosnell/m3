@@ -129,9 +129,11 @@
 (defn check-property-examples         [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
 
 (defn check-property-$vocabulary [_property {d :draft} _p2 _m2 v2]
-  (let [vocabularies ((deref (resolve 'm3.vocabulary/make-dialect)) d v2)]
-    (fn [c1 _p1 _m1]
-      [(assoc c1 :dialect vocabularies) nil])))
+  (fn [c1 _p1 _m1]
+    [(assoc c1
+            :dialect ((deref (resolve 'm3.vocabulary/make-dialect)) d v2)
+            :new-dialect ((deref (resolve 'm3.vocabulary/new-make-dialect)) d v2)
+            ) nil]))
 
 ;; TODO: issue a warning somehow
 (defn check-property-deprecated [_property _c2 _p2 _m2 _v2] (fn [_c1 _p1 _m1])) ;; TODO: issue a warning or error ?

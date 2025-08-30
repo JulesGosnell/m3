@@ -22,7 +22,7 @@
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.type :refer [json-object?]]
    [m3.ref :refer [meld resolve-uri try-path]]
-   [m3.vocabulary :refer [draft->vocab-and-group-and-property-and-semantics draft->default-$vocabulary make-dialect]]))
+   [m3.vocabulary :refer [draft->vocab-and-group-and-property-and-semantics draft->default-$vocabulary make-dialect new-make-dialect]]))
 
 ;; consider https://docs.oracle.com/javase/8/docs/api/java/time/package-summary.html - other time types...
 
@@ -176,8 +176,7 @@
 
 (def make-property->index-and-check (memoize make-property->index-and-check-2))
 
-  
-(defn compile-m2 [{vs :dialect d :draft :as c2} old-p2 m2]
+(defn old-compile-m2 [{vs :dialect d :draft :as c2} old-p2 m2]
   ;;(prn "COMPILE-M2:" m2)
   (map
    rest
@@ -194,14 +193,30 @@
      nil
      m2))))
 
-;; (defn compile-m2 [{vs :dialect d :draft :as c2} old-p2 m2]
-;;   ;;(prn "FIRST:" d (vs m2))
-;;   (reduce
-;;    (fn [acc [[k v] c]]
-;;      (let [new-p2 (conj old-p2 k)]
-;;        (conj acc (list new-p2 (c k c2 new-p2 m2 v)))))
-;;    nil
-;;    (when (json-object? m2) (vs m2))))
+(defn new-compile-m2 [{vs :new-dialect d :draft :as c2} old-p2 m2]
+  ;;(prn "FIRST:" d (vs m2))
+  (let [vs (if vs vs (do
+                       ;;(prn "DIALECT MISSING!")
+                       (new-make-dialect d (draft->default-$vocabulary d))))]
+    (reduce
+     (fn [acc [[k v] c]]
+       (let [new-p2 (conj old-p2 k)]
+         (conj acc (list new-p2 (c k c2 new-p2 m2 v)))))
+     []
+     (when vs (vs m2)))))
+
+(defn compile-m2 [{d :draft od :dialect nd :new-dialect :as c2} p2 m2]
+  (let [old (old-compile-m2 c2 p2 m2)
+        new (new-compile-m2 c2 p2 m2)
+
+        o (map first old)
+        n (map first new)
+        ]
+
+    (when (not (= o n))
+      (prn "AAARGH:" d o n))
+    
+    new))
 
 ;;------------------------------------------------------------------------------
 ;; tmp solution - does not understand about schema structure
@@ -434,7 +449,10 @@
       (if (= m2 m1)
         ;; we are at the top
         (let [draft ($schema->draft s)
-              c2 (assoc c2 :dialect (make-dialect draft (or $vocabulary (draft->default-$vocabulary draft)))) ;; handle drafts that are too early to know about $vocabulary
+              c2 (assoc c2
+                        :dialect (make-dialect draft (or $vocabulary (draft->default-$vocabulary draft)))
+                        :new-dialect (new-make-dialect draft (or $vocabulary (draft->default-$vocabulary draft)))
+                        ) ;; handle drafts that are too early to know about $vocabulary
               uri (parse-uri s) ;; duplicate work
               stash (uri->marker-stash uri)
               _ (when-not stash (prn "NO STASH FOR:" s))
@@ -449,17 +467,22 @@
             ;; return a validator (f1) that will build its own dialect or inherit its meta-schema's
             (fn [c1 {$vocabulary "$vocabulary" :as m1}]
               (v
-               (assoc c1 :dialect (or (and $vocabulary (make-dialect draft $vocabulary)) ;; think about draft
-                                      (c2 :dialect)))
+               (assoc c1
+                      ;; think about draft
+                      :dialect (or (and $vocabulary (make-dialect draft $vocabulary)) (c2 :dialect))
+                      :new-dialect (or (and $vocabulary (new-make-dialect draft $vocabulary)) (c2 :new-dialect))
+                      )
                m1))
             (constantly r)))
         ;; keep going - inheriting relevant parts of c1
-        (let [[{vs :dialect u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)]
+        (let [[{vs :dialect new-vs :new-dialect u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)]
           ;;(prn "STASH:" u->p p->u)
           (if (empty? es)
             (validate-2 (assoc c2
                                :marker-stash {:uri->path (or u->p {}) :path->uri (or p->u {})}
-                               :dialect vs) m1)
+                               :dialect vs
+                               :new-dialect new-vs
+                               ) m1)
             (constantly r))))
       (constantly [c2 [(str "could not resolve $schema: " s)]]))))
 
