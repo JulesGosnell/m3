@@ -15,7 +15,7 @@
 (ns m3.vocabulary-test
   (:require
    [m3.property :refer [check-property-const check-property-type]]
-   [m3.vocabulary :refer [new-make-dialect-2]]
+   [m3.vocabulary :refer [make-dialect-2]]
    #?(:clj [clojure.test :refer [deftest testing is]]
       :cljs [cljs.test :refer [deftest testing is] :include-macros true])))
 
@@ -28,11 +28,11 @@
    "https://json-schema.org/draft/2020-12/vocab/format-annotation" true
    "https://json-schema.org/draft/2020-12/vocab/content"           true})
 
-;; (deftest test-make-dialect-2
-;;   (let [dialect (make-dialect-2 :draft2020-12 v)]
-;;     (testing "simple"
-;;       (is (=
-;;            [[["const" "hello"] check-property-const]
-;;             [["type" "string"] check-property-type]]
-;;            (dialect {"type" "string" "const" "hello"}))))))
+(deftest test-make-dialect-2
+  (let [dialect (make-dialect-2 :draft2020-12 v)]
+    (testing "simple"
+      (is (=
+           [[["const" "hello"] check-property-const]
+            [["type" "string"] check-property-type]]
+           (dialect {"type" "string" "const" "hello"}))))))
     

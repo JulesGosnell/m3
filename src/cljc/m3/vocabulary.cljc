@@ -473,7 +473,7 @@
 
 (def draft->default-$vocabulary
   (map-values
-   (fn [v]
+   (fn [k v]
      (into {} (map (fn [v] [v true]) (distinct (map first v)))))
    draft->vocab-and-group-and-property-and-semantics))
 
@@ -482,7 +482,7 @@
 ;; property-checker
 
 ;; should really convert strings to uris...
-(defn new-make-dialect-2 [d v->b]
+(defn make-dialect-2 [d v->b]
   ;;(prn "NEW-MAKE-DIALECT:" d v->b)
 
   (fn [m2]
@@ -504,5 +504,5 @@
 
         r))))
 
-(def new-make-dialect (memoize new-make-dialect-2))
+(def make-dialect (memoize make-dialect-2))
 

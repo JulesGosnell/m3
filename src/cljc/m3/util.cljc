@@ -44,7 +44,7 @@
 (defn map-values [f m]
   (reduce-kv
    (fn [acc k v]
-     (assoc acc k (f v)))
+     (assoc acc k (f k v)))
    (empty m)
    m))
 

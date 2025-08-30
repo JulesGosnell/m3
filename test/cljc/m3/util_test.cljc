@@ -21,7 +21,7 @@
 (deftest test-map-values
   (is (=
        {:a 2, :b 3, :c 4}
-       (map-values inc {:a 1 :b 2 :c 3}))))
+       (map-values (fn [_k v] (inc v)) {:a 1 :b 2 :c 3}))))
 
 
 (deftest test-topo-sort-by
