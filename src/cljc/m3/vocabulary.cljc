@@ -92,39 +92,16 @@
 ;; to adapt a c2/p2/m2->c1/p1/m1 (old) l2 fn into new composable shape l2 (new format)
 ;; also does l2 path management
 
-(defn old->new [k old-f2]
-  (fn [c2 p2 m2]
-    (let [v2 (get m2 k)
-          old-f1 (if v2 (old-f2 k c2
-                                ;;(conj p2 k)
-                                p2
-                                m2 v2) (fn [c1 p1 m1] [c1 []]))]
+(defn old->new [old-f2]
+  (fn [property c2 p2 m2 v2]
+    (let [old-f1 (old-f2 property c2 p2 m2 v2)]
       [c2
        m2
-       (fn [c1 p1 m1]
-         (let [[c1 es] (old-f1 c1 p1 m1)]
-           [c1 m1 es]))])))
-
-;; to adapt a new checker to the old format
-
-(defn new->old [new-f2]
-  (fn [_ c2 p2 m2 _]
-    (let [[c2 m2 new-f1] (new-f2 c2 p2 m2)]
-      (fn [c1 p1 m1]
-        (let [[c1 m1 es] (new-f1 c1 p1 m1)]
-          [c1 es])))))
-
-;; compose two checkers into a single new checker
-(defn compose-checkers [l2 r2]
-  (fn [c2 p2 m2]
-    (let [[c2 m2 l1] (l2 c2 p2 m2)
-          [c2 m2 r1] (l2 c2 p2 m2)]
-      [c2
-       m2
-       (fn [c1 p1 m1]
-         (let [[c1 m1 les] (l1 c1 p1 m1)
-               [c1 m1 res] (r1 c1 p1 m1)]
-           [c1 m1 (concatv les res)]))])))
+       ;; (fn [c1 p1 m1]
+       ;;   (let [[c1 es] (old-f1 c1 p1 m1)]
+       ;;     [c1 m1 es]))
+       old-f1
+       ])))
 
 ;; we should have enough now to adapt all vocab keyword fns to new
 ;; format, compose them into a single new format function and then

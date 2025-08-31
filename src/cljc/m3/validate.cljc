@@ -164,17 +164,15 @@
 
 (defn compile-m2 [{vs :dialect d :draft :as c2} old-p2 m2]
   (let [vs (if vs vs (draft->default-dialect d))]
-    (let [[c2 m2 f1s]
+    (let [[c2 m2 p2-and-f1s]
           (reduce
-           (fn [[c2 m2 acc] [[k v] c]]
+           (fn [[c2 m2 acc] [[k v] cp]]
              (let [new-p2 (conj old-p2 k)
-                   f1 (c k c2 new-p2 m2 v)
-                   ;;[c2 m2 f1] (old->new (c k c2 new-p2 m2 v))
-                   ]
+                   [c2 m2 f1] ((old->new cp) k c2 new-p2 m2 v)]
                [c2 m2 (conj acc (list new-p2 f1))]))
            [c2 m2 []]
            (vs m2))]
-      f1s)))
+      p2-and-f1s)))
 
 
 ;;------------------------------------------------------------------------------
