@@ -21,7 +21,7 @@
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.type :refer [json-object?]]
    [m3.ref :refer [meld resolve-uri try-path]]
-   [m3.vocabulary :refer [draft->default-dialect make-dialect old->new]]))
+   [m3.vocabulary :refer [draft->default-dialect make-dialect]]))
 
 ;; consider https://docs.oracle.com/javase/8/docs/api/java/time/package-summary.html - other time types...
 
@@ -163,16 +163,15 @@
 
 (defn compile-m2 [{vs :dialect d :draft :as c2} old-p2 m2]
   (let [vs (if vs vs (draft->default-dialect d))]
-    (let [[c2 m2 p2-and-f1s]
+    (let [[_c2 _m2 p2-and-f1s]
           (reduce
            (fn [[c2 m2 acc] [[k v] cp]]
              (let [new-p2 (conj old-p2 k)
-                   [c2 m2 f1] ((old->new cp) k c2 new-p2 m2 v)]
+                   [c2 m2 f1] (cp k c2 new-p2 m2 v)]
                [c2 m2 (conj acc (list new-p2 f1))]))
            [c2 m2 []]
            (vs m2))]
       p2-and-f1s)))
-
 
 ;;------------------------------------------------------------------------------
 ;; tmp solution - does not understand about schema structure
