@@ -42,7 +42,7 @@
   (boolean (some (partial p? v) s)))
 
 (defn assoc-when [c k v]
-  (if (not-empty v) (assoc c k v) c))
+  (if (nil? v) c (assoc c k v)))
 
 ;;------------------------------------------------------------------------------
 
