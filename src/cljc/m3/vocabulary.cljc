@@ -97,11 +97,9 @@
     (let [old-f1 (old-f2 property c2 p2 m2 v2)]
       [c2
        m2
-       ;; (fn [c1 p1 m1]
-       ;;   (let [[c1 es] (old-f1 c1 p1 m1)]
-       ;;     [c1 m1 es]))
-       old-f1
-       ])))
+       (fn [c1 p1 m1]
+         (let [[c1 es] (old-f1 c1 p1 m1)]
+           [c1 m1 es]))])))
 
 ;; we should have enough now to adapt all vocab keyword fns to new
 ;; format, compose them into a single new format function and then

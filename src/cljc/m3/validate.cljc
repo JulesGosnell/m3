@@ -228,12 +228,12 @@
       (if (present? m1)
         (let [[new-c1 m1 es]
               (reduce
-               (fn [[old-c1 m1 acc] [new-p2 cp]]
-                 (let [[new-c1
-                        ;;m1
-                        [{m :message} :as es]] (cp old-c1 p1 m1)]
+               (fn [[c1 m1 acc] [new-p2 cp]]
+                 (let [[c1
+                        m1
+                        [{m :message} :as es]] (cp c1 p1 m1)]
                    (when t? (println (pr-str new-p2) (pr-str p1) (if (seq es) ["❌" m] "✅")))
-                   [new-c1 m1 (concatv acc es)]))
+                   [c1 m1 (concatv acc es)]))
                [c1 m1 []]
                (compile-m2 c2 p2 m2))]
           [new-c1 ;; (first (stash new-c1 {} m1 p1))
