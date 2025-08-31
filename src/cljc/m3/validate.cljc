@@ -22,7 +22,7 @@
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.type :refer [json-object?]]
    [m3.ref :refer [meld resolve-uri try-path]]
-   [m3.vocabulary :refer [draft->default-dialect make-dialect]]))
+   [m3.vocabulary :refer [draft->default-dialect make-dialect old->new]]))
 
 ;; consider https://docs.oracle.com/javase/8/docs/api/java/time/package-summary.html - other time types...
 
@@ -164,14 +164,18 @@
 
 (defn compile-m2 [{vs :dialect d :draft :as c2} old-p2 m2]
   (let [vs (if vs vs (draft->default-dialect d))]
-    (let [[c2 f1s]
+    (let [[c2 m2 f1s]
           (reduce
-           (fn [[c2 acc] [[k v] c]]
-             (let [new-p2 (conj old-p2 k)]
-               [c2 (conj acc (list new-p2 (c k c2 new-p2 m2 v)))]))
-           [c2 []]
+           (fn [[c2 m2 acc] [[k v] c]]
+             (let [new-p2 (conj old-p2 k)
+                   f1 (c k c2 new-p2 m2 v)
+                   ;;[c2 m2 f1] (old->new (c k c2 new-p2 m2 v))
+                   ]
+               [c2 m2 (conj acc (list new-p2 f1))]))
+           [c2 m2 []]
            (vs m2))]
       f1s)))
+
 
 ;;------------------------------------------------------------------------------
 ;; tmp solution - does not understand about schema structure
@@ -225,13 +229,15 @@
     :else
     (fn [c1 p1 m1]
       (if (present? m1)
-        (let [[new-c1 es]
+        (let [[new-c1 m1 es]
               (reduce
-               (fn [[old-c1 acc] [new-p2 cp]]
-                 (let [[new-c1 [{m :message} :as es]] (cp old-c1 p1 m1)]
+               (fn [[old-c1 m1 acc] [new-p2 cp]]
+                 (let [[new-c1
+                        ;;m1
+                        [{m :message} :as es]] (cp old-c1 p1 m1)]
                    (when t? (println (pr-str new-p2) (pr-str p1) (if (seq es) ["❌" m] "✅")))
-                   [new-c1 (concatv acc es)]))
-               [c1 []]
+                   [new-c1 m1 (concatv acc es)]))
+               [c1 m1 []]
                (compile-m2 c2 p2 m2))]
           [new-c1 ;; (first (stash new-c1 {} m1 p1))
            (make-error-on-failure "schema: document did not conform" p2 m2 p1 m1 es)])
