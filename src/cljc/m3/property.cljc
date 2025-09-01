@@ -23,7 +23,8 @@
    [m3.ecma :refer [ecma-pattern ecma-match]]
    [m3.uri :refer [parse-uri inherit-uri]]
    [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker json-=]]
-   [m3.format :refer [check-format]]))
+   [m3.format :refer [check-format]]
+   [m3.draft :refer [$schema->draft]]))
 
 ;;------------------------------------------------------------------------------
 ;; standard common properties
@@ -119,8 +120,25 @@
     [c1 nil]))
 
 (defn check-property-$schema [_property c2 _p2 m2 v2]
-  ;;(prn "$SCHEMA:" v2)
-  [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
+  ;; TODO:
+  ;; in f2 we should:
+  ;; - recurse to top of schema hierrchy
+  ;; - descend hierarchy with a new :dialect, :draft and :schema-uri
+  ;; - this should all be memoised so take no time
+  ;; - validate our given m2 against our given $schema
+  ;; - copy the given :dialect, :draft and :schema-uri into our c2 for subsequent checkers...
+  [c2
+   ;; (if-let [d ($schema->draft v2)]
+   ;;   (update
+   ;;    c2
+   ;;    :draft
+   ;;    (fn [old-d new-d]
+   ;;      (when (not= old-d new-d) (log/info (str "switching draft: " old-d " -> " new-d)))
+   ;;      new-d)
+   ;;    d)
+   ;;   c2)
+   m2
+   (fn [c1 _p1 m1] [c1 m1 nil])])
 
 
 (defn check-property-$recursiveRef    [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))

@@ -21,6 +21,7 @@
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.type :refer [json-object?]]
    [m3.ref :refer [meld resolve-uri try-path]]
+   [m3.draft :refer [draft->$schema $schema->draft $schema-uri->draft]]
    [m3.vocabulary :refer [draft->default-dialect make-dialect]]))
 
 ;; consider https://docs.oracle.com/javase/8/docs/api/java/time/package-summary.html - other time types...
@@ -30,34 +31,6 @@
 #?(:cljs (defn slurp [path] (.readFileSync fs path "utf8")))
 
 ;;------------------------------------------------------------------------------
-
-(def draft->draft?
-  {:draft3       #{:draft3}
-   :draft4       #{:draft3 :draft4}
-   :draft6       #{:draft3 :draft4 :draft6}
-   :draft7       #{:draft3 :draft4 :draft6 :draft7}
-   :draft2019-09 #{:draft3 :draft4 :draft6 :draft7 :draft2019-09}
-   :draft2020-12 #{:draft3 :draft4 :draft6 :draft7 :draft2019-09 :draft2020-12}
-   :latest       #{:draft3 :draft4 :draft6 :draft7 :draft2019-09 :draft2020-12}
-   :draft-next   #{:draft3 :draft4 :draft6 :draft7 :draft2019-09 :draft2020-12 :draft-next}})
-
-(def draft->$schema
-  {:draft3       "http://json-schema.org/draft-03/schema"
-   :draft4       "http://json-schema.org/draft-04/schema"
-   :draft6       "http://json-schema.org/draft-06/schema"
-   :draft7       "http://json-schema.org/draft-07/schema"
-   :draft2019-09 "https://json-schema.org/draft/2019-09/schema"
-   :draft2020-12 "https://json-schema.org/draft/2020-12/schema"
-   :latest       "https://json-schema.org/draft/2020-12/schema"
-   :draft-next   "https://json-schema.org/draft/next/schema"})
-
-(def drafts (keys draft->$schema))
-
-(def $schema->draft
-  (reduce-kv (fn [acc k v] (conj (conj acc [v k]) [(str v "#") k])) {} (dissoc draft->$schema :latest)))
-
-(def $schema-uri->draft
-  (reduce-kv (fn [acc k v] (conj acc [(parse-uri k) v])) {} $schema->draft))
 
 (def latest-$schema (draft->$schema :latest))
 
@@ -258,6 +231,7 @@
   (fn [delegate]
     (fn [c2 p2 {s "$schema" :as m2}]
       (delegate
+       ;; c2
        (if-let [d (and s ($schema->draft s))]
          (update
           c2
