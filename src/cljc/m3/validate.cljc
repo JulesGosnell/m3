@@ -251,6 +251,7 @@
 ;; if validation was also a c2 reduction we could use that for vocabularies and maybe the marker-stash
 ;; investigate...
 
+;; TODO: replace with check-property-$schema...
 (defn make-draft-interceptor []
   ;; TODO:
   ;; we should be recursing up our own schema hierarchy to reet our marker stash, dialect etc
