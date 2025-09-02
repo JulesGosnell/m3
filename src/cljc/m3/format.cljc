@@ -98,10 +98,10 @@
 (defn check-format-date [_c2 p2 m2]
   (check-parse local-date-parse "date" _c2 p2 m2))
 
-(defn check-format-time-draft3 [c2 p2 m2]
+(defn check-format-time-pattern [c2 p2 m2]
   (check-pattern time-pattern "time" c2 p2 m2))
 
-(defn check-format-time-standard [_c2 p2 m2]
+(defn check-format-time-parse [_c2 p2 m2]
   (check-parse offset-time-parse "time" _c2 p2 m2))
 
 (defn check-format-json-pointer [_c2 p2 m2]
@@ -148,124 +148,122 @@
   (constantly nil))
 
 ;;------------------------------------------------------------------------------
-;; Table mapping drafts to format names to checker functions
 
 (def draft->format->checker
-  {:draft3 {"date-time" check-format-date-time
-            "date" check-format-date
-            "time" check-format-time-draft3
-            "utc-millisec" check-format-utc-millisec
-            "regex" check-format-regex
-            "color" check-format-color
-            "style" check-format-style
-            "phone" check-format-phone
-            "uri" check-format-uri
-            "email" check-format-email
-            "ip-address" check-format-ip-address
-            "ipv6" check-format-ipv6
-            "host-name" check-format-host-name}
-
-   :draft4 {"date-time" check-format-date-time
-            "email" check-format-email
-            "hostname" check-format-hostname
-            "ipv4" check-format-ipv4
-            "ipv6" check-format-ipv6
-            "uri" check-format-uri}
-
-   :draft6 {"date-time" check-format-date-time
-            "email" check-format-email
-            "hostname" check-format-hostname
-            "ipv4" check-format-ipv4
-            "ipv6" check-format-ipv6
-            "uri" check-format-uri
-            "uri-reference" check-format-uri-reference
-            "uri-template" check-format-uri-template
-            "json-pointer" check-format-json-pointer}
-
-   :draft7 {"date-time" check-format-date-time
-            "date" check-format-date
-            "time" check-format-time-standard
-            "email" check-format-email
-            "idn-email" check-format-idn-email
-            "hostname" check-format-hostname
-            "idn-hostname" check-format-idn-hostname
-            "ipv4" check-format-ipv4
-            "ipv6" check-format-ipv6
-            "uri" check-format-uri
-            "uri-reference" check-format-uri-reference
-            "iri" check-format-iri
-            "iri-reference" check-format-iri-reference
-            "uri-template" check-format-uri-template
-            "json-pointer" check-format-json-pointer
-            "relative-json-pointer" check-format-relative-json-pointer
-            "regex" check-format-regex}
-
-   :draft2019-09 {"date-time" check-format-date-time
-                  "date" check-format-date
-                  "time" check-format-time-standard
-                  "duration" check-format-duration
-                  "email" check-format-email
-                  "idn-email" check-format-idn-email
-                  "hostname" check-format-hostname
-                  "idn-hostname" check-format-idn-hostname
-                  "ipv4" check-format-ipv4
-                  "ipv6" check-format-ipv6
-                  "uri" check-format-uri
-                  "uri-reference" check-format-uri-reference
-                  "iri" check-format-iri
-                  "iri-reference" check-format-iri-reference
-                  "uri-template" check-format-uri-template
-                  "json-pointer" check-format-json-pointer
-                  "relative-json-pointer" check-format-relative-json-pointer
-                  "regex" check-format-regex
-                  "uuid" check-format-uuid}
-
-   :draft2020-12 {"date-time" check-format-date-time
-                  "date" check-format-date
-                  "time" check-format-time-standard
-                  "duration" check-format-duration
-                  "email" check-format-email
-                  "idn-email" check-format-idn-email
-                  "hostname" check-format-hostname
-                  "idn-hostname" check-format-idn-hostname
-                  "ipv4" check-format-ipv4
-                  "ipv6" check-format-ipv6
-                  "uri" check-format-uri
-                  "uri-reference" check-format-uri-reference
-                  "iri" check-format-iri
-                  "iri-reference" check-format-iri-reference
-                  "uri-template" check-format-uri-template
-                  "json-pointer" check-format-json-pointer
-                  "relative-json-pointer" check-format-relative-json-pointer
-                  "regex" check-format-regex
-                  "uuid" check-format-uuid}
-
-   :draft-next {"date-time" check-format-date-time
-                "date" check-format-date
-                "time" check-format-time-standard
-                "duration" check-format-duration
-                "email" check-format-email
-                "idn-email" check-format-idn-email
-                "hostname" check-format-hostname
-                "idn-hostname" check-format-idn-hostname
-                "ipv4" check-format-ipv4
-                "ipv6" check-format-ipv6
-                "uri" check-format-uri
-                "uri-reference" check-format-uri-reference
-                "iri" check-format-iri
-                "iri-reference" check-format-iri-reference
-                "uri-template" check-format-uri-template
-                "json-pointer" check-format-json-pointer
-                "relative-json-pointer" check-format-relative-json-pointer
-                "regex" check-format-regex
-                "uuid" check-format-uuid}})
-
-;;------------------------------------------------------------------------------
-;; Legacy multimethod support (to be removed)
-
-(defmulti check-format (fn [format _c2 _p2 _m2] format))
-
-(defmethod check-format :default [f _c2 _p2 _m2]
-  (fn [_c1 _p1 _m1]
-    (log/warn "format: not recognised via multimethod:" (pr-str f))
-    nil))
+  {:draft3
+   {"color"                  check-format-color
+    "date"                   check-format-date
+    "date-time"              check-format-date-time
+    "email"                  check-format-email
+    "host-name"              check-format-host-name
+    "ip-address"             check-format-ip-address
+    "ipv6"                   check-format-ipv6
+    "phone"                  check-format-phone
+    "regex"                  check-format-regex
+    "style"                  check-format-style
+    "time"                   check-format-time-pattern
+    "uri"                    check-format-uri
+    "utc-millisec"           check-format-utc-millisec}
+   :draft4
+   {"date-time"              check-format-date-time
+    "email"                  check-format-email
+    "hostname"               check-format-hostname
+    "ipv4"                   check-format-ipv4
+    "ipv6"                   check-format-ipv6
+    "regex"                  check-format-regex
+    "unknown"                check-format-unknown
+    "uri"                    check-format-uri}
+   :draft6
+   {"date-time"              check-format-date-time
+    "email"                  check-format-email
+    "hostname"               check-format-hostname
+    "ipv4"                   check-format-ipv4
+    "ipv6"                   check-format-ipv6
+    "json-pointer"           check-format-json-pointer
+    "regex"                  check-format-regex
+    "unknown"                check-format-unknown
+    "uri"                    check-format-uri
+    "uri-reference"          check-format-uri-reference
+    "uri-template"           check-format-uri-template}
+   :draft7
+   {"date"                   check-format-date
+    "date-time"              check-format-date-time
+    "email"                  check-format-email
+    "hostname"               check-format-hostname
+    "idn-email"              check-format-idn-email
+    "idn-hostname"           check-format-idn-hostname
+    "ipv4"                   check-format-ipv4
+    "ipv6"                   check-format-ipv6
+    "iri"                    check-format-iri
+    "iri-reference"          check-format-iri-reference
+    "json-pointer"           check-format-json-pointer
+    "regex"                  check-format-regex
+    "relative-json-pointer"  check-format-relative-json-pointer
+    "time"                   check-format-time-parse
+    "unknown"                check-format-unknown
+    "uri"                    check-format-uri
+    "uri-reference"          check-format-uri-reference
+    "uri-template"           check-format-uri-template}
+   :draft2019-09
+   {"date"                   check-format-date
+    "date-time"              check-format-date-time
+    "duration"               check-format-duration
+    "email"                  check-format-email
+    "hostname"               check-format-hostname
+    "idn-email"              check-format-idn-email
+    "idn-hostname"           check-format-idn-hostname
+    "ipv4"                   check-format-ipv4
+    "ipv6"                   check-format-ipv6
+    "iri"                    check-format-iri
+    "iri-reference"          check-format-iri-reference
+    "json-pointer"           check-format-json-pointer
+    "regex"                  check-format-regex
+    "relative-json-pointer"  check-format-relative-json-pointer
+    "time"                   check-format-time-parse
+    "unknown"                check-format-unknown
+    "uri"                    check-format-uri
+    "uri-reference"          check-format-uri-reference
+    "uri-template"           check-format-uri-template
+    "uuid"                   check-format-uuid}
+   :draft2020-12
+   {"date"                   check-format-date
+    "date-time"              check-format-date-time
+    "duration"               check-format-duration
+    "email"                  check-format-email
+    "hostname"               check-format-hostname
+    "idn-email"              check-format-idn-email
+    "idn-hostname"           check-format-idn-hostname
+    "ipv4"                   check-format-ipv4
+    "ipv6"                   check-format-ipv6
+    "iri"                    check-format-iri
+    "iri-reference"          check-format-iri-reference
+    "json-pointer"           check-format-json-pointer
+    "regex"                  check-format-regex
+    "relative-json-pointer"  check-format-relative-json-pointer
+    "time"                   check-format-time-parse
+    "unknown"                check-format-unknown
+    "uri"                    check-format-uri
+    "uri-reference"          check-format-uri-reference
+    "uri-template"           check-format-uri-template
+    "uuid"                   check-format-uuid}
+   :draft-next
+   {"date"                   check-format-date
+    "date-time"              check-format-date-time
+    "duration"               check-format-duration
+    "email"                  check-format-email
+    "hostname"               check-format-hostname
+    "idn-email"              check-format-idn-email
+    "idn-hostname"           check-format-idn-hostname
+    "ipv4"                   check-format-ipv4
+    "ipv6"                   check-format-ipv6
+    "iri"                    check-format-iri
+    "iri-reference"          check-format-iri-reference
+    "json-pointer"           check-format-json-pointer
+    "regex"                  check-format-regex
+    "relative-json-pointer"  check-format-relative-json-pointer
+    "time"                   check-format-time-parse
+    "unknown"                check-format-unknown
+    "uri"                    check-format-uri
+    "uri-reference"          check-format-uri-reference
+    "uri-template"           check-format-uri-template
+    "uuid"                   check-format-uuid}})

@@ -23,8 +23,7 @@
    [m3.ecma :refer [ecma-pattern ecma-match]]
    [m3.uri :refer [parse-uri inherit-uri]]
    [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker json-=]]
-   [m3.format :as format :refer [check-format draft->format->checker]]
-   [m3.draft :refer [$schema->draft]]))
+   [m3.format :as format :refer [draft->format->checker]]))
 
 ;;------------------------------------------------------------------------------
 ;; standard common properties
@@ -282,6 +281,7 @@
                (> (json-length m1) v2))
           [(make-error "maxLength: string too long" p2 m2 p1 m1)])]))))
 
+;; TODO: entire draft->format->checker table should be piked up from c2
 (defn make-check-property-format [strict?]
   (fn [_property {cfs :check-format :or {cfs {}} strict-format? :strict-format? draft :draft :as c2} p2 m2 v2]
     (let [f (if (or strict? strict-format?)
@@ -292,7 +292,7 @@
       (if-let [checker (or (cfs v2)
                            (get-in draft->format->checker [draft v2])
                            ;; Fallback to multimethod for now
-                           (fn [c2 p2 m2] (check-format v2 c2 p2 m2)))]
+                           (fn [_ _ _] (fn [_ _ _] (log/warn "format: not recognised:" draft (pr-str v2)))))]
         (f (checker c2 p2 m2))
         ;; Unknown format - return identity function
         (f (constantly nil))))))
