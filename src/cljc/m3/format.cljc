@@ -13,12 +13,10 @@
 ;; limitations under the License.
 
 (ns m3.format
-  "Format validation for JSON Schema - extracted from validate.cljc"
   (:require
    [cljc.java-time.local-date :refer [parse] :rename {parse local-date-parse}]
    [cljc.java-time.offset-date-time :refer [parse] :rename {parse offset-date-time-parse}]
    [cljc.java-time.offset-time :refer [parse] :rename {parse offset-time-parse}]
-   [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.util :refer [make-error]]
    [m3.ecma :refer [ecma-pattern]]
    [m3.pattern :refer [email-pattern ipv4-pattern ipv6-pattern hostname-pattern
