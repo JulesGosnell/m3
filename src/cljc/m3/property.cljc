@@ -23,7 +23,7 @@
    [m3.ecma :refer [ecma-pattern ecma-match]]
    [m3.uri :refer [parse-uri inherit-uri]]
    [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker json-=]]
-   [m3.format :refer [check-format]]
+   [m3.format :as format :refer [check-format draft->format->checker]]
    [m3.draft :refer [$schema->draft]]))
 
 ;;------------------------------------------------------------------------------
@@ -140,15 +140,14 @@
    m2
    (fn [c1 _p1 m1] [c1 m1 nil])])
 
-
-(defn check-property-$recursiveRef    [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-$dynamicRef      [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-description      [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-readOnly         [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-writeOnly        [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-title            [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-default          [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-examples         [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
+(defn check-property-$recursiveRef [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
+(defn check-property-$dynamicRef [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
+(defn check-property-description [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
+(defn check-property-readOnly [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
+(defn check-property-writeOnly [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
+(defn check-property-title [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
+(defn check-property-default [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
+(defn check-property-examples [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
 
 (defn check-property-$vocabulary [_property {d :draft} _p2 _m2 v2]
   (fn [c1 _p1 _m1]
@@ -284,12 +283,19 @@
           [(make-error "maxLength: string too long" p2 m2 p1 m1)])]))))
 
 (defn make-check-property-format [strict?]
-  (fn [_property {cfs :check-format :or {cfs {}} strict-format? :strict-format? :as c2} p2 m2 v2]
+  (fn [_property {cfs :check-format :or {cfs {}} strict-format? :strict-format? draft :draft :as c2} p2 m2 v2]
     (let [f (if (or strict? strict-format?)
               (fn [f2] (make-type-checker json-string? (fn [c p m] [c (f2 c p m)])))
               (fn [f2] (make-type-checker json-string? (fn [c p m] (when-let [[{m :message}] (f2 c p m)] [c (log/warn m)])))))]
-    ;; we do this here so that user may override default format checkers...
-      (f ((or (cfs v2) check-format) v2 c2 p2 m2)))))
+      ;; we do this here so that user may override default format checkers...
+      ;; First check for custom override, then draft-specific checker, then fallback to multimethod
+      (if-let [checker (or (cfs v2)
+                           (get-in draft->format->checker [draft v2])
+                           ;; Fallback to multimethod for now
+                           (fn [c2 p2 m2] (check-format v2 c2 p2 m2)))]
+        (f (checker c2 p2 m2))
+        ;; Unknown format - return identity function
+        (f (constantly nil))))))
 
 (defn check-property-pattern [_property c2 p2 m2 v2]
   (if (starts-with? v2 "$format:")
