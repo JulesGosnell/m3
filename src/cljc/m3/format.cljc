@@ -146,7 +146,6 @@
   (constantly nil))
 
 ;;------------------------------------------------------------------------------
-;; Draft-03 formats (the original set)
 
 (def draft3-format->checker
   {"color"        check-format-color
@@ -205,6 +204,7 @@
    "uuid"     check-format-uuid))
 
 (def draft2020-12-format->checker draft2019-09-format->checker)
+
 (def draft-next-format->checker draft2019-09-format->checker)
 
 (def draft->format->checker
