@@ -47,76 +47,109 @@
     (= l r)))
 
 ;;------------------------------------------------------------------------------
-
-(defmulti check-type (fn [type _c2 _p2 _m2]
-                       ;;(println "check-type" type document)
-                       type))
+;; Individual type checker functions
 
 (defn check-type-3 [p? t _c2 p2 m2]
   (fn [c1 p1 m1]
     [c1 (when-not (p? m1) [(make-error (str "type: not a[n] " t) p2 m2 p1 m1)])]))
 
-(defmethod check-type "object" [t c2 p2 m2]
-  (check-type-3 json-object? t c2 p2 m2))
+(defn check-type-object [_c2 p2 m2]
+  (check-type-3 json-object? "object" _c2 p2 m2))
 
-(defmethod check-type "array" [t c2 p2 m2]
-  (check-type-3 json-array? t c2 p2 m2))
+(defn check-type-array [_c2 p2 m2]
+  (check-type-3 json-array? "array" _c2 p2 m2))
 
-(defmethod check-type "string" [t c2 p2 m2]
-  (check-type-3 json-string? t c2 p2 m2))
+(defn check-type-string [_c2 p2 m2]
+  (check-type-3 json-string? "string" _c2 p2 m2))
 
-(defmethod check-type "integer" [t {si? :strict-integer? :as c2} p2 m2]
-  (check-type-3 (if si? integer? json-integer?) t c2 p2 m2))
+(defn check-type-integer [c2 p2 m2]
+  (let [si? (:strict-integer? c2)]
+    (check-type-3 (if si? integer? json-integer?) "integer" c2 p2 m2)))
 
-(defmethod check-type "number" [t c2 p2 m2]
-  (check-type-3 json-number? t c2 p2 m2))
+(defn check-type-number [_c2 p2 m2]
+  (check-type-3 json-number? "number" _c2 p2 m2))
 
-(defmethod check-type "boolean" [t c2 p2 m2]
-  (check-type-3 boolean? t c2 p2 m2))
+(defn check-type-boolean [_c2 p2 m2]
+  (check-type-3 boolean? "boolean" _c2 p2 m2))
 
-(defmethod check-type "null" [t c2 p2 m2]
-  (check-type-3 nil? t c2 p2 m2))
+(defn check-type-null [_c2 p2 m2]
+  (check-type-3 nil? "null" _c2 p2 m2))
 
-(defmethod check-type "any" [_t _c2 _p2 _m2]
+(defn check-type-any [_c2 _p2 _m2]
   (fn [c1 _p1 _m1] [c1 nil]))
 
-(defmethod check-type :default [ts c2 p2 m2]
-  (if (json-array? ts) ;; it could be an array of elements that are:
-    ;; - either a string type
-    ;; - a schema
-    (let [checkers
-          (vec
-           (map-indexed
-            (fn [i t]
-              (cond
+;;------------------------------------------------------------------------------
+;; Type checking table - no draft variation needed for basic types
+;; (strict-integer is handled via c2 context)
 
-                (json-string? t)
-                (check-type t c2 (conj p2 i) t)
-                
-                ;; TODO: the way we are recursing back into
-                ;; m3.validate/check-schema is not ideal but...
-                (json-object? t)
-                ((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 i) t)
+(def type->checker
+  {"object" check-type-object
+   "array" check-type-array
+   "string" check-type-string
+   "integer" check-type-integer
+   "number" check-type-number
+   "boolean" check-type-boolean
+   "null" check-type-null
+   "any" check-type-any})
 
-                :else
-                (throw (ex-info "hmmm" {:types ts :type t}))))
-            ts))]
+;;------------------------------------------------------------------------------
+;; Top-level dispatch function with re-entrance support
 
-      (fn [c1 p1 m1]
-        ;; TODO:
-        ;; we should report all the errors...
-        ;; then we cn implement disallow on to f this code
-        ;; we should consider marking items as evaluated ?
-        ;; we need to decide whether we are going to nest or flatten errors...
-        ;; I guess some errors rely on their context to be errors ?
-        [c1
-         (make-error-on
-          (pformat "type: none matched: %s" ts)
-          p2 m2 p1 m1
-          (fn [es] (not (some nil? es)))
-          (mapv (fn [checker] (second (checker c1 p1 m1))) checkers))]))
+(declare check-type)
+
+(defn check-type-union [ts c2 p2 m2]
+  ;; Handle array of types (union type)
+  (let [checkers
+        (vec
+         (map-indexed
+          (fn [i t]
+            (cond
+              ;; String type - recursively call check-type
+              (json-string? t)
+              (check-type t c2 (conj p2 i) t)
+
+              ;; Schema object - call check-schema
+              ;; TODO: the way we are recursing back into
+              ;; m3.validate/check-schema is not ideal but...
+              (json-object? t)
+              ((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 i) t)
+
+              :else
+              (throw (ex-info "hmmm" {:types ts :type t}))))
+          ts))]
+
     (fn [c1 p1 m1]
-      [c1 [(make-error (pformat "type: unrecognised: %s" ts) p2 m2 p1 m1)]])))
+      ;; TODO:
+      ;; we should report all the errors...
+      ;; then we cn implement disallow on to f this code
+      ;; we should consider marking items as evaluated ?
+      ;; we need to decide whether we are going to nest or flatten errors...
+      ;; I guess some errors rely on their context to be errors ?
+      [c1
+       (make-error-on
+        (pformat "type: none matched: %s" ts)
+        p2 m2 p1 m1
+        (fn [es] (not (some nil? es)))
+        (mapv (fn [checker] (second (checker c1 p1 m1))) checkers))])))
+
+(defn check-type [type-spec c2 p2 m2]
+  (cond
+    ;; Single string type - look up in table
+    (json-string? type-spec)
+    (if-let [checker (get type->checker type-spec)]
+      (checker c2 p2 m2)
+      ;; Unknown type
+      (fn [c1 p1 m1]
+        [c1 [(make-error (pformat "type: unrecognised: %s" type-spec) p2 m2 p1 m1)]]))
+
+    ;; Array of types - union type
+    (json-array? type-spec)
+    (check-type-union type-spec c2 p2 m2)
+
+    ;; Neither string nor array
+    :else
+    (fn [c1 p1 m1]
+      [c1 [(make-error (pformat "type: unrecognised: %s" type-spec) p2 m2 p1 m1)]])))
 
 ;;------------------------------------------------------------------------------
 
