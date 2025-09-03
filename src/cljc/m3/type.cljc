@@ -57,7 +57,7 @@
 (defn check-type-integer [t {si? :strict-integer? :as c2} p2 m2]
   (check-type-2 (if si? integer? json-integer?) t c2 p2 m2))
 
-(def type->checker
+(def draft3-type->checker
   {"any"     (constantly (fn [c1 _p1 _m1] [c1 nil]))
    "array"   (partial check-type-2 json-array?)
    "boolean" (partial check-type-2 boolean?)
@@ -67,33 +67,46 @@
    "object"  (partial check-type-2 json-object?)
    "string"  (partial check-type-2 json-string?)})
 
+(def draft4-type->checker
+  (dissoc draft3-type->checker "any"))
+
+(def draft->type->checker
+  {:draft3        draft3-type->checker
+   :draft4        draft4-type->checker
+   :draft6        draft4-type->checker
+   :draft7        draft4-type->checker
+   :draft2019-09  draft4-type->checker
+   :draft2020-12  draft4-type->checker
+   :draft-next    draft4-type->checker})
+
 ;;------------------------------------------------------------------------------
 
 (defn check-type [t c2 p2 m2]
-  (cond
+  (let [draft (or (:draft c2) :draft7)] ; Default to draft7 if not specified
+    (cond
 
-    (json-string? t)
-    (if-let [c (get type->checker t)]
-      (c t c2 p2 m2)
+      (json-string? t)
+      (if-let [c (get-in draft->type->checker [draft t])]
+        (c t c2 p2 m2)
+        (fn [c1 p1 m1]
+          [c1 [(make-error (pformat "type: unrecognised name: %s" t) p2 m2 p1 m1)]]))
+
+      (json-array? t)
+      (let [cs (map-indexed (fn [i t] (check-type t c2 (conj p2 i) m2)) t)]
+        (fn [c1 p1 m1]
+          [c1
+           (make-error-on
+            (pformat "type: none matched: %s" t)
+            p2 m2 p1 m1
+            (fn [es] (not (some nil? es)))
+            (mapv (fn [c] (second (c c1 p1 m1))) cs))]))
+
+      (json-object? t)
+      ((deref (resolve 'm3.validate/check-schema)) c2 p2 t)
+
+      :else
       (fn [c1 p1 m1]
-        [c1 [(make-error (pformat "type: unrecognised name: %s" t) p2 m2 p1 m1)]]))
-
-    (json-array? t)
-    (let [cs (map-indexed (fn [i t] (check-type t c2 (conj p2 i) m2)) t)]
-      (fn [c1 p1 m1]
-        [c1
-         (make-error-on
-          (pformat "type: none matched: %s" t)
-          p2 m2 p1 m1
-          (fn [es] (not (some nil? es)))
-          (mapv (fn [c] (second (c c1 p1 m1))) cs))]))
-
-    (json-object? t)
-    ((deref (resolve 'm3.validate/check-schema)) c2 p2 t)
-
-    :else
-    (fn [c1 p1 m1]
-      [c1 [(make-error (pformat "type: unrecognised description: %s" t) p2 m2 p1 m1)]])))
+        [c1 [(make-error (pformat "type: unrecognised description: %s" t) p2 m2 p1 m1)]]))))
 
 ;;------------------------------------------------------------------------------
 
