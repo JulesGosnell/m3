@@ -95,61 +95,31 @@
 ;;------------------------------------------------------------------------------
 ;; Top-level dispatch function with re-entrance support
 
-(declare check-type)
-
-(defn check-type-union [ts c2 p2 m2]
-  ;; Handle array of types (union type)
-  (let [checkers
-        (vec
-         (map-indexed
-          (fn [i t]
-            (cond
-              ;; String type - recursively call check-type
-              (json-string? t)
-              (check-type t c2 (conj p2 i) t)
-
-              ;; Schema object - call check-schema
-              ;; TODO: the way we are recursing back into
-              ;; m3.validate/check-schema is not ideal but...
-              (json-object? t)
-              ((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 i) t)
-
-              :else
-              (throw (ex-info "hmmm" {:types ts :type t}))))
-          ts))]
-
-    (fn [c1 p1 m1]
-      ;; TODO:
-      ;; we should report all the errors...
-      ;; then we cn implement disallow on to f this code
-      ;; we should consider marking items as evaluated ?
-      ;; we need to decide whether we are going to nest or flatten errors...
-      ;; I guess some errors rely on their context to be errors ?
-      [c1
-       (make-error-on
-        (pformat "type: none matched: %s" ts)
-        p2 m2 p1 m1
-        (fn [es] (not (some nil? es)))
-        (mapv (fn [checker] (second (checker c1 p1 m1))) checkers))])))
-
 (defn check-type [type-spec c2 p2 m2]
   (cond
-    ;; Single string type - look up in table
+
     (json-string? type-spec)
     (if-let [checker (get type->checker type-spec)]
       (checker c2 p2 m2)
-      ;; Unknown type
       (fn [c1 p1 m1]
-        [c1 [(make-error (pformat "type: unrecognised: %s" type-spec) p2 m2 p1 m1)]]))
-
-    ;; Array of types - union type
+        [c1 [(make-error (pformat "type: unrecognised name: %s" type-spec) p2 m2 p1 m1)]]))
+    
     (json-array? type-spec)
-    (check-type-union type-spec c2 p2 m2)
-
-    ;; Neither string nor array
+    (let [cs (map-indexed (fn [i t] (check-type t c2 (conj p2 i) m2)) type-spec)]
+      (fn [c1 p1 m1]
+        [c1
+         (make-error-on
+          (pformat "type: none matched: %s" type-spec)
+          p2 m2 p1 m1
+          (fn [es] (not (some nil? es)))
+          (mapv (fn [checker] (second (checker c1 p1 m1))) cs))]))
+    
+    (json-object? type-spec)
+    ((deref (resolve 'm3.validate/check-schema)) c2 p2 type-spec)
+    
     :else
     (fn [c1 p1 m1]
-      [c1 [(make-error (pformat "type: unrecognised: %s" type-spec) p2 m2 p1 m1)]])))
+      [c1 [(make-error (pformat "type: unrecognised description: %s" type-spec) p2 m2 p1 m1)]])))
 
 ;;------------------------------------------------------------------------------
 
