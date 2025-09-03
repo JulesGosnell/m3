@@ -146,122 +146,72 @@
   (constantly nil))
 
 ;;------------------------------------------------------------------------------
+;; Draft-03 formats (the original set)
+
+(def draft3-format->checker
+  {"color"        check-format-color
+   "date"         check-format-date
+   "date-time"    check-format-date-time
+   "email"        check-format-email
+   "host-name"    check-format-host-name    ; renamed to "hostname" in draft-04
+   "ip-address"   check-format-ip-address   ; renamed to "ipv4" in draft-04
+   "ipv6"         check-format-ipv6
+   "phone"        check-format-phone        ; dropped in draft-04
+   "regex"        check-format-regex
+   "style"        check-format-style        ; dropped in draft-04
+   "time"         check-format-time-pattern ; uses pattern check in draft-03
+   "uri"          check-format-uri
+   "utc-millisec" check-format-utc-millisec ; dropped in draft-04
+   })
+
+(def draft4-format->checker
+  (-> draft3-format->checker
+      (dissoc
+       "color"
+       "date"
+       "phone"
+       "style"
+       "utc-millisec"
+       "host-name"
+       "ip-address"
+       "time")
+      (assoc
+       "hostname" check-format-hostname
+       "ipv4"     check-format-ipv4
+       "unknown"  check-format-unknown)))
+
+(def draft6-format->checker
+  (assoc
+   draft4-format->checker
+   "json-pointer"  check-format-json-pointer
+   "uri-reference" check-format-uri-reference
+   "uri-template"  check-format-uri-template))
+
+(def draft7-format->checker
+  (assoc
+   draft6-format->checker
+   "date"                  check-format-date
+   "idn-email"             check-format-idn-email
+   "idn-hostname"          check-format-idn-hostname
+   "iri"                   check-format-iri
+   "iri-reference"         check-format-iri-reference
+   "relative-json-pointer" check-format-relative-json-pointer
+   "time"                  check-format-time-parse))
+
+(def draft2019-09-format->checker
+  (assoc
+   draft7-format->checker
+   "duration" check-format-duration
+   "uuid"     check-format-uuid))
+
+(def draft2020-12-format->checker draft2019-09-format->checker)
+(def draft-next-format->checker draft2019-09-format->checker)
 
 (def draft->format->checker
-  {:draft3
-   {"color"                  check-format-color
-    "date"                   check-format-date
-    "date-time"              check-format-date-time
-    "email"                  check-format-email
-    "host-name"              check-format-host-name
-    "ip-address"             check-format-ip-address
-    "ipv6"                   check-format-ipv6
-    "phone"                  check-format-phone
-    "regex"                  check-format-regex
-    "style"                  check-format-style
-    "time"                   check-format-time-pattern
-    "uri"                    check-format-uri
-    "utc-millisec"           check-format-utc-millisec}
-   :draft4
-   {"date-time"              check-format-date-time
-    "email"                  check-format-email
-    "hostname"               check-format-hostname
-    "ipv4"                   check-format-ipv4
-    "ipv6"                   check-format-ipv6
-    "regex"                  check-format-regex
-    "unknown"                check-format-unknown
-    "uri"                    check-format-uri}
-   :draft6
-   {"date-time"              check-format-date-time
-    "email"                  check-format-email
-    "hostname"               check-format-hostname
-    "ipv4"                   check-format-ipv4
-    "ipv6"                   check-format-ipv6
-    "json-pointer"           check-format-json-pointer
-    "regex"                  check-format-regex
-    "unknown"                check-format-unknown
-    "uri"                    check-format-uri
-    "uri-reference"          check-format-uri-reference
-    "uri-template"           check-format-uri-template}
-   :draft7
-   {"date"                   check-format-date
-    "date-time"              check-format-date-time
-    "email"                  check-format-email
-    "hostname"               check-format-hostname
-    "idn-email"              check-format-idn-email
-    "idn-hostname"           check-format-idn-hostname
-    "ipv4"                   check-format-ipv4
-    "ipv6"                   check-format-ipv6
-    "iri"                    check-format-iri
-    "iri-reference"          check-format-iri-reference
-    "json-pointer"           check-format-json-pointer
-    "regex"                  check-format-regex
-    "relative-json-pointer"  check-format-relative-json-pointer
-    "time"                   check-format-time-parse
-    "unknown"                check-format-unknown
-    "uri"                    check-format-uri
-    "uri-reference"          check-format-uri-reference
-    "uri-template"           check-format-uri-template}
-   :draft2019-09
-   {"date"                   check-format-date
-    "date-time"              check-format-date-time
-    "duration"               check-format-duration
-    "email"                  check-format-email
-    "hostname"               check-format-hostname
-    "idn-email"              check-format-idn-email
-    "idn-hostname"           check-format-idn-hostname
-    "ipv4"                   check-format-ipv4
-    "ipv6"                   check-format-ipv6
-    "iri"                    check-format-iri
-    "iri-reference"          check-format-iri-reference
-    "json-pointer"           check-format-json-pointer
-    "regex"                  check-format-regex
-    "relative-json-pointer"  check-format-relative-json-pointer
-    "time"                   check-format-time-parse
-    "unknown"                check-format-unknown
-    "uri"                    check-format-uri
-    "uri-reference"          check-format-uri-reference
-    "uri-template"           check-format-uri-template
-    "uuid"                   check-format-uuid}
-   :draft2020-12
-   {"date"                   check-format-date
-    "date-time"              check-format-date-time
-    "duration"               check-format-duration
-    "email"                  check-format-email
-    "hostname"               check-format-hostname
-    "idn-email"              check-format-idn-email
-    "idn-hostname"           check-format-idn-hostname
-    "ipv4"                   check-format-ipv4
-    "ipv6"                   check-format-ipv6
-    "iri"                    check-format-iri
-    "iri-reference"          check-format-iri-reference
-    "json-pointer"           check-format-json-pointer
-    "regex"                  check-format-regex
-    "relative-json-pointer"  check-format-relative-json-pointer
-    "time"                   check-format-time-parse
-    "unknown"                check-format-unknown
-    "uri"                    check-format-uri
-    "uri-reference"          check-format-uri-reference
-    "uri-template"           check-format-uri-template
-    "uuid"                   check-format-uuid}
-   :draft-next
-   {"date"                   check-format-date
-    "date-time"              check-format-date-time
-    "duration"               check-format-duration
-    "email"                  check-format-email
-    "hostname"               check-format-hostname
-    "idn-email"              check-format-idn-email
-    "idn-hostname"           check-format-idn-hostname
-    "ipv4"                   check-format-ipv4
-    "ipv6"                   check-format-ipv6
-    "iri"                    check-format-iri
-    "iri-reference"          check-format-iri-reference
-    "json-pointer"           check-format-json-pointer
-    "regex"                  check-format-regex
-    "relative-json-pointer"  check-format-relative-json-pointer
-    "time"                   check-format-time-parse
-    "unknown"                check-format-unknown
-    "uri"                    check-format-uri
-    "uri-reference"          check-format-uri-reference
-    "uri-template"           check-format-uri-template
-    "uuid"                   check-format-uuid}})
+  {:draft3        draft3-format->checker
+   :draft4        draft4-format->checker
+   :draft6        draft6-format->checker
+   :draft7        draft7-format->checker
+   :draft2019-09  draft2019-09-format->checker
+   :draft2020-12  draft2020-12-format->checker
+   :draft-next    draft-next-format->checker})
