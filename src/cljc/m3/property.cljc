@@ -884,16 +884,20 @@
 ;; TODO: should be unique according to json equality
 ;; TODO: could be more efficient - only needs to find one duplicate before it bails..
 ;; TODO: use sorted-set-by and put items in 1 at a time until one is rejected then bail - reduced
-(defn check-property-uniqueItems [_property _c2 p2 m2 v2]
-  (if v2
-    (make-type-checker
-     json-array?
-     (fn [c1 p1 m1]
-       [c1
-        (when (not (= (count m1) (count (distinct m1))))
-          [(make-error "uniqueItems: document contains duplicate items" p2 m2 p1 m1)])]))
-    (fn [c1 _p1 _m1]
-      [c1 nil])))
+;; TODO: shouldn't this be using check-items ?
+(defn check-property-uniqueItems [_property c2 p2 m2 v2]
+  [c2
+   m2
+   (if v2
+     (make-new-type-checker
+      json-array?
+      (fn [c1 p1 m1]
+        [c1
+         m1
+         (when (not (= (count m1) (count (distinct m1))))
+           [(make-error "uniqueItems: document contains duplicate items" p2 m2 p1 m1)])]))
+     (fn [c1 _p1 m1]
+       [c1 m1 nil]))])
 
 ;; TODO: merge code with check-items...
 (defn check-of [c2 p2 m2 v2]
