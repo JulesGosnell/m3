@@ -589,9 +589,12 @@
          (let [[c1 es] (checker c1 p1 m1)] [c1 m1 es])
          [c1 m1 []]))]))
 
-(defn check-property-definitions [_property c2 p2 _m2 v2]
+;; TODO: thread variables through definitions to pick up id stash...
+(defn check-property-definitions [_property c2 p2 m2 v2]
   (mapv (fn [[k v]] ((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 k) v)) v2)
-  (fn [c1 _p1 _m1] [c1 nil]))
+  [c2
+   m2
+   (fn [c1 _p1 m1] [c1 m1 nil])])
 
 (defn check-property-$defs [_property c2 p2 _m2 v2]
   (mapv (fn [[k v]] ((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 k) v)) v2)
