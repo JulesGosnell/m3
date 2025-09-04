@@ -959,12 +959,15 @@
 ;; TODO: share check-of
 (defn check-property-not [_property c2 p2 m2 v2]
   (let [c ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)]
-    (fn [c1 p1 m1]
-      (let [old-local-c1 (update c1 :evaluated dissoc p1)
-            [new-local-c1 es] (c old-local-c1 p1 m1)
-            [c1 failed?] (if (seq es)
-                           [(update c1 :evaluated update p1 into-set (get (get new-local-c1 :evaluated) p1)) true]
-                           [c1 false])]
-        [c1
-         (when-not failed?
-           [(make-error "not: document conformed to sub-schema" p2 m2 p1 m1)])]))))
+    [c2
+     m2
+     (fn [c1 p1 m1]
+       (let [old-local-c1 (update c1 :evaluated dissoc p1)
+             [new-local-c1 es] (c old-local-c1 p1 m1)
+             [c1 failed?] (if (seq es)
+                            [(update c1 :evaluated update p1 into-set (get (get new-local-c1 :evaluated) p1)) true]
+                            [c1 false])]
+         [c1
+          m1
+          (when-not failed?
+            [(make-error "not: document conformed to sub-schema" p2 m2 p1 m1)])]))]))
