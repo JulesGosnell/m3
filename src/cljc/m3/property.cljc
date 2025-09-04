@@ -241,12 +241,14 @@
        (when-not (>= v2 m1)
          [(make-error "maximum: value too high" p2 m2 p1 m1)])]))])
 
-(defn check-property-exclusiveMaximum-old [_property _c2 _p2 {m "maximum"} _v2]
-  (make-type-checker
+(defn check-property-exclusiveMaximum-old [_property c2 _p2 {m "maximum" :as m2} _v2]
+  [c2
+   m2
+   (make-new-type-checker
    json-number?
-   (fn [c1 _p1 _m1]
+   (fn [c1 _p1 m1]
      (when-not m (log/warn "exclusiveMaximum: no maximum present to modify"))
-     [c1 []])))
+     [c1 m1 []]))])
 
 (defn check-property-exclusiveMaximum-new [_property _c2 p2 m2 v2]
   (make-type-checker
