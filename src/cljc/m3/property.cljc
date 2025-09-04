@@ -196,10 +196,12 @@
       (when-not (<= v2 m1)
         [(make-error "minimum: value to low" p2 m2 p1 m1)])])))
 
-(defn check-property-exclusiveMinimum-old [_property _c2 _p2 {m "minimum"} _v2]
-  (fn [c1 _p1 _m1]
+(defn check-property-exclusiveMinimum-old [_property c2 _p2 {m "minimum" :as m2} _v2]
+  [c2
+   m2
+  (fn [c1 _p1 m1]
     (when-not m (log/warn "exclusiveMinimum: no minimum present to modify"))
-    [c1 []]))
+    [c1 m1 []])])
 
 (defn check-property-exclusiveMinimum-new [_property _c2 p2 m2 v2]
   (make-type-checker
