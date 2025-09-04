@@ -698,13 +698,16 @@
        (when-let [missing (seq (reduce (fn [acc k] (if (contains? m1 k) acc (conj acc k))) [] v2))]
          [(make-error ["required: missing properties (at least):" missing] p2 m2 p1 m1)])]))])
 
-(defn check-property-minProperties [_property _c2 p2 m2 v2]
-  (make-type-checker
-   json-object?
-   (fn [c1 p1 m1]
-     [c1
-      (when (< (count m1) v2)
-        [(make-error "minProperties: document contains too few properties" p2 m2 p1 m1)])])))
+(defn check-property-minProperties [_property c2 p2 m2 v2]
+  [c2
+   m2
+   (make-new-type-checker
+    json-object?
+    (fn [c1 p1 m1]
+      [c1
+       m1
+       (when (< (count m1) v2)
+         [(make-error "minProperties: document contains too few properties" p2 m2 p1 m1)])]))])
 
 (defn check-property-maxProperties [_property _c2 p2 m2 v2]
   (make-type-checker
