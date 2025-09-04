@@ -38,10 +38,13 @@
 
 (defn check-property-disallow [_property c2 p2 m2 v2]
   (let [ct (check-type v2 c2 p2 m2)]
-    (fn [c1 p1 m1]
+    [c2
+     m2
+     (fn [c1 p1 m1]
       (let [[c1 es] (ct c1 p1 m1)]
         [c1
-         (when (nil? es) [(make-error "disallow: type matched" p2 m2 p1 m1)])]))))
+         m1
+         (when (nil? es) [(make-error "disallow: type matched" p2 m2 p1 m1)])]))]))
 
 (defn check-property-type [_property c2 p2 m2 v2]
   (check-type v2 c2 p2 m2))

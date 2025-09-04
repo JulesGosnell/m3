@@ -132,7 +132,7 @@
      ["https://json-schema.org/draft-03/vocab/meta-data"              "deprecated"             (old->new check-property-deprecated)                     #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/meta-data"              "description"            (old->new check-property-description)                    #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/meta-data"              "title"                  (old->new check-property-title)                          #{"$schema"}]
-     ["https://json-schema.org/draft-03/vocab/validation"             "disallow"               (old->new check-property-disallow)                       #{"$schema"}]
+     ["https://json-schema.org/draft-03/vocab/validation"             "disallow"               check-property-disallow                                  #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "divisibleBy"            (old->new check-property-divisibleBy)                    #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "enum"                   (old->new check-property-enum)                           #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "exclusiveMaximum"       (old->new check-property-exclusiveMaximum-old)           #{"$schema"}]
