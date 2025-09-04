@@ -49,11 +49,14 @@
 (defn check-property-type [_property c2 p2 m2 v2]
   (check-type v2 c2 p2 m2))
 
-(defn check-property-const [_property _c2 p2 m2 v2]
-  (fn [c1 p1 m1]
-    [c1
-     (when (not (json-= v2 m1))
-       [(make-error (pformat "const: document does not contain schema value: %s != %s" m1 v2) p2 m2 p1 m1)])]))
+(defn check-property-const [_property c2 p2 m2 v2]
+  [c2
+   m2
+   (fn [c1 p1 m1]
+     [c1
+      m1
+      (when (not (json-= v2 m1))
+        [(make-error (pformat "const: document does not contain schema value: %s != %s" m1 v2) p2 m2 p1 m1)])])])
 
 (defn check-property-enum [_property _c2 p2 m2 v2]
   (fn [c1 p1 m1]
