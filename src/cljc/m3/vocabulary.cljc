@@ -450,7 +450,7 @@
      ["https://json-schema.org/draft/next/vocab/format-annotation"    "format"                 (old->new (make-check-property-format false))            #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/format-assertion"     "format"                 (old->new (make-check-property-format true))             #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/meta-data"            "default"                check-property-default                                   #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/meta-data"            "deprecated"             (old->new check-property-deprecated)                     #{"$schema"}]
+     ["https://json-schema.org/draft/next/vocab/meta-data"            "deprecated"             check-property-deprecated                                #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/meta-data"            "description"            check-property-description                               #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/meta-data"            "examples"               check-property-examples                                  #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/meta-data"            "readOnly"               check-property-readOnly                                  #{"$schema"}]
