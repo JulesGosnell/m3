@@ -14,7 +14,7 @@
 
 (ns m3.vocabulary
   (:require
-   [m3.util :refer [map-values topo-sort-by make-stable-sort-by third fourth concatv]]
+   [m3.util :refer [map-values topo-sort-by make-stable-sort-by third fourth]]
    [m3.property :refer
     [check-property-$anchor
      check-property-$comment
@@ -313,7 +313,7 @@
      ["https://json-schema.org/draft/2019-09/vocab/content"           "contentSchema"          (make-check-property-contentSchema false)                #{"$schema" "contentEncoding" "contentMediaType"}]
      ["https://json-schema.org/draft/2019-09/vocab/core"              "$anchor"                (old->new check-property-$anchor)                        #{"$schema" "id" "$id"}]
      ["https://json-schema.org/draft/2019-09/vocab/core"              "$comment"               check-property-$comment                                  #{"$schema"}]
-     ["https://json-schema.org/draft/2019-09/vocab/core"              "$defs"                  (old->new check-property-$defs)                          #{"$schema"}]
+     ["https://json-schema.org/draft/2019-09/vocab/core"              "$defs"                  check-property-$defs                                     #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/core"              "$id"                    (old->new check-property-$id)                            #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/core"              "$recursiveAnchor"       (old->new check-property-$recursiveAnchor)               #{"$schema" "id" "$id"}]
      ["https://json-schema.org/draft/2019-09/vocab/core"              "$recursiveRef"          check-property-$recursiveRef                             #{"$schema" "$recursiveAnchor"}]
@@ -373,7 +373,7 @@
      ["https://json-schema.org/draft/2020-12/vocab/content"           "contentSchema"          (make-check-property-contentSchema false)                #{"$schema" "contentEncoding" "contentMediaType"}]
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$anchor"                (old->new check-property-$anchor)                        #{"$schema" "id" "$id"}]
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$comment"               check-property-$comment                                  #{"$schema"}]
-     ["https://json-schema.org/draft/2020-12/vocab/core"              "$defs"                  (old->new check-property-$defs)                          #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/core"              "$defs"                  check-property-$defs                                     #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$dynamicAnchor"         (old->new check-property-$dynamicAnchor)                 #{"$schema" "id" "$id"}]
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$dynamicRef"            check-property-$dynamicRef                               #{"$schema" "$dynamicAnchor"}]
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$id"                    (old->new check-property-$id)                            #{"$schema"}]
@@ -438,7 +438,7 @@
      ["https://json-schema.org/draft/next/vocab/content"              "contentSchema"          (make-check-property-contentSchema false)                #{"$schema" "contentEncoding" "contentMediaType"}]
      ["https://json-schema.org/draft/next/vocab/core"                 "$anchor"                (old->new check-property-$anchor)                        #{"$schema" "id" "$id"}]
      ["https://json-schema.org/draft/next/vocab/core"                 "$comment"               check-property-$comment                                  #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/core"                 "$defs"                  (old->new check-property-$defs)                          #{"$schema"}]
+     ["https://json-schema.org/draft/next/vocab/core"                 "$defs"                  check-property-$defs                                     #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/core"                 "$dynamicAnchor"         (old->new check-property-$dynamicAnchor)                 #{"$schema" "id" "$id"}]
      ["https://json-schema.org/draft/next/vocab/core"                 "$dynamicRef"            check-property-$dynamicRef                               #{"$schema" "$dynamicAnchor"}]
      ["https://json-schema.org/draft/next/vocab/core"                 "$id"                    (old->new check-property-$id)                            #{"$schema"}]
