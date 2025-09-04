@@ -816,16 +816,18 @@
   (let [cs ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)
         base (if mn mn 1)
         ci (check-items c2 p2 v2)]
-    (make-type-checker
-     json-array?
-     (fn [c1 p1 m1]
-       (let [i-and-css (map (fn [i _] [i cs]) (range) m1)
-             [new-c1 [{es :errors}]]
-             (ci c1 p1 m1 i-and-css "contains: at least one item did not conform to schema")
-             matches (- (count m1) (count es))]
-         (if (<= (min base 1) matches)
-           [new-c1 nil]
-           [c1 [(make-error "contains: document has no matches" p2 m2 p1 m1)]]))))))
+    [c2
+     m2
+     (make-new-type-checker
+      json-array?
+      (fn [c1 p1 m1]
+        (let [i-and-css (map (fn [i _] [i cs]) (range) m1)
+              [new-c1 [{es :errors}]]
+              (ci c1 p1 m1 i-and-css "contains: at least one item did not conform to schema")
+              matches (- (count m1) (count es))]
+          (if (<= (min base 1) matches)
+            [new-c1 m1 nil]
+            [c1 m1 [(make-error "contains: document has no matches" p2 m2 p1 m1)]]))))]))
 
 (defn check-property-minContains [_property _c2 p2 m2 v2]
   (let [pp2 (butlast p2)]
