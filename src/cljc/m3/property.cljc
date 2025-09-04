@@ -663,26 +663,29 @@
     [c2
      m2
      (make-new-type-checker
-     json-object?
-     (fn [c1 p1 m1]
-       (let [eps (get (get c1 :evaluated) p1 #{})
-             ups (remove (fn [[k]] (contains? eps k)) m1) ;; k might be nil
-             p-and-css (mapv (fn [[k]] [k cs]) ups)] ; TODO: feels inefficient
-         (cp c1 p1 m1 p-and-css "unevaluatedProperties: at least one property did not conform to schema"))))]))
+      json-object?
+      (fn [c1 p1 m1]
+        (let [eps (get (get c1 :evaluated) p1 #{})
+              ups (remove (fn [[k]] (contains? eps k)) m1) ;; k might be nil
+              p-and-css (mapv (fn [[k]] [k cs]) ups)] ; TODO: feels inefficient
+          (cp c1 p1 m1 p-and-css "unevaluatedProperties: at least one property did not conform to schema"))))]))
 
 (defn check-property-propertyNames [_property c2 p2 m2 v2]
-  (fn [c1 p1 m1]
-    [c1
-     (when (json-object? m1)
-       (make-error-on-failure
-        "propertyNames: at least one property's name failed to conform to relevant schema"
-        p2 m2 p1 m1
-        (reduce
-         (fn [acc [k]]
-           (let [[_new-c1 es] (((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 k) v2) c1 (conj p1 k) k)]
-             (concatv acc es)))
-         []
-         m1)))]))
+  [c2
+   m2
+   (fn [c1 p1 m1]
+     [c1
+      m1
+      (when (json-object? m1)
+        (make-error-on-failure
+         "propertyNames: at least one property's name failed to conform to relevant schema"
+         p2 m2 p1 m1
+         (reduce
+          (fn [acc [k]]
+            (let [[_new-c1 es] (((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 k) v2) c1 (conj p1 k) k)]
+              (concatv acc es)))
+          []
+          m1)))])])
 
 (defn check-property-required [_property _c2 p2 m2 v2]
   (make-type-checker
