@@ -771,12 +771,14 @@
                     ["respective " (map-indexed (fn [i v] ((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 i) v)) v2)])
                   ["" (repeat ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2))])
         ci (check-items c2 p2 m2)]
-    (make-type-checker
-     json-array?
-     (fn [c1 p1 m1]
-       (let [items (drop n m1)
-             i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
-         (ci c1 p1 items i-and-css (str "items: at least one item did not conform to " m "schema")))))))
+    [c2
+     m2
+     (make-new-type-checker
+      json-array?
+      (fn [c1 p1 m1]
+        (let [items (drop n m1)
+              i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
+          (tweak m1 (ci c1 p1 items i-and-css (str "items: at least one item did not conform to " m "schema"))))))]))
 
 (defn check-property-additionalItems [_property c2 p2 {is "items" :as m2} v2]
   (if (json-array? is) ;; additionalItems is only used when items is a tuple
