@@ -559,13 +559,15 @@
 
 ;;------------------------------------------------------------------------------
 
-(defn check-property-if [_property c2 p2 _m2 v2]
+(defn check-property-if [_property c2 p2 m2 v2]
   (let [checker ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)
         pp2 (butlast p2)]
-    (fn [old-c1 p1 m1]
-      (let [[new-c1 es] (checker old-c1 p1 m1)
-            success? (empty? es)]
-        [(update (if success? new-c1 old-c1) :if assoc pp2 success?) []]))))
+    [c2
+     m2
+     (fn [old-c1 p1 m1]
+       (let [[new-c1 es] (checker old-c1 p1 m1)
+             success? (empty? es)]
+         [(update (if success? new-c1 old-c1) :if assoc pp2 success?) m1 []]))]))
 
 (defn check-property-then [_property c2 p2 _m2 v2]
   (let [checker ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)
