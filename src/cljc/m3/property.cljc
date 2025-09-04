@@ -745,13 +745,19 @@
              (map vector i-and-css m1))]
         [c1 (make-error-on-failure message p2 m2 p1 m1 es)]))))
 
+
+(defn tweak [m1 [c1 es]]
+  [c1 m1 es])
+  
 (defn check-property-prefixItems [_property c2 p2 m2 v2]
   (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i ((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 i) sub-schema)]) v2))
         ci (check-items c2 p2 m2)]
-    (make-type-checker
-     json-array?
-     (fn [c1 p1 m1]
-       (ci c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")))))
+    [c2
+     m2
+     (make-new-type-checker
+      json-array?
+      (fn [c1 p1 m1]
+        (tweak m1 (ci c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema"))))]))
 
 (defn check-property-items [_property {d :draft :as c2} p2 m2 v2]
   (let [n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
