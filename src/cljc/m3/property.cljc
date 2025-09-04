@@ -845,17 +845,19 @@
               [c1 m1 [(make-error (str "minContains: document has too few matches - " n) p2 m2 p1 m1)]]))
           [c1 m1 nil])))]))
 
-(defn check-property-maxContains [_property _c2 p2 m2 v2]
+(defn check-property-maxContains [_property c2 p2 m2 v2]
   (let [pp2 (butlast p2)]
-    (make-type-checker
-     json-array?
-     (fn [{matched :matched :as c1} p1 m1]
-       (if-let [matches (get matched pp2)]
-         (let [n (count matches)]
-           (if (<= n v2)
-             [c1 nil]
-             [c1 [(make-error (str "maxContains: document has too many matches - " n) p2 m2 p1 m1)]]))
-         [c1 nil])))))
+    [c2
+     m2
+     (make-new-type-checker
+      json-array?
+      (fn [{matched :matched :as c1} p1 m1]
+        (if-let [matches (get matched pp2)]
+          (let [n (count matches)]
+            (if (<= n v2)
+              [c1 m1 nil]
+              [c1 m1 [(make-error (str "maxContains: document has too many matches - " n) p2 m2 p1 m1)]]))
+          [c1 m1 nil])))]))
 
 (defn check-property-minItems [_property _c2 p2 m2 v2]
   (make-type-checker
