@@ -22,7 +22,7 @@
    [m3.util :refer [absent concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure]]
    [m3.ecma :refer [ecma-pattern ecma-match]]
    [m3.uri :refer [parse-uri inherit-uri]]
-   [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker json-=]]
+   [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker make-new-type-checker json-=]]
    [m3.format :as format :refer [draft->format->checker]]))
 
 ;;------------------------------------------------------------------------------
@@ -175,15 +175,18 @@
 
 ;; standard number properties
 
-(defn check-property-minimum-old [_property _c2 p2 m2 v2]
+(defn check-property-minimum-old [_property c2 p2 m2 v2]
   (let [e? (m2 "exclusiveMinimum")
         p? (if e? < <=)]
-    (make-type-checker
-     json-number?
-     (fn [c1 p1 m1]
-       [c1
-        (when-not (p? v2 m1)
-          [(make-error (str "minimum" (when e? "(with exclusiveMinimum)") ": value to low") p2 m2 p1 m1)])]))))
+    [c2
+     m2
+     (make-new-type-checker
+      json-number?
+      (fn [c1 p1 m1]
+        [c1
+         m1
+         (when-not (p? v2 m1)
+           [(make-error (str "minimum" (when e? "(with exclusiveMinimum)") ": value to low") p2 m2 p1 m1)])]))]))
 
 (defn check-property-minimum-new [_property _c2 p2 m2 v2]
   (make-type-checker

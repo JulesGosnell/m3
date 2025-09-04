@@ -115,3 +115,9 @@
     (if (predicate? m1)
       (m1-function c1 p1 m1)
       [c1 []])))
+
+(defn make-new-type-checker [predicate? m1-function]
+  (fn [c1 p1 m1]
+    (if (predicate? m1)
+      (m1-function c1 p1 m1)
+      [c1 m1 []])))
