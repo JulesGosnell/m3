@@ -58,16 +58,19 @@
       (when (not (json-= v2 m1))
         [(make-error (pformat "const: document does not contain schema value: %s != %s" m1 v2) p2 m2 p1 m1)])])])
 
-(defn check-property-enum [_property _c2 p2 m2 v2]
-  (fn [c1 p1 m1]
+(defn check-property-enum [_property c2 p2 m2 v2]
+  [c2
+   m2
+   (fn [c1 p1 m1]
      ;; we could check that the m2's enum contained any const or default
      ;; value here - but thus should be done somehow during validation of
      ;; the m2 as an m1 and not waste time whilst we are validating all
      ;; it's m1s...
      ;; TODO: how about some injectable consistency checking fns which can be used when validating m2s ?
-    [c1
-     (when-not (seq-contains? v2 json-= m1)
-       [(make-error "enum: does not contain value" p2 m2 p1 m1)])]))
+     [c1
+      m1
+      (when-not (seq-contains? v2 json-= m1)
+        [(make-error "enum: does not contain value" p2 m2 p1 m1)])])])
 
 (defn check-property-id [_property _c2 _p2 _m2 _v2]
   (fn [{old-id-uri :id-uri :as c1} p1 {id "id"}]
