@@ -870,13 +870,16 @@
        (when (< (count m1) v2)
          [(make-error "minItems: document contains too few items" p2 m2 p1 m1)])]))])
 
-(defn check-property-maxItems [_property _c2 p2 m2 v2]
-  (make-type-checker
-   json-array?
-   (fn [c1 p1 m1]
-     [c1
-      (when (> (count m1) v2)
-        [(make-error "maxItems: document contains too many items" p2 m2 p1 m1)])])))
+(defn check-property-maxItems [_property c2 p2 m2 v2]
+  [c2
+   m2
+   (make-new-type-checker
+    json-array?
+    (fn [c1 p1 m1]
+      [c1
+       m1
+       (when (> (count m1) v2)
+         [(make-error "maxItems: document contains too many items" p2 m2 p1 m1)])]))])
 
 ;; TODO: should be unique according to json equality
 ;; TODO: could be more efficient - only needs to find one duplicate before it bails..
