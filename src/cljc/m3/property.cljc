@@ -934,11 +934,15 @@
 (defn check-property-anyOf [_property c2 p2 m2 v2]
   (let [co (check-of c2 p2 m2 v2)
         m2-count (count v2)]
-    (fn [c1 p1 m1]
-      (co
-       c1 p1 m1
-       "anyOf: document failed to conform to at least one sub-schema"
-       (fn [es] (not (< (count es) m2-count)))))))
+    [c2
+     m2
+     (fn [c1 p1 m1]
+       (tweak
+        m1
+        (co
+         c1 p1 m1
+         "anyOf: document failed to conform to at least one sub-schema"
+         (fn [es] (not (< (count es) m2-count))))))]))
 
 (defn check-property-allOf [_property c2 p2 m2 v2]
   (let [co (check-of c2 p2 m2 v2)]
