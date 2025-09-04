@@ -921,11 +921,15 @@
 (defn check-property-oneOf [_property c2 p2 m2 v2]
   (let [co (check-of c2 p2 m2 v2)
         m2-count (count v2)]
-    (fn [c1 p1 m1]
-      (co
-       c1 p1 m1
-       "oneOf: document failed to conform to one and only one sub-schema"
-       (fn [es] (not= 1 (- m2-count (count es))))))))
+    [c2
+     m2
+     (fn [c1 p1 m1]
+       (tweak
+        m1
+        (co
+         c1 p1 m1
+         "oneOf: document failed to conform to one and only one sub-schema"
+         (fn [es] (not= 1 (- m2-count (count es)))))))]))
 
 (defn check-property-anyOf [_property c2 p2 m2 v2]
   (let [co (check-of c2 p2 m2 v2)
