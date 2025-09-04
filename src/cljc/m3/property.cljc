@@ -305,16 +305,19 @@
       (if (<= 0xD800 (int (char-code-at s i)) 0xDBFF) (+ i 2) (inc i))
       (inc acc)))))
 
-(defn check-property-minLength [_property _c2 p2 m2 v2]
+(defn check-property-minLength [_property c2 p2 m2 v2]
   (let [ml2 (quot v2 2)]
-    (make-type-checker
-     json-string?
-     (fn [c1 p1 m1]
-       [c1
-        (when (or
-               (< (count m1) ml2) ;; precheck before using expensive json-length
-               (< (json-length m1) v2))
-          [(make-error "minLength: string too short" p2 m2 p1 m1)])]))))
+    [c2
+     m2
+     (make-new-type-checker
+      json-string?
+      (fn [c1 p1 m1]
+        [c1
+         m1
+         (when (or
+                (< (count m1) ml2) ;; precheck before using expensive json-length
+                (< (json-length m1) v2))
+           [(make-error "minLength: string too short" p2 m2 p1 m1)])]))]))
 
 (defn check-property-maxLength [_property c2 p2 m2 v2]
   (let [ml2 (* v2 2)]
