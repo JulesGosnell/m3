@@ -529,7 +529,7 @@
          ks)))]))
 
 ;; TODO: share more code with dependencies
-(defn check-property-dependentRequired [_property _c2 p2 m2 v2]
+(defn check-property-dependentRequired [_property c2 p2 m2 v2]
   (let [property->checker
         (reduce
          (fn [acc [k v]]
@@ -539,20 +539,23 @@
             (fn [_c1 _p1 m1] (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v))))
          {}
          v2)]
-    (make-type-checker
-     json-object?
-     (fn [c1 p1 m1]
-       [c1
-        (when-let [missing
-                   (seq
-                    (reduce
-                     (fn [acc [k _v]]
-                       (if (contains? m1 k)
-                         (concatv acc ((property->checker k) c1 p1 m1))
-                         acc))
-                     []
-                     v2))]
-          [(make-error ["dependentRequired: missing properties (at least):" missing] p2 m2 p1 m1)])]))))
+    [c2
+     m2
+     (make-new-type-checker
+      json-object?
+      (fn [c1 p1 m1]
+        [c1
+         m1
+         (when-let [missing
+                    (seq
+                     (reduce
+                      (fn [acc [k _v]]
+                        (if (contains? m1 k)
+                          (concatv acc ((property->checker k) c1 p1 m1))
+                          acc))
+                      []
+                      v2))]
+           [(make-error ["dependentRequired: missing properties (at least):" missing] p2 m2 p1 m1)])]))]))
 
 ;;------------------------------------------------------------------------------
 
