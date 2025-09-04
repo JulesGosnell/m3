@@ -217,15 +217,18 @@
        (when-not (< v2 m1)
          [(make-error "minimum: value to low" p2 m2 p1 m1)])]))])
 
-(defn check-property-maximum-old [_property _c2 p2 m2 v2]
+(defn check-property-maximum-old [_property c2 p2 m2 v2]
   (let [e? (m2 "exclusiveMaximum")
         p? (if e? > >=)]
-    (make-type-checker
-     json-number?
-     (fn [c1 p1 m1]
-       [c1
-        (when-not (p? v2 m1)
-          [(make-error (str "maximum" (when e? "(with exclusiveMaximum)") ": value too high") p2 m2 p1 m1)])]))))
+    [c2
+     m2
+     (make-new-type-checker
+      json-number?
+      (fn [c1 p1 m1]
+        [c1
+         m1
+         (when-not (p? v2 m1)
+           [(make-error (str "maximum" (when e? "(with exclusiveMaximum)") ": value too high") p2 m2 p1 m1)])]))]))
 
 (defn check-property-maximum-new [_property _c2 p2 m2 v2]
   (make-type-checker
