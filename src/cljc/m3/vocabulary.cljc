@@ -114,7 +114,7 @@
    (sort-vocab
     [["https://json-schema.org/draft-03/vocab/applicator"             "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "additionalProperties"   check-property-additionalProperties                      #{"$schema" "properties" "patternProperties"}]
-     ["https://json-schema.org/draft-03/vocab/applicator"             "allOf"                  (old->new check-property-allOf)                          #{"$schema"}]
+     ["https://json-schema.org/draft-03/vocab/applicator"             "allOf"                  check-property-allOf                                     #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "anyOf"                  check-property-anyOf                                     #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "dependencies"           check-property-dependencies                              #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "extends"                check-property-extends                                   #{"$schema"}]
@@ -155,7 +155,7 @@
    (sort-vocab
     [["https://json-schema.org/draft-04/vocab/applicator"             "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
      ["https://json-schema.org/draft-04/vocab/applicator"             "additionalProperties"   check-property-additionalProperties                      #{"$schema" "properties" "patternProperties"}]
-     ["https://json-schema.org/draft-04/vocab/applicator"             "allOf"                  (old->new check-property-allOf)                          #{"$schema"}]
+     ["https://json-schema.org/draft-04/vocab/applicator"             "allOf"                  check-property-allOf                                     #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/applicator"             "anyOf"                  check-property-anyOf                                     #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/applicator"             "dependencies"           check-property-dependencies                              #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/applicator"             "items"                  check-property-items                                     #{"$schema"}]
@@ -193,7 +193,7 @@
    (sort-vocab
     [["https://json-schema.org/draft-06/vocab/applicator"             "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
      ["https://json-schema.org/draft-06/vocab/applicator"             "additionalProperties"   check-property-additionalProperties                      #{"$schema" "properties" "patternProperties"}]
-     ["https://json-schema.org/draft-06/vocab/applicator"             "allOf"                  (old->new check-property-allOf)                          #{"$schema"}]
+     ["https://json-schema.org/draft-06/vocab/applicator"             "allOf"                  check-property-allOf                                     #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/applicator"             "anyOf"                  check-property-anyOf                                     #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/applicator"             "contains"               check-property-contains                                  #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/applicator"             "dependencies"           check-property-dependencies                              #{"$schema"}]
@@ -237,7 +237,7 @@
    (sort-vocab
     [["https://json-schema.org/draft-07/vocab/applicator"             "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
      ["https://json-schema.org/draft-07/vocab/applicator"             "additionalProperties"   check-property-additionalProperties                      #{"$schema" "properties" "patternProperties"}]
-     ["https://json-schema.org/draft-07/vocab/applicator"             "allOf"                  (old->new check-property-allOf)                          #{"$schema"}]
+     ["https://json-schema.org/draft-07/vocab/applicator"             "allOf"                  check-property-allOf                                     #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/applicator"             "anyOf"                  check-property-anyOf                                     #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/applicator"             "contains"               check-property-contains                                  #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/applicator"             "dependencies"           check-property-dependencies                              #{"$schema"}]
@@ -291,7 +291,7 @@
    (sort-vocab
     [["https://json-schema.org/draft/2019-09/vocab/applicator"        "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
      ["https://json-schema.org/draft/2019-09/vocab/applicator"        "additionalProperties"   check-property-additionalProperties                      #{"$schema" "properties" "patternProperties"}]
-     ["https://json-schema.org/draft/2019-09/vocab/applicator"        "allOf"                  (old->new check-property-allOf)                          #{"$schema"}]
+     ["https://json-schema.org/draft/2019-09/vocab/applicator"        "allOf"                  check-property-allOf                                     #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/applicator"        "anyOf"                  check-property-anyOf                                     #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/applicator"        "contains"               check-property-contains                                  #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/applicator"        "dependencies"           check-property-dependencies                              #{"$schema"}]
@@ -352,7 +352,7 @@
    (sort-vocab
     [["https://json-schema.org/draft/2020-12/vocab/applicator"        "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
      ["https://json-schema.org/draft/2020-12/vocab/applicator"        "additionalProperties"   check-property-additionalProperties                      #{"$schema" "properties" "patternProperties"}]
-     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "allOf"                  (old->new check-property-allOf)                          #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "allOf"                  check-property-allOf                                     #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/applicator"        "anyOf"                  check-property-anyOf                                     #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/applicator"        "contains"               check-property-contains                                  #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/applicator"        "dependencies"           check-property-dependencies                              #{"$schema"}]
@@ -417,7 +417,7 @@
    (sort-vocab
     [["https://json-schema.org/draft/next/vocab/applicator"           "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
      ["https://json-schema.org/draft/next/vocab/applicator"           "additionalProperties"   check-property-additionalProperties                      #{"$schema" "properties" "patternProperties"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "allOf"                  (old->new check-property-allOf)                          #{"$schema"}]
+     ["https://json-schema.org/draft/next/vocab/applicator"           "allOf"                  check-property-allOf                                     #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/applicator"           "anyOf"                  check-property-anyOf                                     #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/applicator"           "contains"               check-property-contains                                  #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/applicator"           "dependencies"           check-property-dependencies                              #{"$schema"}]

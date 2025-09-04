@@ -946,11 +946,15 @@
 
 (defn check-property-allOf [_property c2 p2 m2 v2]
   (let [co (check-of c2 p2 m2 v2)]
-    (fn [c1 p1 m1]
-      (co
-       c1 p1 m1
-       "allOf: document failed to conform to all sub-schemas"
-       seq))))
+    [c2
+     m2
+     (fn [c1 p1 m1]
+       (tweak
+        m1
+        (co
+         c1 p1 m1
+         "allOf: document failed to conform to all sub-schemas"
+         seq)))]))
 
 ;; TODO: share check-of
 (defn check-property-not [_property c2 p2 m2 v2]
