@@ -116,10 +116,12 @@
     (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
       [(update c1 :$dynamic-anchor assoc anchor-uri p1) nil])))
 
-(defn check-property-$comment [_property _c2 _p2 _m2 _v2]
-  (fn [c1 _p1 _m1]
+(defn check-property-$comment [_property c2 _p2 m2 _v2]
+  [c2
+   m2
+   (fn [c1 _p1 m1]
     ;;(log/info (str "$comment:" v2 " : " _p1))
-    [c1 nil]))
+     [c1 m1 nil])])
 
 ;; hopefully during the f1 of an m2 we can precompile the $ref...
 ;; will never be called because a $ref in the m2 is intercepted and expanded...
