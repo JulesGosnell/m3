@@ -188,13 +188,16 @@
          (when-not (p? v2 m1)
            [(make-error (str "minimum" (when e? "(with exclusiveMinimum)") ": value to low") p2 m2 p1 m1)])]))]))
 
-(defn check-property-minimum-new [_property _c2 p2 m2 v2]
-  (make-type-checker
-   json-number?
-   (fn [c1 p1 m1]
-     [c1
-      (when-not (<= v2 m1)
-        [(make-error "minimum: value to low" p2 m2 p1 m1)])])))
+(defn check-property-minimum-new [_property c2 p2 m2 v2]
+  [c2
+   m2
+   (make-new-type-checker
+    json-number?
+    (fn [c1 p1 m1]
+      [c1
+       m1
+       (when-not (<= v2 m1)
+         [(make-error "minimum: value to low" p2 m2 p1 m1)])]))])
 
 (defn check-property-exclusiveMinimum-old [_property c2 _p2 {m "minimum" :as m2} _v2]
   [c2
