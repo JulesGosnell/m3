@@ -28,11 +28,13 @@
 ;;------------------------------------------------------------------------------
 ;; standard common properties
 
-(defn check-property-extends [property c2 p2 _m2 v2]
+(defn check-property-extends [_property c2 p2 m2 v2]
   ;; TODO
   ;;((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 property) v2)
-  (fn [c1 _p1 _m1]
-    [c1 nil]))
+  [c2
+   m2
+  (fn [c1 _p1 m1]
+    [c1 m1 nil])])
 
 (defn check-property-disallow [_property c2 p2 m2 v2]
   (let [ct (check-type v2 c2 p2 m2)]

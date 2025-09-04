@@ -106,18 +106,18 @@
 ;; adapt the back to an old format function to plug into m3...
 ;;------------------------------------------------------------------------------
 
-(defn sort-vocabulary [vs]
+(defn sort-vocab [vs]
   (mapcat identity (topo-sort-by (comp (partial mapcat fourth) second) second (group-by second vs))))
 
-(def draft->vocab-and-group-and-property-and-semantics
+(def draft->vocab
   {:draft3
-   (sort-vocabulary
+   (sort-vocab
     [["https://json-schema.org/draft-03/vocab/applicator"             "additionalItems"        (old->new check-property-additionalItems)                #{"$schema" "items"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "additionalProperties"   (old->new check-property-additionalProperties)           #{"$schema" "properties" "patternProperties"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "allOf"                  (old->new check-property-allOf)                          #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "anyOf"                  (old->new check-property-anyOf)                          #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "dependencies"           (old->new check-property-dependencies)                   #{"$schema"}]
-     ["https://json-schema.org/draft-03/vocab/applicator"             "extends"                (old->new check-property-extends)                        #{"$schema"}]
+     ["https://json-schema.org/draft-03/vocab/applicator"             "extends"                check-property-extends                                   #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "items"                  (old->new check-property-items)                          #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "not"                    (old->new check-property-not)                            #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "oneOf"                  (old->new check-property-oneOf)                          #{"$schema"}]
@@ -152,7 +152,7 @@
      ["https://json-schema.org/draft-03/vocab/validation"             "type"                   (old->new check-property-type)                           #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "uniqueItems"            (old->new check-property-uniqueItems)                    #{"$schema"}]])
    :draft4
-   (sort-vocabulary
+   (sort-vocab
     [["https://json-schema.org/draft-04/vocab/applicator"             "additionalItems"        (old->new check-property-additionalItems)                #{"$schema" "items"}]
      ["https://json-schema.org/draft-04/vocab/applicator"             "additionalProperties"   (old->new check-property-additionalProperties)           #{"$schema" "properties" "patternProperties"}]
      ["https://json-schema.org/draft-04/vocab/applicator"             "allOf"                  (old->new check-property-allOf)                          #{"$schema"}]
@@ -190,7 +190,7 @@
      ["https://json-schema.org/draft-04/vocab/validation"             "uniqueItems"            (old->new check-property-uniqueItems)                    #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/validation"             "type"                   (old->new check-property-type)                           #{"$schema"}]])
    :draft6
-   (sort-vocabulary
+   (sort-vocab
     [["https://json-schema.org/draft-06/vocab/applicator"             "additionalItems"        (old->new check-property-additionalItems)                #{"$schema" "items"}]
      ["https://json-schema.org/draft-06/vocab/applicator"             "additionalProperties"   (old->new check-property-additionalProperties)           #{"$schema" "properties" "patternProperties"}]
      ["https://json-schema.org/draft-06/vocab/applicator"             "allOf"                  (old->new check-property-allOf)                          #{"$schema"}]
@@ -234,7 +234,7 @@
      ["https://json-schema.org/draft-06/vocab/validation"             "uniqueItems"            (old->new check-property-uniqueItems)                    #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "type"                   (old->new check-property-type)                           #{"$schema"}]])
    :draft7
-   (sort-vocabulary
+   (sort-vocab
     [["https://json-schema.org/draft-07/vocab/applicator"             "additionalItems"        (old->new check-property-additionalItems)                #{"$schema" "items"}]
      ["https://json-schema.org/draft-07/vocab/applicator"             "additionalProperties"   (old->new check-property-additionalProperties)           #{"$schema" "properties" "patternProperties"}]
      ["https://json-schema.org/draft-07/vocab/applicator"             "allOf"                  (old->new check-property-allOf)                          #{"$schema"}]
@@ -288,7 +288,7 @@
      ["https://json-schema.org/draft-07/vocab/validation"             "uniqueItems"            (old->new check-property-uniqueItems)                    #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "type"                   (old->new check-property-type)                           #{"$schema"}]])
    :draft2019-09
-   (sort-vocabulary
+   (sort-vocab
     [["https://json-schema.org/draft/2019-09/vocab/applicator"        "additionalItems"        (old->new check-property-additionalItems)                #{"$schema" "items"}]
      ["https://json-schema.org/draft/2019-09/vocab/applicator"        "additionalProperties"   (old->new check-property-additionalProperties)           #{"$schema" "properties" "patternProperties"}]
      ["https://json-schema.org/draft/2019-09/vocab/applicator"        "allOf"                  (old->new check-property-allOf)                          #{"$schema"}]
@@ -349,7 +349,7 @@
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "uniqueItems"            (old->new check-property-uniqueItems)                    #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "type"                   (old->new check-property-type)                           #{"$schema"}]])
    :draft2020-12
-   (sort-vocabulary
+   (sort-vocab
     [["https://json-schema.org/draft/2020-12/vocab/applicator"        "additionalItems"        (old->new check-property-additionalItems)                #{"$schema" "items"}]
      ["https://json-schema.org/draft/2020-12/vocab/applicator"        "additionalProperties"   (old->new check-property-additionalProperties)           #{"$schema" "properties" "patternProperties"}]
      ["https://json-schema.org/draft/2020-12/vocab/applicator"        "allOf"                  (old->new check-property-allOf)                          #{"$schema"}]
@@ -414,7 +414,7 @@
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "uniqueItems"            (old->new check-property-uniqueItems)                    #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "type"                   (old->new check-property-type)                           #{"$schema"}]])
    :draft-next
-   (sort-vocabulary
+   (sort-vocab
     [["https://json-schema.org/draft/next/vocab/applicator"           "additionalItems"        (old->new check-property-additionalItems)                #{"$schema" "items"}]
      ["https://json-schema.org/draft/next/vocab/applicator"           "additionalProperties"   (old->new check-property-additionalProperties)           #{"$schema" "properties" "patternProperties"}]
      ["https://json-schema.org/draft/next/vocab/applicator"           "allOf"                  (old->new check-property-allOf)                          #{"$schema"}]
@@ -490,7 +490,7 @@
     second
     (filter
      (comp (into #{} (keys v->b)) first)
-     (draft->vocab-and-group-and-property-and-semantics d)))
+     (draft->vocab d)))
    first
    (juxt first (comp third second))))
 
@@ -500,4 +500,18 @@
   (map-values
    (fn [k v]
      (make-dialect k (into {} (map (fn [v] [v true]) (distinct (map first v))))))
-   draft->vocab-and-group-and-property-and-semantics))
+   draft->vocab))
+
+;;------------------------------------------------------------------------------
+
+(defn new-make-dialect-2 [vocab v->b]
+  (partial
+   (make-stable-sort-by
+    second
+    (filter
+     (comp (into #{} (keys v->b)) first)
+     vocab))
+   first
+   (juxt first (comp third second))))
+
+(def new-make-dialect (memoize new-make-dialect-2))
