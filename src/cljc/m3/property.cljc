@@ -510,21 +510,23 @@
            (when-let [missing (seq es)]
              [(make-error ["dependentSchemas: missing properties (at least):" missing] p2 m2 p1 m1)])])))]))
 
-(defn check-property-propertyDependencies [_property c2 p2 _m2 v2]
+(defn check-property-propertyDependencies [_property c2 p2 m2 v2]
   (let [checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] ((deref (resolve 'm3.validate/check-schema)) c2 p2 s)]) vs)) v2))
         ks (keys v2)]
-    (make-type-checker
-     json-object?
-     (fn [c1 p1 m1]
-       (reduce
-        (fn [[c old-es] k]
-          (let [v (m1 k)]
-            (if-let [checker (and (json-string? v) (checkers [k v]))]
-              (let [[c new-es] (checker c p1 m1)]
-                [c (concatv old-es new-es)])
-              [c old-es])))
-        [c1 []]
-        ks)))))
+    [c2
+     m2
+     (make-new-type-checker
+      json-object?
+      (fn [c1 p1 m1]
+        (reduce
+         (fn [[c1 m1 old-es] k]
+           (let [v (m1 k)]
+             (if-let [checker (and (json-string? v) (checkers [k v]))]
+               (let [[c1 new-es] (checker c1 p1 m1)]
+                 [c1 m1 (concatv old-es new-es)])
+               [c1 m1 old-es])))
+         [c1 m1 []]
+         ks)))]))
 
 ;; TODO: share more code with dependencies
 (defn check-property-dependentRequired [_property _c2 p2 m2 v2]
