@@ -427,21 +427,24 @@
               [c1 old-m1 es]))))])))
 
 (defn make-check-property-contentSchema [strict?]
-  (fn [_property c2 p2 {cmt "contentMediaType"} v2]
+  (fn [_property c2 p2 {cmt "contentMediaType" :as m2} v2]
     (let [checker ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)
           pp2 (butlast p2)]
-      (fn [c1 p1 m1]
-        (let [old-m1 (or (get (get c1 :content) pp2) m1)
-              old-m1 (if cmt old-m1 (json-decode old-m1))] ;; TODO: error handling
-          [c1
-           (try
-             (let [{es :errors :as v} (checker c1 p1 old-m1)]
-               (when (seq es)
-                 (if strict?
-                   es
-                   (log/warn "contentSchema: failed validation - " (prn-str v)))))
-             (catch #?(:cljs js/Error :clj Exception) e
-               (:errors (ex-data e))))])))))
+      [c2
+       m2
+       (fn [c1 p1 m1]
+         (let [old-m1 (or (get (get c1 :content) pp2) m1)
+               old-m1 (if cmt old-m1 (json-decode old-m1))] ;; TODO: error handling
+           [c1
+            m1
+            (try
+              (let [{es :errors :as v} (checker c1 p1 old-m1)]
+                (when (seq es)
+                  (if strict?
+                    es
+                    (log/warn "contentSchema: failed validation - " (prn-str v)))))
+              (catch #?(:cljs js/Error :clj Exception) e
+                (:errors (ex-data e))))]))])))
 
 (defn check-property-dependencies [_property c2 p2 m2 v2]
   (let [property->checker
@@ -462,21 +465,24 @@
               )))
          {}
          v2)]
-    (make-type-checker
-     json-object?
-     (fn [c1 p1 m1]
-       (let [[c1 es]
-             (reduce
-              (fn [[c old-es] [k _v]]
-                (if (contains? m1 k)
-                  (let [[c new-es] ((property->checker k) c p1 m1)]
-                    [c (concatv old-es new-es)])
-                  [c old-es]))
-              [c1 []]
-              v2)]
-         [c1
-          (when-let [missing (seq es)]
-            [(make-error ["dependencies: missing properties (at least):" missing] p2 m2 p1 m1)])])))))
+    [c2
+     m2
+     (make-new-type-checker
+      json-object?
+      (fn [c1 p1 m1]
+        (let [[c1 es]
+              (reduce
+               (fn [[c old-es] [k _v]]
+                 (if (contains? m1 k)
+                   (let [[c new-es] ((property->checker k) c p1 m1)]
+                     [c (concatv old-es new-es)])
+                   [c old-es]))
+               [c1 []]
+               v2)]
+          [c1
+           m1
+           (when-let [missing (seq es)]
+             [(make-error ["dependencies: missing properties (at least):" missing] p2 m2 p1 m1)])])))]))
 
 (defn check-property-dependentSchemas [_property c2 p2 m2 v2]
   (let [property->checker
