@@ -376,51 +376,55 @@
   {"application/json" json-decode})
 
 (defn make-check-property-contentEncoding [strict?]
-  (fn [_property _c2 p2 m2 v2]
+  (fn [_property c2 p2 m2 v2]
     (let [ce-decoder (ce->decoder v2)
           pp2 (butlast p2)]
-      (make-type-checker
-       json-string?
-       (fn [c1 p1 old-m1]
-         (let [[new-m1 es]
-               (try
-                 [(ce-decoder old-m1) nil]
-                 (catch #?(:cljs js/Error :clj Exception) e
-                   [nil
-                    (let [m (str "contentEncoding: could not " v2 " decode: " (pr-str old-m1) " - " (ex-message e))]
-                      (if strict?
-                        [(make-error m p2 m2 p1 old-m1)]
-                        (do
-                          (log/warn (string-replace m #"\n" " - "))
-                          [])))]))]
-           (if new-m1
-             [(update c1 :content assoc pp2 new-m1) nil]
-             [c1 es])))))))
+      [c2
+       m2
+       (make-new-type-checker
+        json-string?
+        (fn [c1 p1 old-m1]
+          (let [[new-m1 es]
+                (try
+                  [(ce-decoder old-m1) nil]
+                  (catch #?(:cljs js/Error :clj Exception) e
+                    [nil
+                     (let [m (str "contentEncoding: could not " v2 " decode: " (pr-str old-m1) " - " (ex-message e))]
+                       (if strict?
+                         [(make-error m p2 m2 p1 old-m1)]
+                         (do
+                           (log/warn (string-replace m #"\n" " - "))
+                           [])))]))]
+            (if new-m1
+              [(update c1 :content assoc pp2 new-m1) new-m1 nil]
+              [c1 old-m1 es]))))])))
 
 (defn make-check-property-contentMediaType [strict?]
-  (fn [_property _c2 p2 m2 v2]
+  (fn [_property c2 p2 m2 v2]
     (let [cmt v2
           cmt-decoder (cmt->decoder cmt)
           pp2 (butlast p2)]
-      (make-type-checker
-       json-string?
-       (fn [c1 p1 m1]
-         (let [old-m1 (or (get (get c1 :content) pp2) m1)
-               [new-m1 es]
-               (try
-                 [(cmt-decoder old-m1) nil]
-                 (catch #?(:cljs js/Error :clj Exception) e
-                   [nil
-                    (let [m (str "contentMediaType: could not " v2 " decode: " (pr-str old-m1) " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
-                      (if strict?
-                        [(make-error m p2 m2 p1 old-m1)]
-                        (do
-                          (log/warn (string-replace m #"\n" " - "))
-                          [])))]))]
+      [c2
+       m2
+       (make-new-type-checker
+        json-string?
+        (fn [c1 p1 m1]
+          (let [old-m1 (or (get (get c1 :content) pp2) m1)
+                [new-m1 es]
+                (try
+                  [(cmt-decoder old-m1) nil]
+                  (catch #?(:cljs js/Error :clj Exception) e
+                    [nil
+                     (let [m (str "contentMediaType: could not " v2 " decode: " (pr-str old-m1) " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
+                       (if strict?
+                         [(make-error m p2 m2 p1 old-m1)]
+                         (do
+                           (log/warn (string-replace m #"\n" " - "))
+                           [])))]))]
 
-           (if new-m1
-             [(update c1 :content assoc pp2 new-m1) nil]
-             [c1 es])))))))
+            (if new-m1
+              [(update c1 :content assoc pp2 new-m1) new-m1 nil]
+              [c1 old-m1 es]))))])))
 
 (defn make-check-property-contentSchema [strict?]
   (fn [_property c2 p2 {cmt "contentMediaType"} v2]
