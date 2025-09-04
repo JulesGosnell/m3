@@ -781,23 +781,25 @@
           (tweak m1 (ci c1 p1 items i-and-css (str "items: at least one item did not conform to " m "schema"))))))]))
 
 (defn check-property-additionalItems [_property c2 p2 {is "items" :as m2} v2]
-  (if (json-array? is) ;; additionalItems is only used when items is a tuple
-    (let [cs ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)
+  [c2
+   m2
+   (if (json-array? is) ;; additionalItems is only used when items is a tuple
+     (let [cs ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)
           ;;pp2 (butlast p2)
-          ci (check-items c2 p2 m2)]
-      (make-type-checker
-       json-array?
-       (fn [c1 p1 m1]
-         (let [;; this is how it should be done, but cheaper to just look at items (must be array for additionalItems to be meaningful) in m2 time
+           ci (check-items c2 p2 m2)]
+       (make-new-type-checker
+        json-array?
+        (fn [c1 p1 m1]
+          (let [;; this is how it should be done, but cheaper to just look at items (must be array for additionalItems to be meaningful) in m2 time
                  ;;mis (get (get c1 :matched) pp2 #{})
                  ;;ais  (remove (fn [[k]] (contains? mis k)) (map-indexed vector m1))
                  ;;i-and-css (mapv (fn [[k]] [k cs]) ais) ; TODO: feels inefficient
-               n (count is)
-               ais (drop n m1)
-               i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) (repeat cs) ais)]
-           (ci c1 p1 ais i-and-css "additionalItems: at least one item did not conform to schema")))))
-    (fn [c1 _p1 _m1]
-      [c1 nil])))
+                n (count is)
+                ais (drop n m1)
+                i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) (repeat cs) ais)]
+            (tweak m1 (ci c1 p1 ais i-and-css "additionalItems: at least one item did not conform to schema"))))))
+     (fn [c1 _p1 m1]
+       [c1 m1 nil]))])
 
 (defn check-property-unevaluatedItems [_property c2 p2 m2 v2]
   (let [css (repeat ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2))
