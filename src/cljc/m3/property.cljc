@@ -161,9 +161,14 @@
 (defn check-property-default       [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
 (defn check-property-examples      [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
 
-(defn check-property-$vocabulary [_property {d :draft} _p2 _m2 v2]
-  (fn [c1 _p1 _m1]
-    [(assoc c1 :dialect ((deref (resolve 'm3.vocabulary/make-dialect)) d v2)) nil]))
+(defn check-property-$vocabulary [_property {d :draft :as c2} _p2 m2 v2]
+  [c2
+   m2
+   (fn [c1 _p1 m1]
+     ;; TODO - needs work
+     [(assoc c1 :dialect ((deref (resolve 'm3.vocabulary/make-dialect)) d v2))
+      m1
+      nil])])
 
 ;; TODO: issue a warning somehow
 (defn check-property-deprecated [_property _c2 _p2 _m2 _v2] (fn [_c1 _p1 _m1])) ;; TODO: issue a warning or error ?
