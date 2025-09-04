@@ -250,13 +250,16 @@
      (when-not m (log/warn "exclusiveMaximum: no maximum present to modify"))
      [c1 m1 []]))])
 
-(defn check-property-exclusiveMaximum-new [_property _c2 p2 m2 v2]
-  (make-type-checker
-   json-number?
-   (fn [c1 p1 m1]
-     [c1
-      (when-not (> v2 m1)
-        [(make-error "maximum: value too high" p2 m2 p1 m1)])])))
+(defn check-property-exclusiveMaximum-new [_property c2 p2 m2 v2]
+  [c2
+   m2
+   (make-type-checker
+    json-number?
+    (fn [c1 p1 m1]
+      [c1
+       m1
+       (when-not (> v2 m1)
+         [(make-error "maximum: value too high" p2 m2 p1 m1)])]))])
 
 (defn check-property-divisibleBy [_property _c2 p2 m2 v2]
   (let [v2-bd (pbigdec v2)]
