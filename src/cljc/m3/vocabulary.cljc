@@ -133,7 +133,7 @@
      ["https://json-schema.org/draft-03/vocab/meta-data"              "description"            check-property-description                               #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/meta-data"              "title"                  check-property-title                                     #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "disallow"               check-property-disallow                                  #{"$schema"}]
-     ["https://json-schema.org/draft-03/vocab/validation"             "divisibleBy"            (old->new check-property-divisibleBy)                    #{"$schema"}]
+     ["https://json-schema.org/draft-03/vocab/validation"             "divisibleBy"            check-property-divisibleBy                               #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "enum"                   check-property-enum                                      #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "exclusiveMaximum"       check-property-exclusiveMaximum-old                      #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "exclusiveMinimum"       check-property-exclusiveMinimum-old                      #{"$schema"}]

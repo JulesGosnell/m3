@@ -261,14 +261,17 @@
        (when-not (> v2 m1)
          [(make-error "maximum: value too high" p2 m2 p1 m1)])]))])
 
-(defn check-property-divisibleBy [_property _c2 p2 m2 v2]
+(defn check-property-divisibleBy [_property c2 p2 m2 v2]
   (let [v2-bd (pbigdec v2)]
-    (make-type-checker
-     json-number?
-     (fn [c1 p1 m1]
-       [c1
-        (when (not (big-zero? (big-mod (pbigdec m1) v2-bd)))
-          [(make-error (pformat "%s is not divisible by of %s" m1 v2) p2 m2 p1 m1)])]))))
+    [c2
+     m2
+     (make-type-checker
+      json-number?
+      (fn [c1 p1 m1]
+        [c1
+         m1
+         (when (not (big-zero? (big-mod (pbigdec m1) v2-bd)))
+           [(make-error (pformat "%s is not divisible by of %s" m1 v2) p2 m2 p1 m1)])]))]))
 
 (defn check-property-multipleOf [_property _c2 p2 m2 v2]
   (let [v2-bd (pbigdec v2)]
