@@ -152,14 +152,14 @@
    m2
    (fn [c1 _p1 m1] [c1 m1 nil])])
 
-(defn check-property-$recursiveRef [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-$dynamicRef [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-description [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-readOnly [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-writeOnly [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-title [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-default [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
-(defn check-property-examples [_property _c2 _p2 _m2 _v2] (fn [c1 _p1 _m1] [c1 nil]))
+(defn check-property-$recursiveRef [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
+(defn check-property-$dynamicRef   [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
+(defn check-property-description   [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
+(defn check-property-readOnly      [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
+(defn check-property-writeOnly     [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
+(defn check-property-title         [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
+(defn check-property-default       [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
+(defn check-property-examples      [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
 
 (defn check-property-$vocabulary [_property {d :draft} _p2 _m2 v2]
   (fn [c1 _p1 _m1]
