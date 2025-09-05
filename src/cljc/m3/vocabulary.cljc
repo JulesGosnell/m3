@@ -14,7 +14,7 @@
 
 (ns m3.vocabulary
   (:require
-   [m3.util :refer [map-values topo-sort-by make-stable-sort-by third fourth old->new]]
+   [m3.util :refer [map-values topo-sort-by make-stable-sort-by third fourth]]
    [m3.property :refer
     [check-property-$anchor
      check-property-$comment

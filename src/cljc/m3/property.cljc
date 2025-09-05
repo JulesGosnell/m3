@@ -19,7 +19,7 @@
    [clojure.string :refer [starts-with? replace] :rename {replace string-replace}]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.platform :refer [pformat json-decode big-zero? big-mod pbigdec]]
-   [m3.util :refer [absent concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure old->new]]
+   [m3.util :refer [absent concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure]]
    [m3.ecma :refer [ecma-pattern ecma-match]]
    [m3.uri :refer [parse-uri inherit-uri]]
    [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker make-new-type-checker json-=]]
@@ -371,7 +371,7 @@
     ;; this is an extension to allow patternProperties to
     ;; leverage formats since the spec does not provide a
     ;; formatProperties...
-    ((old->new (make-check-property-format false)) "format" c2 p2 m2 (subs v2 (count "$format:"))) ;; TODO: decide strictness from context somehow
+    ((make-check-property-format false) "format" c2 p2 m2 (subs v2 (count "$format:"))) ;; TODO: decide strictness from context somehow
     (let [p (ecma-pattern v2)]
       [c2
        m2

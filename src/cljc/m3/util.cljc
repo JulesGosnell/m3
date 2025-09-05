@@ -93,13 +93,3 @@
 (defn make-error-on-failure [message schema-path schema document-path document errors]
   (make-error-on message schema-path schema document-path document seq errors))
 
-;;------------------------------------------------------------------------------
-
-(defn old->new [old-f2]
-  (fn [property c2 p2 m2 v2]
-    (let [old-f1 (old-f2 property c2 p2 m2 v2)]
-      [c2
-       m2
-       (fn [c1 p1 m1]
-         (let [[c1 es] (old-f1 c1 p1 m1)]
-           [c1 m1 es]))])))
