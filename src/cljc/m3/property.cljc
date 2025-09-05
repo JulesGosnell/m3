@@ -19,7 +19,7 @@
    [clojure.string :refer [starts-with? replace] :rename {replace string-replace}]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.platform :refer [pformat json-decode big-zero? big-mod pbigdec]]
-   [m3.util :refer [absent concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure]]
+   [m3.util :refer [absent concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure old->new]]
    [m3.ecma :refer [ecma-pattern ecma-match]]
    [m3.uri :refer [parse-uri inherit-uri]]
    [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker make-new-type-checker json-=]]
@@ -369,14 +369,17 @@
     ;; this is an extension to allow patternProperties to
     ;; leverage formats since the spec does not provide a
     ;; formatProperties...
-    ((make-check-property-format false) "format" c2 p2 m2 (subs v2 (count "$format:"))) ;; TODO: decide strictness from context somehow
+    ((old->new (make-check-property-format false)) "format" c2 p2 m2 (subs v2 (count "$format:"))) ;; TODO: decide strictness from context somehow
     (let [p (ecma-pattern v2)]
-      (make-type-checker
-       json-string?
-       (fn [c1 p1 m1]
-         [c1
-          (when (false? (ecma-match p m1))
-            [(make-error "pattern: doesn't match" p2 m2 p1 m1)])])))))
+      [c2
+       m2
+       (make-new-type-checker
+        json-string?
+        (fn [c1 p1 m1]
+          [c1
+           m1
+           (when (false? (ecma-match p m1))
+             [(make-error "pattern: doesn't match" p2 m2 p1 m1)])]))])))
 
 #?(:clj
    (let [^java.util.Base64 decoder (java.util.Base64/getDecoder)]

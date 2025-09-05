@@ -14,7 +14,7 @@
 
 (ns m3.vocabulary
   (:require
-   [m3.util :refer [map-values topo-sort-by make-stable-sort-by third fourth]]
+   [m3.util :refer [map-values topo-sort-by make-stable-sort-by third fourth old->new]]
    [m3.property :refer
     [check-property-$anchor
      check-property-$comment
@@ -89,22 +89,6 @@
      make-check-property-format]]))
 
 ;;------------------------------------------------------------------------------
-;; to adapt a c2/p2/m2->c1/p1/m1 (old) l2 fn into new composable shape l2 (new format)
-;; also does l2 path management
-
-(defn old->new [old-f2]
-  (fn [property c2 p2 m2 v2]
-    (let [old-f1 (old-f2 property c2 p2 m2 v2)]
-      [c2
-       m2
-       (fn [c1 p1 m1]
-         (let [[c1 es] (old-f1 c1 p1 m1)]
-           [c1 m1 es]))])))
-
-;; we should have enough now to adapt all vocab keyword fns to new
-;; format, compose them into a single new format function and then
-;; adapt the back to an old format function to plug into m3...
-;;------------------------------------------------------------------------------
 
 (defn sort-vocab [vs]
   (mapcat identity (topo-sort-by (comp (partial mapcat fourth) second) second (group-by second vs))))
@@ -147,7 +131,7 @@
      ["https://json-schema.org/draft-03/vocab/validation"             "minProperties"          check-property-minProperties                             #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "minimum"                check-property-minimum-old                               #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "multipleOf"             check-property-multipleOf                                #{"$schema"}]
-     ["https://json-schema.org/draft-03/vocab/validation"             "pattern"                (old->new check-property-pattern)                        #{"$schema"}]
+     ["https://json-schema.org/draft-03/vocab/validation"             "pattern"                check-property-pattern                                   #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "type"                   (old->new check-property-type)                           #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]])
@@ -185,7 +169,7 @@
      ["https://json-schema.org/draft-04/vocab/validation"             "minProperties"          check-property-minProperties                             #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/validation"             "minimum"                check-property-minimum-old                               #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/validation"             "multipleOf"             check-property-multipleOf                                #{"$schema"}]
-     ["https://json-schema.org/draft-04/vocab/validation"             "pattern"                (old->new check-property-pattern)                        #{"$schema"}]
+     ["https://json-schema.org/draft-04/vocab/validation"             "pattern"                check-property-pattern                                   #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/validation"             "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/validation"             "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/validation"             "type"                   (old->new check-property-type)                           #{"$schema"}]])
@@ -229,7 +213,7 @@
      ["https://json-schema.org/draft-06/vocab/validation"             "minProperties"          check-property-minProperties                             #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "minimum"                check-property-minimum-new                               #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "multipleOf"             check-property-multipleOf                                #{"$schema"}]
-     ["https://json-schema.org/draft-06/vocab/validation"             "pattern"                (old->new check-property-pattern)                        #{"$schema"}]
+     ["https://json-schema.org/draft-06/vocab/validation"             "pattern"                check-property-pattern                                   #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "type"                   (old->new check-property-type)                           #{"$schema"}]])
@@ -283,7 +267,7 @@
      ["https://json-schema.org/draft-07/vocab/validation"             "minProperties"          check-property-minProperties                             #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "minimum"                check-property-minimum-new                               #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "multipleOf"             check-property-multipleOf                                #{"$schema"}]
-     ["https://json-schema.org/draft-07/vocab/validation"             "pattern"                (old->new check-property-pattern)                        #{"$schema"}]
+     ["https://json-schema.org/draft-07/vocab/validation"             "pattern"                check-property-pattern                                   #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "type"                   (old->new check-property-type)                           #{"$schema"}]])
@@ -344,7 +328,7 @@
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "minProperties"          check-property-minProperties                             #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "minimum"                check-property-minimum-new                               #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "multipleOf"             check-property-multipleOf                                #{"$schema"}]
-     ["https://json-schema.org/draft/2019-09/vocab/validation"        "pattern"                (old->new check-property-pattern)                        #{"$schema"}]
+     ["https://json-schema.org/draft/2019-09/vocab/validation"        "pattern"                check-property-pattern                                   #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "type"                   (old->new check-property-type)                           #{"$schema"}]])
@@ -409,7 +393,7 @@
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "minProperties"          check-property-minProperties                             #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "minimum"                check-property-minimum-new                               #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "multipleOf"             check-property-multipleOf                                #{"$schema"}]
-     ["https://json-schema.org/draft/2020-12/vocab/validation"        "pattern"                (old->new check-property-pattern)                        #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "pattern"                check-property-pattern                                   #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "type"                   (old->new check-property-type)                           #{"$schema"}]])
@@ -474,7 +458,7 @@
      ["https://json-schema.org/draft/next/vocab/validation"           "minProperties"          check-property-minProperties                             #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/validation"           "minimum"                check-property-minimum-new                               #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/validation"           "multipleOf"             check-property-multipleOf                                #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "pattern"                (old->new check-property-pattern)                        #{"$schema"}]
+     ["https://json-schema.org/draft/next/vocab/validation"           "pattern"                check-property-pattern                                   #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/validation"           "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/validation"           "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/validation"           "type"                   (old->new check-property-type)                           #{"$schema"}]])})
