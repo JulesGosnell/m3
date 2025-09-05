@@ -44,6 +44,7 @@
 
   :jvm-opts ["-XX:+UnlockExperimentalVMOptions"
              "-XX:+EnableJVMCI"
+             "-Dpolyglot.engine.WarnInterpreterOnly=false" ;; disable polyglot warning - TODO: revisit sometime and see if we can get JIT copilation working
 ;;             "--upgrade-module-path=/home/jules/.m2/repository/org/graalvm/compiler/compiler/24.2.2/compiler-24.2.2.jar:/home/jules/.m2/repository/org/graalvm/compiler/compiler-management/24.2.2/compiler-management-24.2.2.jar:/home/jules/.m2/repository/org/graalvm/sdk/graal-sdk/24.2.2/graal-sdk-24.2.2.jar"
              ]
 
