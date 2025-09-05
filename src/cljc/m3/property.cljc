@@ -85,18 +85,21 @@
            (update :path->uri assoc p1 old-id-uri)))
      nil]))
 
-(defn check-property-$id [_property _c2 _p2 _m2 _v2]
-  (fn [{old-id-uri :id-uri :as c1} p1 {id "$id"}]
-    [(if-let [new-id-uri (and id (inherit-uri old-id-uri (parse-uri id)))]
-       (do
+(defn check-property-$id [_property c2 _p2 m2 _v2]
+  [c2
+   m2
+   (fn [{old-id-uri :id-uri :as c1} p1 {id "$id" :as m1}]
+     [(if-let [new-id-uri (and id (inherit-uri old-id-uri (parse-uri id)))]
+        (do
          ;;(prn "$ID:" old-id-uri "+" id "->" new-id-uri)
-         (-> c1
-             (update :path->uri assoc p1 new-id-uri)
-             (update :uri->path assoc new-id-uri p1)
-             (assoc :id-uri new-id-uri)))
-       (-> c1
-           (update :path->uri assoc p1 old-id-uri)))
-     nil]))
+          (-> c1
+              (update :path->uri assoc p1 new-id-uri)
+              (update :uri->path assoc new-id-uri p1)
+              (assoc :id-uri new-id-uri)))
+        (-> c1
+            (update :path->uri assoc p1 old-id-uri)))
+      m1
+      nil])])
 
 ;; Anchors only need :uri->path (no change, but included for completeness)
 (defn check-property-$anchor [_property c2 _p2 m2 v2]
