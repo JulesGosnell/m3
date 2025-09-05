@@ -10,8 +10,14 @@
   :dependencies
   [;; java
    [org.slf4j/slf4j-simple "2.1.0-alpha1"] ;; https://github.com/qos-ch/slf4j
+   ;; https://www.graalvm.org/jdk24/reference-manual/js/RunOnJDK/
+   ;; TODO: it would be nice to get JIT compilation going - although do we need it ?
    [org.graalvm.polyglot/polyglot ~polyglot-version] ;; https://github.com/oracle/graal
    [org.graalvm.polyglot/js ~polyglot-version :extension "pom"] ;; https://github.com/oracle/graal
+   ;; [org.graalvm.sdk/graal-sdk ~polyglot-version]
+   ;; [org.graalvm.compiler/compiler ~polyglot-version]
+   ;; [org.graalvm.compiler/compiler-management ~polyglot-version]
+   ;; [org.graalvm.truffle/truffle ~polyglot-version]
    [com.fasterxml.jackson.core/jackson-core ~jackson-version] ;; https://github.com/FasterXML/jackson-core
    [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
    [com.fasterxml.jackson.dataformat/jackson-dataformat-smile ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
@@ -35,8 +41,11 @@
             ]
 
   :global-vars {*warn-on-reflection* true}
-  
-  :jvm-opts ["-XX:+UnlockExperimentalVMOptions" "-XX:+EnableJVMCI"]
+
+  :jvm-opts ["-XX:+UnlockExperimentalVMOptions"
+             "-XX:+EnableJVMCI"
+;;             "--upgrade-module-path=/home/jules/.m2/repository/org/graalvm/compiler/compiler/24.2.2/compiler-24.2.2.jar:/home/jules/.m2/repository/org/graalvm/compiler/compiler-management/24.2.2/compiler-management-24.2.2.jar:/home/jules/.m2/repository/org/graalvm/sdk/graal-sdk/24.2.2/graal-sdk-24.2.2.jar"
+             ]
 
   :min-lein-version "2.5.0"
   :uberjar-name "m3.jar"
@@ -101,4 +110,5 @@
 
   :aliases {"test-cljs" ["do"
                          ["shadow" "compile" "test"]
-                         ["shell" "node" "target/shadow/test.js"]]})
+                         ["shell" "node" "target/shadow/test.js"]]
+            "quick-test" ["run" "-m" "m3.test-runner"]})
