@@ -301,8 +301,8 @@
 
 ;; standard string properties
 
-(defn char-code-at [str pos]
-  #?(:clj (.charAt str pos)
+(defn char-code-at [^String str pos]
+  #?(:clj (.charAt str (int pos))
      :cljs (.charCodeAt str pos)))
 
 ;; we don't need to get to the end of the string to know it is too big...
@@ -382,7 +382,7 @@
              [(make-error "pattern: doesn't match" p2 m2 p1 m1)])]))])))
 
 #?(:clj
-   (let [^java.util.Base64 decoder (java.util.Base64/getDecoder)]
+   (let [^java.util.Base64$Decoder decoder (java.util.Base64/getDecoder)]
      (defn base64-decode [^String s] (String. (.decode decoder (.getBytes s "UTF-8")) "UTF-8")))
 
    :cljs

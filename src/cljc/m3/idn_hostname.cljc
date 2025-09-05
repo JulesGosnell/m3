@@ -30,7 +30,7 @@
 ;; common platform
 
 (def code-point-at
-  #?(:clj (fn [s i] (Character/codePointAt s i))
+  #?(:clj (fn [^String s i] (Character/codePointAt s (int i)))
      :cljs (fn [s i] (.codePointAt s i))))
 
 (def char-count
@@ -43,7 +43,7 @@
       (if (< i (count s))
         (let [cp (code-point-at s i)]
           (conj! result cp)
-          (recur (+ i (char-count cp))))
+          (recur (long (+ i (char-count cp)))))
         (persistent! result)))))
 
 (def normalise-nfkc
@@ -61,7 +61,7 @@
      :cljs (fn [] "")))
 
 (def string-builder-append-code-point
-  #?(:clj (fn [^StringBuilder sb cp] (.appendCodePoint sb cp))
+  #?(:clj (fn [^StringBuilder sb cp] (.appendCodePoint sb (int cp)))
      :cljs (fn [acc cp] (str acc (js/String.fromCodePoint cp)))))
 
 (def string-builder-to-string
@@ -69,7 +69,7 @@
      :cljs (fn [acc] acc)))
 
 (def to-lower-case
-  #?(:clj (fn [cp] (Character/toLowerCase cp))
+  #?(:clj (fn [cp] (Character/toLowerCase (char cp)))
      :cljs (fn [cp] (.codePointAt (.toLowerCase (js/String.fromCodePoint cp)) 0))))
 
 (defn case-fold [s]
@@ -138,7 +138,7 @@
 (def CHARACTER_OTHER_SYMBOL            28)
 
 (def get-char-type
-  #?(:clj (fn [cp] (Character/getType cp))
+  #?(:clj (fn [cp] (Character/getType (char cp)))
      :cljs (fn [cp]
              (let [s (js/String.fromCodePoint cp)]
                (cond
@@ -158,14 +158,14 @@
                  :else 0)))))
 
 (def is-defined
-  #?(:clj (fn [cp] (Character/isDefined cp))
+  #?(:clj (fn [cp] (Character/isDefined (char cp)))
      :cljs (fn [cp]
              (and (<= 0 cp 0x10ffff)
                   (or (not= (get-char-type cp) 0)
                       (= cp 0x002D)))))); Special for hyphen
 
 (def is-whitespace
-  #?(:clj (fn [cp] (Character/isWhitespace cp))
+  #?(:clj (fn [cp] (Character/isWhitespace (char cp)))
      :cljs (fn [cp]
              (let [s (js/String.fromCodePoint cp)]
                (boolean (.match s (js/RegExp "\\s" "u")))))))
@@ -298,7 +298,7 @@
                               :disallowed)))))))
 
 (defn check-context-rule [cp codepoints idx]
-  (case cp
+  (case (int cp)
     0x200d (and (> idx 0) (= 9 (get ccc-map (nth codepoints (dec idx)) 0)))
     0x200c (or (and (> idx 0) (= 9 (get ccc-map (nth codepoints (dec idx)) 0)))
                (let [left-idx (loop [j (dec idx)]

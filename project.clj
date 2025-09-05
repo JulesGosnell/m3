@@ -34,6 +34,10 @@
             [lein-shell "0.5.0"] ;; https://github.com/hypirion/lein-shell
             ]
 
+  :global-vars {*warn-on-reflection* true}
+  
+  :jvm-opts ["-XX:+UnlockExperimentalVMOptions" "-XX:+EnableJVMCI"]
+
   :min-lein-version "2.5.0"
   :uberjar-name "m3.jar"
   :clean-targets ^{:protect false} [:target-path "target/shadow"]

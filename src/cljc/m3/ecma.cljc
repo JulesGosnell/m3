@@ -31,6 +31,9 @@
 #?(:clj (defn ecma-pattern [^String s] (let [args (into-array Object [s "u"])] (locking js-context (.newInstance RegExp args))))
    :cljs (defn ecma-pattern [s] (js/RegExp. s "u")))
 
-#?(:clj (defn ecma-match [^Value r ^String s] (let [args (into-array Object [s])] (.asBoolean (locking js-context (.invokeMember r "test" args)))))
+(defn- ->boolean [^Value v]
+  (.asBoolean v))
+
+#?(:clj (defn ecma-match [^Value r ^String s] (let [args (into-array Object [s])] (->boolean (locking js-context (.invokeMember r "test" args)))))
    :cljs (defn ecma-match [r s] (.test r s)))
 
