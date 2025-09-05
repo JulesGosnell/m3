@@ -347,21 +347,23 @@
                 (> (json-length m1) v2))
            [(make-error "maxLength: string too long" p2 m2 p1 m1)])]))]))
 
-;; TODO: entire draft->format->checker table should be piked up from c2
+;; TODO: entire draft->format->checker table should be picked up from c2
 (defn make-check-property-format [strict?]
   (fn [_property {cfs :check-format :or {cfs {}} strict-format? :strict-format? draft :draft :as c2} p2 m2 v2]
     (let [f (if (or strict? strict-format?)
-              (fn [f2] (make-type-checker json-string? (fn [c p m] [c (f2 c p m)])))
-              (fn [f2] (make-type-checker json-string? (fn [c p m] (when-let [[{m :message}] (f2 c p m)] [c (log/warn m)])))))]
+              (fn [f2] (make-type-checker json-string? (fn [c p m] [c m (f2 c p m)])))
+              (fn [f2] (make-type-checker json-string? (fn [c p m] (when-let [[{m :message}] (f2 c p m)] [c m (log/warn m)])))))]
       ;; we do this here so that user may override default format checkers...
       ;; First check for custom override, then draft-specific checker, then fallback to multimethod
-      (if-let [checker (or (cfs v2)
-                           (get-in draft->format->checker [draft v2])
+      [c2
+       m2
+       (if-let [checker (or (cfs v2)
+                            (get-in draft->format->checker [draft v2])
                            ;; Fallback to multimethod for now
-                           (fn [_ _ _] (fn [_ _ _] (log/warn "format: not recognised:" draft (pr-str v2)))))]
-        (f (checker c2 p2 m2))
+                            (fn [_ _ _] (fn [_ _ _] (log/warn "format: not recognised:" draft (pr-str v2)))))]
+         (f (checker c2 p2 m2))
         ;; Unknown format - return identity function
-        (f (constantly nil))))))
+         (f (constantly nil)))])))
 
 (defn check-property-pattern [_property c2 p2 m2 v2]
   (if (starts-with? v2 "$format:")
