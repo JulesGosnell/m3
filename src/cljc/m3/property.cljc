@@ -126,10 +126,12 @@
 ;; hopefully during the f1 of an m2 we can precompile the $ref...
 ;; will never be called because a $ref in the m2 is intercepted and expanded...
 ;; TODO: think again...
-(defn check-property-$ref [_property _c2 _p2 _m2 _v2]
-  (fn [c1 _p1 _m1]
+(defn check-property-$ref [_property c2 _p2 m2 _v2]
+  [c2
+   m2
+   (fn [c1 _p1 m1]
     ;;(prn "$REF:")
-    [c1 nil]))
+     [c1 m1 nil])])
 
 (defn check-property-$schema [_property c2 _p2 m2 v2]
   ;; TODO:
