@@ -104,12 +104,14 @@
     (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
       [(update c1 :uri->path assoc anchor-uri p1) nil])))
 
-(defn check-property-$recursiveAnchor [_property _c2 _p2 _m2 v2]
-  (fn [c1 p1 _m1]
-    (if (true? v2)
-      (let [[uris top] (c1 :$recursive-anchor [#{} nil])]
-        [(assoc c1 :$recursive-anchor [(conj uris (c1 :id-uri)) (or top p1)]) nil])
-      [c1 nil])))
+(defn check-property-$recursiveAnchor [_property c2 _p2 m2 v2]
+  [c2
+   m2
+   (fn [c1 p1 m1]
+     (if (true? v2)
+       (let [[uris top] (c1 :$recursive-anchor [#{} nil])]
+         [(assoc c1 :$recursive-anchor [(conj uris (c1 :id-uri)) (or top p1)]) m1 nil])
+       [c1 m1 nil]))])
 
 (defn check-property-$dynamicAnchor [_property _c2 _p2 _m2 v2]
   (fn [c1 p1 _m1]
