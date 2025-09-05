@@ -113,10 +113,12 @@
          [(assoc c1 :$recursive-anchor [(conj uris (c1 :id-uri)) (or top p1)]) m1 nil])
        [c1 m1 nil]))])
 
-(defn check-property-$dynamicAnchor [_property _c2 _p2 _m2 v2]
-  (fn [c1 p1 _m1]
-    (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
-      [(update c1 :$dynamic-anchor assoc anchor-uri p1) nil])))
+(defn check-property-$dynamicAnchor [_property c2 _p2 m2 v2]
+  [c2
+   m2
+   (fn [c1 p1 m1]
+     (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
+       [(update c1 :$dynamic-anchor assoc anchor-uri p1) m1 nil]))])
 
 (defn check-property-$comment [_property c2 _p2 m2 _v2]
   [c2
