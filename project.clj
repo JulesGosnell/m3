@@ -18,7 +18,7 @@
    ;; clj
    [org.clojure/clojure "1.12.2"] ;; https://clojure.org/releases/downloads
    [org.clojure/tools.logging "1.3.0"] ;; https://github.com/clojure/tools.logging
-   [cheshire/cheshire "6.0.0"] ;; https://github.com/dakrone/cheshire
+   [cheshire/cheshire "6.1.0"] ;; https://github.com/dakrone/cheshire
    ;; cljs
    [thheller/shadow-cljs "3.2.0"] ;; https://github.com/thheller/shadow-cljs
    ;; cljc
@@ -58,10 +58,10 @@
   :profiles {:dev
              {:repl-options {;;:init-ns m3.repl
                              }
-              :dependencies [[cider/piggieback "0.6.0"]
+              :dependencies [[cider/piggieback "0.6.1"]
                              [binaryage/devtools "1.0.7"]
                              [prone "2021-04-23"]
-                             [nrepl "1.3.1"]
+                             [nrepl "1.4.0"]
                              [pjstadig/humane-test-output "0.11.0"]]
 
               :source-paths ["env/dev/clj"]
@@ -85,7 +85,7 @@
              :cloverage ;; output is written to ./target/coverage/index.html
              {:cloverage {:fail-threshold 90}}
 
-             :nrepl {:dependencies [[nrepl "1.3.1"]
+             :nrepl {:dependencies [[nrepl "1.4.0"]
                                     ;;[ch.qos.logback/logback-classic "1.4.14"]
                                     ]
                      :jvm-opts ["-Djdk.attach.allowAttachSelf"]}
