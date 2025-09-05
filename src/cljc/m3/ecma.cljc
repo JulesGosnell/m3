@@ -22,13 +22,15 @@
 ;; use Graal/JavaScript to acquire an ECMA-262 compliant RegeExp engine
 ;; now we can use the same code at both back and front end...
 
+;; N.B. this impl only supports single threaded access, we should look for a better solution...
+
 #?(:clj (defonce ^Context js-context (Context/create (into-array ["js"]))))
 
 #?(:clj (defonce ^Value RegExp (.getMember (.getBindings js-context "js") "RegExp")))
 
-#?(:clj (defn ecma-pattern [^String s] (.newInstance RegExp (into-array Object [s "u"])))
+#?(:clj (defn ecma-pattern [^String s] (let [args (into-array Object [s "u"])] (locking js-context (.newInstance RegExp args))))
    :cljs (defn ecma-pattern [s] (js/RegExp. s "u")))
 
-#?(:clj (defn ecma-match [^Value r ^String s] (.asBoolean (.invokeMember r "test" (into-array Object [s]))))
+#?(:clj (defn ecma-match [^Value r ^String s] (let [args (into-array Object [s])] (.asBoolean (locking js-context (.invokeMember r "test" args)))))
    :cljs (defn ecma-match [r s] (.test r s)))
 
