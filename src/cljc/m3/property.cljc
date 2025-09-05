@@ -99,10 +99,12 @@
      nil]))
 
 ;; Anchors only need :uri->path (no change, but included for completeness)
-(defn check-property-$anchor [_property _c2 _p2 _m2 v2]
-  (fn [c1 p1 _m1]
-    (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
-      [(update c1 :uri->path assoc anchor-uri p1) nil])))
+(defn check-property-$anchor [_property c2 _p2 m2 v2]
+  [c2
+   m2
+   (fn [c1 p1 m1]
+     (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
+       [(update c1 :uri->path assoc anchor-uri p1) m1 nil]))])
 
 (defn check-property-$recursiveAnchor [_property c2 _p2 m2 v2]
   [c2
