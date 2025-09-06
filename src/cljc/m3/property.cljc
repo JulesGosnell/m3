@@ -585,33 +585,33 @@
 ;;------------------------------------------------------------------------------
 
 (defn check-property-if [_property c2 p2 m2 v2]
-  (let [checker ((get-check-schema) c2 p2 v2)
+  (let [[c2 m2 f1] ((old->new (get-check-schema)) c2 p2 v2)
         pp2 (butlast p2)]
     [c2
      m2
      (fn [old-c1 p1 m1]
-       (let [[new-c1 es] (checker old-c1 p1 m1)
+       (let [[new-c1 m1 es] (f1 old-c1 p1 m1)
              success? (empty? es)]
          [(update (if success? new-c1 old-c1) :if assoc pp2 success?) m1 []]))]))
 
-(defn check-property-then [_property c2 p2 m2 v2]
-  (let [checker ((get-check-schema) c2 p2 v2)
+(defn check-property-then [_property c2 p2 _m2 v2]
+  (let [[c2 m2 f1] ((old->new (get-check-schema)) c2 p2 v2)
         pp2 (butlast p2)]
     [c2
      m2
      (fn [c1 p1 m1]
        (if (true? (get (get c1 :if) pp2))
-         (let [[c1 es] (checker c1 p1 m1)] [c1 m1 es])
+         (f1 c1 p1 m1)
          [c1 m1 []]))]))
 
-(defn check-property-else [_property c2 p2 m2 v2]
-  (let [checker ((get-check-schema) c2 p2 v2)
+(defn check-property-else [_property c2 p2 _m2 v2]
+  (let [[c2 m2 f1] ((old->new (get-check-schema)) c2 p2 v2)
         pp2 (butlast p2)]
     [c2
      m2
      (fn [c1 p1 m1]
        (if (false? (get (get c1 :if) pp2))
-         (let [[c1 es] (checker c1 p1 m1)] [c1 m1 es])
+         (f1 c1 p1 m1)
          [c1 m1 []]))]))
 
 ;; TODO: thread variables through definitions to pick up id stash...
