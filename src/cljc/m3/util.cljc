@@ -93,3 +93,26 @@
 (defn make-error-on-failure [message schema-path schema document-path document errors]
   (make-error-on message schema-path schema document-path document seq errors))
 
+;;------------------------------------------------------------------------------
+
+(defn new->old [cs]
+  (fn [c2 p2 m2]
+    (let [[c2 m2 f1] (cs c2 p2 m2)]
+      (fn [c1 p1 m1]
+        (let [[c1 m1 es] (f1 c1 p1 m1)]
+          [c1 es])))))
+
+(defn old->new [cs]
+  (fn [c2 p2 m2]
+    (let [f1 (cs c2 p2 m2)]
+      [c2
+       m2
+       (fn [c1 p1 m1]
+         (let [[c1 es] (f1 c1 p1 m1)]
+           [c1 m1 es]))])))
+
+;;------------------------------------------------------------------------------
+
+(defn get-check-schema []
+  ;; we have had to do this to break a circular dependency
+  (deref (resolve 'm3.validate/check-schema)))

@@ -19,7 +19,7 @@
    [clojure.string :refer [starts-with? replace] :rename {replace string-replace}]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.platform :refer [pformat json-decode big-zero? big-mod pbigdec]]
-   [m3.util :refer [absent concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure]]
+   [m3.util :refer [absent concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure get-check-schema old->new third]]
    [m3.ecma :refer [ecma-pattern ecma-match]]
    [m3.uri :refer [parse-uri inherit-uri]]
    [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker make-new-type-checker json-=]]
@@ -30,7 +30,7 @@
 
 (defn check-property-extends [_property c2 p2 m2 v2]
   ;; TODO
-  ;;((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 property) v2)
+  ;;((get-check-schema) c2 (conj p2 property) v2)
   [c2
    m2
   (fn [c1 _p1 m1]
@@ -453,7 +453,7 @@
 
 (defn make-check-property-contentSchema [strict?]
   (fn [_property c2 p2 {cmt "contentMediaType" :as m2} v2]
-    (let [checker ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)
+    (let [[c2 m2 checker] ((old->new (get-check-schema)) c2 p2 v2)
           pp2 (butlast p2)]
       [c2
        m2
@@ -463,7 +463,7 @@
            [c1
             m1
             (try
-              (let [{es :errors :as v} (checker c1 p1 old-m1)]
+              (let [[c1 m1 {es :errors :as v}] (checker c1 p1 old-m1)]
                 (when (seq es)
                   (if strict?
                     es
@@ -480,12 +480,12 @@
             k
             (cond
               (json-string? v) ;; a single property dependency
-              (fn [c1 _p1 m1] [c1 (when (not (contains? m1 v)) [v v])])
+              (fn [c1 _p1 m1] [c1 m1 (when (not (contains? m1 v)) [v v])])
               (json-array? v) ;; a multiple property dependency
               ;; TODO: this looks very suspect
-              (fn [c1 _p1 m1] [c1 (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v)])
+              (fn [c1 _p1 m1] [c1 m1 (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v)])
               (or (json-object? v) (boolean? v)) ;; a schema dependency
-              ((deref (resolve 'm3.validate/check-schema)) c2 p2 v)
+              (third ((old->new (get-check-schema)) c2 p2 v)) ; TODO: we are throwing away c2/m2
               ;; we should not need to check other cases as m2 should have been validated against m3
               )))
          {}
@@ -495,14 +495,14 @@
      (make-new-type-checker
       json-object?
       (fn [c1 p1 m1]
-        (let [[c1 es]
+        (let [[c1 m1 es]
               (reduce
-               (fn [[c old-es] [k _v]]
-                 (if (contains? m1 k)
-                   (let [[c new-es] ((property->checker k) c p1 m1)]
-                     [c (concatv old-es new-es)])
-                   [c old-es]))
-               [c1 []]
+               (fn [[c m old-es] [k _v]]
+                 (if (contains? m k)
+                   (let [[c m new-es] ((property->checker k) c p1 m)]
+                     [c m (concatv old-es new-es)])
+                   [c m old-es]))
+               [c1 m1 []]
                v2)]
           [c1
            m1
@@ -513,7 +513,7 @@
   (let [property->checker
         (reduce
          (fn [acc [k v]]
-           (assoc acc k ((deref (resolve 'm3.validate/check-schema)) c2 p2 v)))
+           (assoc acc k (third ((old->new (get-check-schema)) c2 p2 v)))) ;TODO: we are throwing away c2/m2
          {}
          v2)]
     [c2
@@ -521,14 +521,14 @@
      (make-new-type-checker
       json-object?
       (fn [c1 p1 m1]
-        (let [[c1 es]
+        (let [[c1 m1 es]
               (reduce
-               (fn [[c old-es] [k _v]]
-                 (if (contains? m1 k)
-                   (let [[c new-es] ((property->checker k) c p1 m1)]
-                     [c (concatv old-es new-es)])
-                   [c old-es]))
-               [c1 []]
+               (fn [[c m old-es] [k _v]]
+                 (if (contains? m k)
+                   (let [[c m new-es] ((property->checker k) c p1 m)]
+                     [c m (concatv old-es new-es)])
+                   [c m old-es]))
+               [c1 m1 []]
                v2)]
           [c1
            m1
@@ -536,7 +536,7 @@
              [(make-error ["dependentSchemas: missing properties (at least):" missing] p2 m2 p1 m1)])])))]))
 
 (defn check-property-propertyDependencies [_property c2 p2 m2 v2]
-  (let [checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] ((deref (resolve 'm3.validate/check-schema)) c2 p2 s)]) vs)) v2))
+  (let [checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] ((get-check-schema) c2 p2 s)]) vs)) v2))
         ks (keys v2)]
     [c2
      m2
@@ -585,7 +585,7 @@
 ;;------------------------------------------------------------------------------
 
 (defn check-property-if [_property c2 p2 m2 v2]
-  (let [checker ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)
+  (let [checker ((get-check-schema) c2 p2 v2)
         pp2 (butlast p2)]
     [c2
      m2
@@ -595,7 +595,7 @@
          [(update (if success? new-c1 old-c1) :if assoc pp2 success?) m1 []]))]))
 
 (defn check-property-then [_property c2 p2 m2 v2]
-  (let [checker ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)
+  (let [checker ((get-check-schema) c2 p2 v2)
         pp2 (butlast p2)]
     [c2
      m2
@@ -605,7 +605,7 @@
          [c1 m1 []]))]))
 
 (defn check-property-else [_property c2 p2 m2 v2]
-  (let [checker ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)
+  (let [checker ((get-check-schema) c2 p2 v2)
         pp2 (butlast p2)]
     [c2
      m2
@@ -616,12 +616,12 @@
 
 ;; TODO: thread variables through definitions to pick up id stash...
 (defn check-property-definitions [_property c2 p2 m2 v2]
-  (mapv (fn [[k v]] ((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 k) v)) v2)
+  (mapv (fn [[k v]] ((get-check-schema) c2 (conj p2 k) v)) v2)
   [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
 
 ;; TODO: thread variables through definitions to pick up id stash...
 (defn check-property-$defs [_property c2 p2 m2 v2]
-  (mapv (fn [[k v]] ((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 k) v)) v2)
+  (mapv (fn [[k v]] ((get-check-schema) c2 (conj p2 k) v)) v2)
   [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
 
 ;; bifurcate upwards to reduce amount of work done to just what it required...
@@ -645,7 +645,7 @@
          (make-error-on-failure message p2 m2 p1 m1 es)]))))
 
 (defn check-property-properties [_property c2 p2 m2 ps]
-  (let [k-and-css (mapv (fn [[k v]] [k ((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 k) v)]) ps)
+  (let [k-and-css (mapv (fn [[k v]] [k ((get-check-schema) c2 (conj p2 k) v)]) ps)
         cp (check-properties c2 p2 m2)]
     [c2
      m2
@@ -658,7 +658,7 @@
 ;; what is opposite of "additional" - "matched" - used by spec to refer to properties matched by "properties" or "patternProperties"
 
 (defn check-property-patternProperties [_property c2 p2 m2 pps]
-  (let [cp-and-pattern-and-ks (mapv (fn [[k v]] [((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 k) v) (ecma-pattern k) k]) pps)
+  (let [cp-and-pattern-and-ks (mapv (fn [[k v]] [((get-check-schema) c2 (conj p2 k) v) (ecma-pattern k) k]) pps)
         cp (check-properties c2 p2 m2)]
     [c2
      m2
@@ -669,7 +669,7 @@
           (cp c1 p1 m1 k-and-css "patternProperties: at least one property did not conform to respective schema"))))]))
 
 (defn check-property-additionalProperties [_property c2 p2 m2 v2]
-  (let [cs ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)
+  (let [cs ((get-check-schema) c2 p2 v2)
         pp2 (butlast p2)
         cp (check-properties c2 p2 m2)]
     [c2
@@ -683,7 +683,7 @@
           (cp c1 p1 m1 p-and-css "additionalProperties: at least one property did not conform to schema"))))]))
 
 (defn check-property-unevaluatedProperties [_property c2 p2 m2 v2]
-  (let [cs ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)
+  (let [cs ((get-check-schema) c2 p2 v2)
         cp (check-properties c2 p2 m2)]
     [c2
      m2
@@ -707,7 +707,7 @@
          p2 m2 p1 m1
          (reduce
           (fn [acc [k]]
-            (let [[_new-c1 es] (((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 k) v2) c1 (conj p1 k) k)]
+            (let [[_new-c1 es] (((get-check-schema) c2 (conj p2 k) v2) c1 (conj p1 k) k)]
               (concatv acc es)))
           []
           m1)))])])
@@ -775,7 +775,7 @@
   [c1 m1 es])
   
 (defn check-property-prefixItems [_property c2 p2 m2 v2]
-  (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i ((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 i) sub-schema)]) v2))
+  (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i ((get-check-schema) c2 (conj p2 i) sub-schema)]) v2))
         ci (check-items c2 p2 m2)]
     [c2
      m2
@@ -793,8 +793,8 @@
                       nil
                       (:draft2020-12 :draft-next)
                       (log/info (str "prefixItems: was introduced in draft2020-12 to handle tuple version of items - you are using: " d)))
-                    ["respective " (map-indexed (fn [i v] ((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 i) v)) v2)])
-                  ["" (repeat ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2))])
+                    ["respective " (map-indexed (fn [i v] ((get-check-schema) c2 (conj p2 i) v)) v2)])
+                  ["" (repeat ((get-check-schema) c2 p2 v2))])
         ci (check-items c2 p2 m2)]
     [c2
      m2
@@ -809,7 +809,7 @@
   [c2
    m2
    (if (json-array? is) ;; additionalItems is only used when items is a tuple
-     (let [cs ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)
+     (let [cs ((get-check-schema) c2 p2 v2)
           ;;pp2 (butlast p2)
            ci (check-items c2 p2 m2)]
        (make-new-type-checker
@@ -827,7 +827,7 @@
        [c1 m1 nil]))])
 
 (defn check-property-unevaluatedItems [_property c2 p2 m2 v2]
-  (let [css (repeat ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2))
+  (let [css (repeat ((get-check-schema) c2 p2 v2))
         ci (check-items c2 p2 m2)]
     [c2
      m2
@@ -840,7 +840,7 @@
           (tweak m1 (ci c1 p1 (map second index-and-items) i-and-css "unevaluatedItems: at least one item did not conform to schema")))))]))
 
 (defn check-property-contains [_property c2 p2 {mn "minContains" :as m2} v2]
-  (let [cs ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)
+  (let [cs ((get-check-schema) c2 p2 v2)
         base (if mn mn 1)
         ci (check-items c2 p2 v2)]
     [c2
@@ -928,7 +928,7 @@
 
 ;; TODO: merge code with check-items...
 (defn check-of [c2 p2 m2 v2]
-  (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i ((deref (resolve 'm3.validate/check-schema)) c2 (conj p2 i) sub-schema)]) v2))]
+  (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i ((get-check-schema) c2 (conj p2 i) sub-schema)]) v2))]
     (fn [c1 p1 m1 message failed?]
       (let [old-local-c1 (update c1 :evaluated dissoc p1)
             [c1 es]
@@ -983,7 +983,7 @@
 
 ;; TODO: share check-of
 (defn check-property-not [_property c2 p2 m2 v2]
-  (let [c ((deref (resolve 'm3.validate/check-schema)) c2 p2 v2)]
+  (let [c ((get-check-schema) c2 p2 v2)]
     [c2
      m2
      (fn [c1 p1 m1]
