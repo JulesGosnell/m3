@@ -15,7 +15,7 @@
 (ns m3.type
   (:require
    [m3.platform :refer [pformat]]
-   [m3.util :refer [make-error make-error-on third get-check-schema]]))
+   [m3.util :refer [make-error make-error-on third get-check-schema old->new]]))
 
 ;;------------------------------------------------------------------------------
 
@@ -88,13 +88,13 @@
      (cond
 
        (json-string? t)
-       (if-let [c (get-in draft->type->checker [draft t])]
-         (c t c2 p2 m2)
+       (if-let [f2 (get-in draft->type->checker [draft t])]
+         (f2 t c2 p2 m2)
          (fn [c1 p1 m1]
            [c1 m1 [(make-error (pformat "type: unrecognised name: %s" t) p2 m2 p1 m1)]]))
 
        (json-array? t)
-       (let [cs (map-indexed (fn [i t] (third (check-type t c2 (conj p2 i) m2))) t)]
+       (let [f1s (map-indexed (fn [i t] (third (check-type t c2 (conj p2 i) m2))) t)]
          (fn [c1 p1 m1]
            [c1
             m1
@@ -102,12 +102,12 @@
              (pformat "type: none matched: %s" t)
              p2 m2 p1 m1
              (fn [es] (not (some nil? es)))
-             (mapv (fn [c] (third (c c1 p1 m1))) cs))]))
+             (mapv (fn [f1] (third (f1 c1 p1 m1))) f1s))]))
 
        (json-object? t)
-       (let [cs ((get-check-schema) c2 p2 t)]
+       (let [[c2 m2 f1] ((old->new (get-check-schema)) c2 p2 t)]
          (fn [c1 p1 m1]
-           (let [[c1 es] (cs c1 p1 m1)]
+           (let [[c1 m1 es] (f1 c1 p1 m1)]
              [c1 m1 es])))
 
        :else
