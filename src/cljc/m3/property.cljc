@@ -28,9 +28,8 @@
 ;;------------------------------------------------------------------------------
 ;; standard common properties
 
-(defn check-property-extends [_property c2 p2 m2 v2]
+(defn check-property-extends [_property c2 _p2 m2 _v2]
   ;; TODO
-  ;;((get-check-schema) c2 (conj p2 property) v2)
   [c2
    m2
   (fn [c1 _p1 m1]
