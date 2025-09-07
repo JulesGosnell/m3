@@ -613,14 +613,13 @@
          (f1 c1 p1 m1)
          [c1 m1 []]))]))
 
-;; TODO: thread variables through definitions to pick up id stash...
-(defn check-property-definitions [_property c2 p2 m2 v2]
-  (mapv (fn [[k v]] ((get-check-schema) c2 (conj p2 k) v)) v2)
+;; definitions/$defs
+;; m3/m2 time - validate structure of content
+;; m2/m1 time - hmmm...
+(defn check-property-definitions [_property c2 _p2 m2 _v2]
   [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
 
-;; TODO: thread variables through definitions to pick up id stash...
-(defn check-property-$defs [_property c2 p2 m2 v2]
-  (mapv (fn [[k v]] ((get-check-schema) c2 (conj p2 k) v)) v2)
+(defn check-property-$defs [_property c2 _p2 m2 _v2]
   [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
 
 ;; bifurcate upwards to reduce amount of work done to just what it required...
