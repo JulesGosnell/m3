@@ -102,8 +102,6 @@
 
 ;;------------------------------------------------------------------------------
 
-(declare check-schema)
-
 ;; marker-stashes for the builtin meta-schemas
 (let [draft3 (parse-uri "http://json-schema.org/draft-03/schema#")
       draft4 (parse-uri "http://json-schema.org/draft-04/schema#")
