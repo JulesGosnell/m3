@@ -810,7 +810,8 @@
         (f1 c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")))]))
 
 (defn check-property-items [_property {d :draft :as c2} p2 m2 v2]
-  (let [n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
+  (let [f2 (get-check-schema)
+        n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
         [m css] (if (json-array? v2)
                   (do
                     (case d
@@ -819,16 +820,17 @@
                       (:draft2020-12 :draft-next)
                       (log/info (str "prefixItems: was introduced in draft2020-12 to handle tuple version of items - you are using: " d)))
                     ["respective " (map-indexed (fn [i v] ((get-check-schema) c2 (conj p2 i) v)) v2)])
-                  ["" (repeat ((get-check-schema) c2 p2 v2))])
-        ci (check-items c2 p2 m2)]
+                  ["" (repeat (f2 c2 p2 v2))])
+        [c2 m2 f1] (new-check-items c2 p2 m2)]
     [c2
      m2
      (make-new-type-checker
       json-array?
       (fn [c1 p1 m1]
         (let [items (drop n m1)
-              i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)]
-          (tweak m1 (ci c1 p1 items i-and-css (str "items: at least one item did not conform to " m "schema"))))))]))
+              i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) css items)
+              [c1 _m1 es] (f1 c1 p1 items i-and-css (str "items: at least one item did not conform to " m "schema"))] ;; TODO: why can we not pass m1 straight through ?
+          [c1 m1 es])))]))
 
 (defn check-property-additionalItems [_property c2 p2 {is "items" :as m2} v2]
   (if (json-array? is) ;; additionalItems is only used when items is a tuple
