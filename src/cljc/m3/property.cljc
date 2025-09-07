@@ -831,12 +831,13 @@
           (tweak m1 (ci c1 p1 items i-and-css (str "items: at least one item did not conform to " m "schema"))))))]))
 
 (defn check-property-additionalItems [_property c2 p2 {is "items" :as m2} v2]
-  [c2
-   m2
-   (if (json-array? is) ;; additionalItems is only used when items is a tuple
-     (let [cs ((get-check-schema) c2 p2 v2)
+  (if (json-array? is) ;; additionalItems is only used when items is a tuple
+    (let [f2 (get-check-schema)
+          cs (f2 c2 p2 v2)
           ;;pp2 (butlast p2)
-           ci (check-items c2 p2 m2)]
+          [c2 m2 f1] (new-check-items c2 p2 m2)]
+      [c2
+       m2
        (make-new-type-checker
         json-array?
         (fn [c1 p1 m1]
@@ -847,9 +848,11 @@
                 n (count is)
                 ais (drop n m1)
                 i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) (repeat cs) ais)]
-            (tweak m1 (ci c1 p1 ais i-and-css "additionalItems: at least one item did not conform to schema"))))))
+            (f1 c1 p1 ais i-and-css "additionalItems: at least one item did not conform to schema"))))])
+    [c2
+     m2
      (fn [c1 _p1 m1]
-       [c1 m1 nil]))])
+       [c1 m1 nil])]))
 
 (defn check-property-unevaluatedItems [_property c2 p2 m2 v2]
   (let [css (repeat ((get-check-schema) c2 p2 v2))
