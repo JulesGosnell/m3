@@ -869,17 +869,18 @@
           (f1 c1 p1 (map second index-and-items) i-and-css "unevaluatedItems: at least one item did not conform to schema"))))]))
 
 (defn check-property-contains [_property c2 p2 {mn "minContains" :as m2} v2]
-  (let [cs ((get-check-schema) c2 p2 v2)
+  (let [f2 (get-check-schema)
+        cs (f2 c2 p2 v2)
         base (if mn mn 1)
-        ci (check-items c2 p2 v2)]
+        [c2 _v2 f1] (new-check-items c2 p2 v2)]
     [c2
      m2
      (make-new-type-checker
       json-array?
       (fn [c1 p1 m1]
         (let [i-and-css (map (fn [i _] [i cs]) (range) m1)
-              [new-c1 [{es :errors}]]
-              (ci c1 p1 m1 i-and-css "contains: at least one item did not conform to schema")
+              [new-c1 _m1 [{es :errors}]]
+              (f1 c1 p1 m1 i-and-css "contains: at least one item did not conform to schema")
               matches (- (count m1) (count es))]
           (if (<= (min base 1) matches)
             [new-c1 m1 nil]
