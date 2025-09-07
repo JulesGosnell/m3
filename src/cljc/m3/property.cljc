@@ -624,53 +624,55 @@
   [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
 
 ;; bifurcate upwards to reduce amount of work done to just what it required...
-(defn check-properties [_c2 p2 m2]
+(defn check-properties [c2 p2 m2]
   (let [pp2 (butlast p2)]
-    (fn [c1 p1 m1 k-and-css message]
-      (let [[c1 es]
-            (reduce
-             (fn [[c old-es] [[k cs] sub-document]]
-               (let [[c new-es] (cs c (conj p1 k) sub-document)]
-                 [c (concatv old-es new-es)]))
-             [c1 []]
-             (map (fn [[k :as k-and-cs]] [k-and-cs (m1 k)]) k-and-css))]
-        [(let [ks (map first k-and-css)]
-           (-> c1
+    [c2
+     m2
+     (fn [c1 p1 m1 k-and-css message]
+       (let [[c1 es]
+             (reduce
+              (fn [[c old-es] [[k cs] sub-document]]
+                (let [[c new-es] (cs c (conj p1 k) sub-document)]
+                  [c (concatv old-es new-es)]))
+              [c1 []]
+              (map (fn [[k :as k-and-cs]] [k-and-cs (m1 k)]) k-and-css))]
+         [(let [ks (map first k-and-css)]
+            (-> c1
            ;; TODO: only record matched if additonalProperties needed later ?
-               (update :matched update pp2 into-set ks)
+                (update :matched update pp2 into-set ks)
            ;; TODO: only record evaluated if unevaluatedProperties needed later ?
-               (update :evaluated update p1 into-set ks)))
-         m1
-         (make-error-on-failure message p2 m2 p1 m1 es)]))))
+                (update :evaluated update p1 into-set ks)))
+          m1
+          (make-error-on-failure message p2 m2 p1 m1 es)]))]))
 
 (defn check-property-properties [_property c2 p2 m2 ps]
   (let [k-and-css (mapv (fn [[k v]] [k ((get-check-schema) c2 (conj p2 k) v)]) ps)
-        cp (check-properties c2 p2 m2)]
+        [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
      (make-new-type-checker
       json-object?
       (fn [c1 p1 m1]
         (let [k-and-css (filter (fn [[k]] (contains? m1 k)) k-and-css)]
-          (cp c1 p1 m1 k-and-css "properties: at least one property did not conform to respective schema"))))]))
+          (f1 c1 p1 m1 k-and-css "properties: at least one property did not conform to respective schema"))))]))
 
 ;; what is opposite of "additional" - "matched" - used by spec to refer to properties matched by "properties" or "patternProperties"
 
 (defn check-property-patternProperties [_property c2 p2 m2 pps]
   (let [cp-and-pattern-and-ks (mapv (fn [[k v]] [((get-check-schema) c2 (conj p2 k) v) (ecma-pattern k) k]) pps)
-        cp (check-properties c2 p2 m2)]
+        [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
      (make-new-type-checker
       json-object?
       (fn [c1 p1 m1]
         (let [k-and-css (apply concat (keep (fn [[k]] (keep (fn [[cs p]] (when (ecma-match p k) [k cs])) cp-and-pattern-and-ks)) m1))]
-          (cp c1 p1 m1 k-and-css "patternProperties: at least one property did not conform to respective schema"))))]))
+          (f1 c1 p1 m1 k-and-css "patternProperties: at least one property did not conform to respective schema"))))]))
 
 (defn check-property-additionalProperties [_property c2 p2 m2 v2]
   (let [cs ((get-check-schema) c2 p2 v2)
         pp2 (butlast p2)
-        cp (check-properties c2 p2 m2)]
+        [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
      (make-new-type-checker
@@ -679,11 +681,11 @@
         (let [mps (get (get c1 :matched) pp2 #{})
               aps (remove (fn [[k]] (contains? mps k)) m1) ;; k might be nil
               p-and-css (mapv (fn [[k]] [k cs]) aps)] ; TODO: feels inefficient
-          (cp c1 p1 m1 p-and-css "additionalProperties: at least one property did not conform to schema"))))]))
+          (f1 c1 p1 m1 p-and-css "additionalProperties: at least one property did not conform to schema"))))]))
 
 (defn check-property-unevaluatedProperties [_property c2 p2 m2 v2]
   (let [cs ((get-check-schema) c2 p2 v2)
-        cp (check-properties c2 p2 m2)]
+        [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
      (make-new-type-checker
@@ -692,7 +694,7 @@
         (let [eps (get (get c1 :evaluated) p1 #{})
               ups (remove (fn [[k]] (contains? eps k)) m1) ;; k might be nil
               p-and-css (mapv (fn [[k]] [k cs]) ups)] ; TODO: feels inefficient
-          (cp c1 p1 m1 p-and-css "unevaluatedProperties: at least one property did not conform to schema"))))]))
+          (f1 c1 p1 m1 p-and-css "unevaluatedProperties: at least one property did not conform to schema"))))]))
 
 (defn check-property-propertyNames [_property c2 p2 m2 v2]
   [c2
