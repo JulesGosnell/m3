@@ -771,19 +771,43 @@
              (map vector i-and-css m1))]
         [c1 (make-error-on-failure message p2 m2 p1 m1 es)]))))
 
+(defn new-check-items [c2 p2 m2]
+  (let [pp2 (butlast p2)]
+    [c2
+     m2
+    (fn [c1 p1 m1 i-and-css message]
+      (let [old-local-c1
+            (-> c1
+                (update :matched assoc pp2 #{})
+                (update :evaluated assoc p1 #{}))
+            [c1 es]
+            (reduce
+             (fn [[old-c old-es] [[i cs] sub-document]]
+               (let [[_ new-es] (cs old-local-c1 (conj p1 i) sub-document)
+                     new-c (if (empty? new-es)
+                             (-> old-c
+                                 (update :matched update pp2 conj-set i)
+                                 (update :evaluated update p1 conj-set i))
+                             old-c)]
+                 [new-c (concatv old-es new-es)]))
+             [c1 []]
+             (map vector i-and-css m1))]
+        [c1 m1 (make-error-on-failure message p2 m2 p1 m1 es)]))]))
+
 
 (defn tweak [m1 [c1 es]]
   [c1 m1 es])
   
 (defn check-property-prefixItems [_property c2 p2 m2 v2]
-  (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i ((get-check-schema) c2 (conj p2 i) sub-schema)]) v2))
-        ci (check-items c2 p2 m2)]
+  (let [f2 (get-check-schema)
+        i-and-css (vec (map-indexed (fn [i sub-schema] [i (f2 c2 (conj p2 i) sub-schema)]) v2))
+        [c2 m2 f1] (new-check-items c2 p2 m2)]
     [c2
      m2
      (make-new-type-checker
       json-array?
       (fn [c1 p1 m1]
-        (tweak m1 (ci c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema"))))]))
+        (f1 c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")))]))
 
 (defn check-property-items [_property {d :draft :as c2} p2 m2 v2]
   (let [n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
