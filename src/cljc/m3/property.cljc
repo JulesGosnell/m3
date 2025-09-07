@@ -855,8 +855,9 @@
        [c1 m1 nil])]))
 
 (defn check-property-unevaluatedItems [_property c2 p2 m2 v2]
-  (let [css (repeat ((get-check-schema) c2 p2 v2))
-        ci (check-items c2 p2 m2)]
+  (let [f2 (get-check-schema)
+        css (repeat (f2 c2 p2 v2))
+        [c2 m2 f1] (new-check-items c2 p2 m2)]
     [c2
      m2
      (make-new-type-checker
@@ -865,7 +866,7 @@
         (let [eis (or (get p->eis p1) #{})
               index-and-items (filter (fn [[k]] (not (eis k))) (map-indexed (fn [i v] [i v]) m1))
               i-and-css (mapv (fn [cs [i]] [i cs]) css index-and-items)] ;; TODO: item not used
-          (tweak m1 (ci c1 p1 (map second index-and-items) i-and-css "unevaluatedItems: at least one item did not conform to schema")))))]))
+          (f1 c1 p1 (map second index-and-items) i-and-css "unevaluatedItems: at least one item did not conform to schema"))))]))
 
 (defn check-property-contains [_property c2 p2 {mn "minContains" :as m2} v2]
   (let [cs ((get-check-schema) c2 p2 v2)
