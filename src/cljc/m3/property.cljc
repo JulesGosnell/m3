@@ -705,9 +705,10 @@
         (make-error-on-failure
          "propertyNames: at least one property's name failed to conform to relevant schema"
          p2 m2 p1 m1
-         (reduce
-          (fn [acc [k]]
-            (let [[_new-c1 es] (((get-check-schema) c2 (conj p2 k) v2) c1 (conj p1 k) k)]
+         (reduce-kv
+          (fn [acc k1 _v1]
+            (let [[c2 m2 f1] ((old->new (get-check-schema)) c2 (conj p2 k1) v2)
+                  [_c1 _m1 es] (f1 c1 (conj p1 k1) k1)]
               (concatv acc es)))
           []
           m1)))])])
