@@ -200,10 +200,15 @@
 (defn test-directory [d draft]
   (let [dname (file-name d)]
     (testing (str dname ":")
-      (doseq [f (drop 1 (file-seq d))]
-        (if (directory? f)
-          (test-directory f draft)
-          (test-file dname f draft))))))
+      (doall
+       (#?(:clj pmap :cljs map)
+        (fn [f]
+          (if (directory? f)
+            (test-directory f draft)
+            (test-file dname f draft)))
+        (drop 1 (file-seq d)))))))
+
+      
 
 (def json-schema-test-suite-root "test-resources/JSON-Schema-Test-Suite/tests/")
 

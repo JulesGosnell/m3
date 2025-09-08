@@ -308,7 +308,7 @@
    "http://localhost:1234" "test-resources/JSON-Schema-Test-Suite/remotes" ;; TODO: should not be in production code
    })
 
-;; TODO: uris in sub-schema must inherit fromuris in super-schema...
+;; TODO: uris in sub-schema must inherit from uris in super-schema...
 (defn uri->schema [uri-base->dir _c _p {origin :origin path :path}]
   (if-let [dir (uri-base->dir origin)]
     (let [f (str dir path (if (ends-with? path ".json") "" ".json"))
@@ -387,6 +387,9 @@
 
 (defn $schema->m2 [s]
   (uri->schema-2 {} [] (parse-uri s)))
+
+(defn $schema-uri->schema [uri]
+  (uri->schema-2 {} [] uri))
 
 (declare validate-m2)
 
