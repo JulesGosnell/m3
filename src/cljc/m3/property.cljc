@@ -945,13 +945,14 @@
 
 ;; TODO: merge code with check-items...
 (defn check-of [c2 p2 m2 v2]
-  (let [i-and-css (vec (map-indexed (fn [i sub-schema] [i ((get-check-schema) c2 (conj p2 i) sub-schema)]) v2))]
+  (let [f2 (old->new (get-check-schema))
+        i-and-css (vec (map-indexed (fn [i sub-schema] [i (third (f2 c2 (conj p2 i) sub-schema))]) v2))]
     (fn [c1 p1 m1 message failed?]
       (let [old-local-c1 (update c1 :evaluated dissoc p1)
             [c1 es]
             (reduce
              (fn [[old-c old-es] [_i cs]]
-               (let [[new-local-c1 new-es] (cs old-local-c1 p1 m1)
+               (let [[new-local-c1 m1 new-es] (cs old-local-c1 p1 m1)
                      new-c (if (empty? new-es) (update old-c :evaluated update p1 into-set (get (get new-local-c1 :evaluated) p1)) old-c)
                      es (concatv old-es new-es)]
                  [new-c es]))
