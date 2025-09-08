@@ -17,7 +17,7 @@
    [clojure.string :refer [ends-with?]]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.platform :refer [json-decode]]
-   [m3.util :refer [present? concatv make-error make-error-on-failure old->new new->old]]
+   [m3.util :refer [present? concatv make-error make-error-on-failure]]
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.type :refer [json-object?]]
    [m3.ref :refer [meld resolve-uri try-path]]
@@ -269,7 +269,17 @@
             (delegate (or (stasher c2 p2 new-m2 a) c2) p2 new-m2))
           (delegate c2 p2 old-m2))))))
 
-(defn old->new2 [cs]
+;;------------------------------------------------------------------------------
+;; interceptor stack will be decommissioned rather than migrated...
+
+(defn new->old [cs]
+  (fn [c2 p2 m2]
+    (let [[c2 m2 f1] (cs c2 p2 m2)]
+      (fn [c1 p1 m1]
+        (let [[c1 m1 es] (f1 c1 p1 m1)]
+          [c1 es])))))
+
+(defn old->new [cs]
   (fn [c2 p2 m2]
     (let [f1 (cs c2 p2 m2)]
       [c2
@@ -279,7 +289,7 @@
             -           [c1 m1 es]))])))
 
 (def check-schema
-  (old->new2
+  (old->new
    ((make-ref-interceptor "$dynamicRef" expand-$dynamic-ref)
     ((make-ref-interceptor "$recursiveRef" expand-$recursive-ref)
      ((make-ref-interceptor "$ref" expand-$ref)
@@ -359,7 +369,7 @@
 ;; TODO: rename :root to ?:expanded?
 (defn validate-2 [c2 schema]
   (let [{draft :draft id-key :id-key :as c2} (make-context c2 schema)
-        [c2 m2 cs] ((old->new check-schema) c2 [] schema)]
+        [c2 m2 cs] (check-schema c2 [] schema)]
     (fn [c1 {did id-key _dsid "$schema" :as document}]
       ;;(log/info "validate:" sid "/" did)
       ;;(when (and dsid (not (= sid dsid))) (log/warn (pformat "document schema id not consistent with schema id: %s != %s" dsid sid)))

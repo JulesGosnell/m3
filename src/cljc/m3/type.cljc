@@ -15,7 +15,7 @@
 (ns m3.type
   (:require
    [m3.platform :refer [pformat]]
-   [m3.util :refer [make-error make-error-on third get-check-schema old->new]]))
+   [m3.util :refer [make-error make-error-on third get-check-schema]]))
 
 ;;------------------------------------------------------------------------------
 
@@ -105,7 +105,7 @@
              (mapv (fn [f1] (third (f1 c1 p1 m1))) f1s))]))
 
        (json-object? t)
-       (let [[c2 m2 f1] ((old->new (get-check-schema)) c2 p2 t)]
+       (let [[c2 m2 f1] ((get-check-schema) c2 p2 t)]
          (fn [c1 p1 m1]
            (let [[c1 m1 es] (f1 c1 p1 m1)]
              [c1 m1 es])))

@@ -19,7 +19,7 @@
    [clojure.string :refer [starts-with? replace] :rename {replace string-replace}]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.platform :refer [pformat json-decode big-zero? big-mod pbigdec]]
-   [m3.util :refer [absent concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure get-check-schema old->new third]]
+   [m3.util :refer [absent concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure get-check-schema third]]
    [m3.ecma :refer [ecma-pattern ecma-match]]
    [m3.uri :refer [parse-uri inherit-uri]]
    [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker make-new-type-checker json-=]]
@@ -452,7 +452,7 @@
 
 (defn make-check-property-contentSchema [strict?]
   (fn [_property c2 p2 {cmt "contentMediaType" :as m2} v2]
-    (let [[c2 m2 checker] ((old->new (get-check-schema)) c2 p2 v2)
+    (let [[c2 m2 checker] ((get-check-schema) c2 p2 v2)
           pp2 (butlast p2)]
       [c2
        m2
@@ -484,7 +484,7 @@
               ;; TODO: this looks very suspect
               (fn [c1 _p1 m1] [c1 m1 (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v)])
               (or (json-object? v) (boolean? v)) ;; a schema dependency
-              (third ((old->new (get-check-schema)) c2 p2 v)) ; TODO: we are throwing away c2/m2
+              (third ((get-check-schema) c2 p2 v)) ; TODO: we are throwing away c2/m2
               ;; we should not need to check other cases as m2 should have been validated against m3
               )))
          {}
@@ -512,7 +512,7 @@
   (let [property->checker
         (reduce
          (fn [acc [k v]]
-           (assoc acc k (third ((old->new (get-check-schema)) c2 p2 v)))) ;TODO: we are throwing away c2/m2
+           (assoc acc k (third ((get-check-schema) c2 p2 v)))) ;TODO: we are throwing away c2/m2
          {}
          v2)]
     [c2
@@ -535,7 +535,7 @@
              [(make-error ["dependentSchemas: missing properties (at least):" missing] p2 m2 p1 m1)])])))]))
 
 (defn check-property-propertyDependencies [_property c2 p2 m2 v2]
-  (let [f2 (old->new (get-check-schema))
+  (let [f2 (get-check-schema)
         checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] (third (f2 c2 p2 s))]) vs)) v2))
         ks (keys v2)]
     [c2
@@ -585,7 +585,7 @@
 ;;------------------------------------------------------------------------------
 
 (defn check-property-if [_property c2 p2 m2 v2]
-  (let [[c2 m2 f1] ((old->new (get-check-schema)) c2 p2 v2)
+  (let [[c2 m2 f1] ((get-check-schema) c2 p2 v2)
         pp2 (butlast p2)]
     [c2
      m2
@@ -595,7 +595,7 @@
          [(update (if success? new-c1 old-c1) :if assoc pp2 success?) m1 []]))]))
 
 (defn check-property-then [_property c2 p2 _m2 v2]
-  (let [[c2 m2 f1] ((old->new (get-check-schema)) c2 p2 v2)
+  (let [[c2 m2 f1] ((get-check-schema) c2 p2 v2)
         pp2 (butlast p2)]
     [c2
      m2
@@ -605,7 +605,7 @@
          [c1 m1 []]))]))
 
 (defn check-property-else [_property c2 p2 _m2 v2]
-  (let [[c2 m2 f1] ((old->new (get-check-schema)) c2 p2 v2)
+  (let [[c2 m2 f1] ((get-check-schema) c2 p2 v2)
         pp2 (butlast p2)]
     [c2
      m2
@@ -646,7 +646,7 @@
           (make-error-on-failure message p2 m2 p1 m1 es)]))]))
 
 (defn check-property-properties [_property c2 p2 m2 ps]
-  (let [f2 (old->new (get-check-schema))
+  (let [f2 (get-check-schema)
         k-and-css (mapv (fn [[k v]] [k (third (f2 c2 (conj p2 k) v))]) ps)
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
@@ -660,7 +660,7 @@
 ;; what is opposite of "additional" - "matched" - used by spec to refer to properties matched by "properties" or "patternProperties"
 
 (defn check-property-patternProperties [_property c2 p2 m2 pps]
-  (let [f2 (old->new (get-check-schema))
+  (let [f2 (get-check-schema)
         cp-and-pattern-and-ks (mapv (fn [[k v]] [(third (f2 c2 (conj p2 k) v)) (ecma-pattern k) k]) pps)
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
@@ -672,7 +672,7 @@
           (f1 c1 p1 m1 k-and-css "patternProperties: at least one property did not conform to respective schema"))))]))
 
 (defn check-property-additionalProperties [_property c2 p2 m2 v2]
-  (let [f2 (old->new (get-check-schema))
+  (let [f2 (get-check-schema)
         [c2 m2 cs] (f2 c2 p2 v2)
         pp2 (butlast p2)
         [c2 m2 f1] (check-properties c2 p2 m2)]
@@ -687,7 +687,7 @@
           (f1 c1 p1 m1 p-and-css "additionalProperties: at least one property did not conform to schema"))))]))
 
 (defn check-property-unevaluatedProperties [_property c2 p2 m2 v2]
-  (let [f2 (old->new (get-check-schema))
+  (let [f2 (get-check-schema)
         [c2 m2 cs] (f2 c2 p2 v2)
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
@@ -712,7 +712,7 @@
          p2 m2 p1 m1
          (reduce-kv
           (fn [acc k1 _v1]
-            (let [[c2 m2 f1] ((old->new (get-check-schema)) c2 (conj p2 k1) v2)
+            (let [[c2 m2 f1] ((get-check-schema) c2 (conj p2 k1) v2)
                   [_c1 _m1 es] (f1 c1 (conj p1 k1) k1)]
               (concatv acc es)))
           []
@@ -784,7 +784,7 @@
   [c1 m1 es])
   
 (defn check-property-prefixItems [_property c2 p2 m2 v2]
-  (let [f2 (old->new (get-check-schema))
+  (let [f2 (get-check-schema)
         i-and-css (vec (map-indexed (fn [i sub-schema] [i (third (f2 c2 (conj p2 i) sub-schema))]) v2))
         [c2 m2 f1] (check-items c2 p2 m2)]
     [c2
@@ -795,7 +795,7 @@
         (f1 c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")))]))
 
 (defn check-property-items [_property {d :draft :as c2} p2 m2 v2]
-  (let [f2 (old->new (get-check-schema))
+  (let [f2 (get-check-schema)
         n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
         [m css] (if (json-array? v2)
                   (do
@@ -819,7 +819,7 @@
 
 (defn check-property-additionalItems [_property c2 p2 {is "items" :as m2} v2]
   (if (json-array? is) ;; additionalItems is only used when items is a tuple
-    (let [f2 (old->new (get-check-schema))
+    (let [f2 (get-check-schema)
           [c2 m2 cs] (f2 c2 p2 v2)
           ;;pp2 (butlast p2)
           [c2 m2 f1] (check-items c2 p2 m2)]
@@ -842,7 +842,7 @@
        [c1 m1 nil])]))
 
 (defn check-property-unevaluatedItems [_property c2 p2 m2 v2]
-  (let [f2 (old->new (get-check-schema))
+  (let [f2 (get-check-schema)
         css (repeat (third (f2 c2 p2 v2)))
         [c2 m2 f1] (check-items c2 p2 m2)]
     [c2
@@ -856,7 +856,7 @@
           (f1 c1 p1 (map second index-and-items) i-and-css "unevaluatedItems: at least one item did not conform to schema"))))]))
 
 (defn check-property-contains [_property c2 p2 {mn "minContains" :as m2} v2]
-  (let [f2 (old->new (get-check-schema))
+  (let [f2 (get-check-schema)
         [c2 m2 cs] (f2 c2 p2 v2)
         base (if mn mn 1)
         [c2 _v2 f1] (check-items c2 p2 v2)]
@@ -945,7 +945,7 @@
 
 ;; TODO: merge code with check-items...
 (defn check-of [c2 p2 m2 v2]
-  (let [f2 (old->new (get-check-schema))
+  (let [f2 (get-check-schema)
         i-and-css (vec (map-indexed (fn [i sub-schema] [i (third (f2 c2 (conj p2 i) sub-schema))]) v2))]
     (fn [c1 p1 m1 message failed?]
       (let [old-local-c1 (update c1 :evaluated dissoc p1)
@@ -1001,7 +1001,7 @@
 
 ;; TODO: share check-of
 (defn check-property-not [_property c2 p2 m2 v2]
-  (let [[c2 m2 f1] ((old->new (get-check-schema)) c2 p2 v2)]
+  (let [[c2 m2 f1] ((get-check-schema) c2 p2 v2)]
     [c2
      m2
      (fn [c1 p1 m1]

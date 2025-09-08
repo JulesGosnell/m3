@@ -95,17 +95,6 @@
 
 ;;------------------------------------------------------------------------------
 
-(defn new->old [cs]
-  (fn [c2 p2 m2]
-    (let [[c2 m2 f1] (cs c2 p2 m2)]
-      (fn [c1 p1 m1]
-        (let [[c1 m1 es] (f1 c1 p1 m1)]
-          [c1 es])))))
-
-(def old->new identity)
-
-;;------------------------------------------------------------------------------
-
 (defn get-check-schema []
   ;; we have had to do this to break a circular dependency
   (deref (resolve 'm3.validate/check-schema)))
