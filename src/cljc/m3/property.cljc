@@ -632,7 +632,7 @@
        (let [[c1 es]
              (reduce
               (fn [[c old-es] [[k cs] sub-document]]
-                (let [[c new-es] (cs c (conj p1 k) sub-document)]
+                (let [[c m new-es] (cs c (conj p1 k) sub-document)]
                   [c (concatv old-es new-es)]))
               [c1 []]
               (map (fn [[k :as k-and-cs]] [k-and-cs (m1 k)]) k-and-css))]
@@ -646,7 +646,8 @@
           (make-error-on-failure message p2 m2 p1 m1 es)]))]))
 
 (defn check-property-properties [_property c2 p2 m2 ps]
-  (let [k-and-css (mapv (fn [[k v]] [k ((get-check-schema) c2 (conj p2 k) v)]) ps)
+  (let [f2 (old->new (get-check-schema))
+        k-and-css (mapv (fn [[k v]] [k (third (f2 c2 (conj p2 k) v))]) ps)
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
@@ -659,7 +660,8 @@
 ;; what is opposite of "additional" - "matched" - used by spec to refer to properties matched by "properties" or "patternProperties"
 
 (defn check-property-patternProperties [_property c2 p2 m2 pps]
-  (let [cp-and-pattern-and-ks (mapv (fn [[k v]] [((get-check-schema) c2 (conj p2 k) v) (ecma-pattern k) k]) pps)
+  (let [f2 (old->new (get-check-schema))
+        cp-and-pattern-and-ks (mapv (fn [[k v]] [(third (f2 c2 (conj p2 k) v)) (ecma-pattern k) k]) pps)
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
@@ -670,7 +672,8 @@
           (f1 c1 p1 m1 k-and-css "patternProperties: at least one property did not conform to respective schema"))))]))
 
 (defn check-property-additionalProperties [_property c2 p2 m2 v2]
-  (let [cs ((get-check-schema) c2 p2 v2)
+  (let [f2 (old->new (get-check-schema))
+        [c2 m2 cs] (f2 c2 p2 v2)
         pp2 (butlast p2)
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
@@ -684,7 +687,8 @@
           (f1 c1 p1 m1 p-and-css "additionalProperties: at least one property did not conform to schema"))))]))
 
 (defn check-property-unevaluatedProperties [_property c2 p2 m2 v2]
-  (let [cs ((get-check-schema) c2 p2 v2)
+  (let [f2 (old->new (get-check-schema))
+        [c2 m2 cs] (f2 c2 p2 v2)
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
