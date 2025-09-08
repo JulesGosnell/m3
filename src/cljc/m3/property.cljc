@@ -763,7 +763,7 @@
             [c1 es]
             (reduce
              (fn [[old-c old-es] [[i cs] sub-document]]
-               (let [[_ new-es] (cs old-local-c1 (conj p1 i) sub-document)
+               (let [[_ _ new-es] (cs old-local-c1 (conj p1 i) sub-document)
                      new-c (if (empty? new-es)
                              (-> old-c
                                  (update :matched update pp2 conj-set i)
@@ -779,8 +779,8 @@
   [c1 m1 es])
   
 (defn check-property-prefixItems [_property c2 p2 m2 v2]
-  (let [f2 (get-check-schema)
-        i-and-css (vec (map-indexed (fn [i sub-schema] [i (f2 c2 (conj p2 i) sub-schema)]) v2))
+  (let [f2 (old->new (get-check-schema))
+        i-and-css (vec (map-indexed (fn [i sub-schema] [i (third (f2 c2 (conj p2 i) sub-schema))]) v2))
         [c2 m2 f1] (check-items c2 p2 m2)]
     [c2
      m2
@@ -790,7 +790,7 @@
         (f1 c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")))]))
 
 (defn check-property-items [_property {d :draft :as c2} p2 m2 v2]
-  (let [f2 (get-check-schema)
+  (let [f2 (old->new (get-check-schema))
         n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
         [m css] (if (json-array? v2)
                   (do
@@ -799,8 +799,8 @@
                       nil
                       (:draft2020-12 :draft-next)
                       (log/info (str "prefixItems: was introduced in draft2020-12 to handle tuple version of items - you are using: " d)))
-                    ["respective " (map-indexed (fn [i v] ((get-check-schema) c2 (conj p2 i) v)) v2)])
-                  ["" (repeat (f2 c2 p2 v2))])
+                    ["respective " (map-indexed (fn [i v] (third (f2 c2 (conj p2 i) v))) v2)])
+                  ["" (repeat (third (f2 c2 p2 v2)))])
         [c2 m2 f1] (check-items c2 p2 m2)]
     [c2
      m2
@@ -814,8 +814,8 @@
 
 (defn check-property-additionalItems [_property c2 p2 {is "items" :as m2} v2]
   (if (json-array? is) ;; additionalItems is only used when items is a tuple
-    (let [f2 (get-check-schema)
-          cs (f2 c2 p2 v2)
+    (let [f2 (old->new (get-check-schema))
+          [c2 m2 cs] (f2 c2 p2 v2)
           ;;pp2 (butlast p2)
           [c2 m2 f1] (check-items c2 p2 m2)]
       [c2
@@ -837,8 +837,8 @@
        [c1 m1 nil])]))
 
 (defn check-property-unevaluatedItems [_property c2 p2 m2 v2]
-  (let [f2 (get-check-schema)
-        css (repeat (f2 c2 p2 v2))
+  (let [f2 (old->new (get-check-schema))
+        css (repeat (third (f2 c2 p2 v2)))
         [c2 m2 f1] (check-items c2 p2 m2)]
     [c2
      m2
@@ -851,8 +851,8 @@
           (f1 c1 p1 (map second index-and-items) i-and-css "unevaluatedItems: at least one item did not conform to schema"))))]))
 
 (defn check-property-contains [_property c2 p2 {mn "minContains" :as m2} v2]
-  (let [f2 (get-check-schema)
-        cs (f2 c2 p2 v2)
+  (let [f2 (old->new (get-check-schema))
+        [c2 m2 cs] (f2 c2 p2 v2)
         base (if mn mn 1)
         [c2 _v2 f1] (check-items c2 p2 v2)]
     [c2
