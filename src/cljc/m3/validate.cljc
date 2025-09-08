@@ -17,7 +17,7 @@
    [clojure.string :refer [ends-with?]]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.platform :refer [json-decode]]
-   [m3.util :refer [present? concatv make-error make-error-on-failure]]
+   [m3.util :refer [present? concatv make-error make-error-on-failure old->new new->old]]
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.type :refer [json-object?]]
    [m3.ref :refer [meld resolve-uri try-path]]
@@ -345,7 +345,7 @@
 ;; TODO: rename :root to ?:expanded?
 (defn validate-2 [c2 schema]
   (let [{draft :draft id-key :id-key :as c2} (make-context c2 schema)
-        cs (check-schema c2 [] schema)]
+        [c2 m2 cs] ((old->new check-schema) c2 [] schema)]
     (fn [c1 {did id-key _dsid "$schema" :as document}]
       ;;(log/info "validate:" sid "/" did)
       ;;(when (and dsid (not (= sid dsid))) (log/warn (pformat "document schema id not consistent with schema id: %s != %s" dsid sid)))
@@ -357,7 +357,9 @@
                 :recursive-anchor []
                 :root document
                 :draft draft
-                :melder (:melder c2))] (cs c1 [] document)))))
+                :melder (:melder c2))
+            [c1 _m1 es] (cs c1 [] document)]
+        [c1 es]))))
 
 (defn $schema->m2 [s]
   (uri->schema-2 {} [] (parse-uri s)))
