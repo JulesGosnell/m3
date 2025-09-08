@@ -3,7 +3,7 @@
    #?(:clj [clojure.test :refer [deftest testing is]]
       :cljs [cljs.test :refer-macros [deftest testing is]])
    [m3.uri :refer [parse-uri]]
-   [m3.property :refer [check-property-properties check-property-$ref check-property-$schema check-property-id make-check-property-format check-property-type]]
+   [m3.property :refer [check-property-properties check-property-$ref check-property-id make-check-property-format check-property-type]]
    [m3.draft :refer [$schema-uri->draft]]
    [m3.vocabulary :refer [draft->vocab sort-vocab new-make-dialect]]
    [m3.validate :refer [$schema-uri->schema check-schema]]))
@@ -18,12 +18,12 @@
 
 ;; we can assume $schema as it is part of the core vocab for all drafts
 (defn new-validate [{$schema-uri->schema :$schema-uri->schema
-            $schema-uri->draft :$schema-uri->draft
-            draft->vocab :draft->vocab
-            :or {$schema-uri->schema $schema-uri->schema
-                 $schema-uri->draft $schema-uri->draft
-                 draft->vocab draft->vocab}
-            :as c2} {s "$schema" :as m2}]
+                     $schema-uri->draft :$schema-uri->draft
+                     draft->vocab :draft->vocab
+                     :or {$schema-uri->schema $schema-uri->schema
+                          $schema-uri->draft $schema-uri->draft
+                          draft->vocab draft->vocab}
+                     :as c2} {s "$schema" :as m2}]
   (prn "$schema : " s)
   (let [$schema-uri (parse-uri s)
         {$vocabulary "$vocabulary" :as m3} ($schema-uri->schema $schema-uri)]
@@ -37,14 +37,14 @@
             ;; make them manually for the m3 and then let the dialect rebuild itself with the m2
             [c3 m3 f2] (check-schema c3 [] m3)]
         (prn "M3:" c3 m3 f2)
-        (f2 {} [] m2)
+        (f2 c3 [] m2)
         ;; TODO: check results
-      ;; we are at the top of the schema hierarchy
-      ;; TODO:
+        ;; we are at the top of the schema hierarchy
+        ;; TODO:
         ;; m3 need to self-validate
-
-      ;; m3 needs contain $vocabulary and we need to make dialect
-      ;; needs to return f1 into which to plug m2 for validation
+        
+        ;; m3 needs contain $vocabulary and we need to make dialect
+        ;; needs to return f1 into which to plug m2 for validation
         f2)
 
       (do
@@ -82,6 +82,33 @@
 
 (def custom-$schema-uri->draft
   {(parse-uri m3-id) :draft-custom})
+
+;; TODO: recurse to top of schema hierarchy bulding a dialect from most recent $vocabulary on way down
+;; we will need a bootstrap dialect, marker index and definitions index too do this properly
+
+(defn check-property-$schema [_property c2 _p2 m2 v2]
+  (prn "HERE $SCHEMA L2:" m2 v2)
+  ;; TODO:
+  ;; in f2 we should:
+  ;; - recurse to top of schema hierrchy
+  ;; - descend hierarchy with a new :dialect, :draft and :schema-uri
+  ;; - this should all be memoised so take no time
+  ;; - validate our given m2 against our given $schema
+  ;; - copy the given :dialect, :draft and :schema-uri into our c2 for subsequent checkers...
+  [c2
+   ;; (if-let [d ($schema->draft v2)]
+   ;;   (update
+   ;;    c2
+   ;;    :draft
+   ;;    (fn [old-d new-d]
+   ;;      (when (not= old-d new-d) (log/info (str "switching draft: " old-d " -> " new-d)))
+   ;;      new-d)
+   ;;    d)
+   ;;   c2)
+   m2
+   (fn [c1 _p1 m1]
+     (prn "HERE $SCHEMA L1:" m1)
+     [c1 m1 nil])])
 
 (def custom-draft->vocab
   {:draft-custom
