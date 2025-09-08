@@ -182,14 +182,17 @@
 
 (defn check-schema-2 [{t? :trace? :as c2} p2 m2]
   ;; TODO; this needs to be simplified
+  [c2
+   m2
   (cond
     (true? m2)
-    (fn [c1 _p1 _m1]
-      [c1 nil])
+    (fn [c1 _p1 m1]
+      [c1 m1 nil])
 
     (false? m2)
     (fn [c1 p1 m1]
       [c1
+       m1
        (when (present? m1)
          [(make-error "schema is false: nothing will match" p2 m2 p1 m1)])])
 
@@ -207,8 +210,9 @@
                [c1 m1 []]
                (compile-m2 c2 p2 m2))]
           [new-c1 ;; (first (stash new-c1 {} m1 p1))
+           m1
            (make-error-on-failure "schema: document did not conform" p2 m2 p1 m1 es)])
-        [c1 []]))))
+        [c1 m1 []])))])
 
 ;; quicker than actual 'apply' [?]
 (defn apply3 [f [c p m]]
@@ -265,15 +269,25 @@
             (delegate (or (stasher c2 p2 new-m2 a) c2) p2 new-m2))
           (delegate c2 p2 old-m2))))))
 
+(defn old->new2 [cs]
+  (fn [c2 p2 m2]
+    (let [f1 (cs c2 p2 m2)]
+      [c2
+       m2
+       (fn [c1 p1 m1]
+         (let [[c1 es] (f1 c1 p1 m1)]
+            -           [c1 m1 es]))])))
+
 (def check-schema
-  ((make-ref-interceptor "$dynamicRef" expand-$dynamic-ref)
-   ((make-ref-interceptor "$recursiveRef" expand-$recursive-ref)
-    ((make-ref-interceptor "$ref" expand-$ref)
-     ((make-anchor-interceptor (constantly "$dynamicAnchor") stash-$dynamic-anchor)
-      ((make-anchor-interceptor (constantly "$recursiveAnchor") stash-$recursive-anchor)
-       ((make-anchor-interceptor :id-key stash-$id)
-        ((make-draft-interceptor)
-         check-schema-2))))))))
+  (old->new2
+   ((make-ref-interceptor "$dynamicRef" expand-$dynamic-ref)
+    ((make-ref-interceptor "$recursiveRef" expand-$recursive-ref)
+     ((make-ref-interceptor "$ref" expand-$ref)
+      ((make-anchor-interceptor (constantly "$dynamicAnchor") stash-$dynamic-anchor)
+       ((make-anchor-interceptor (constantly "$recursiveAnchor") stash-$recursive-anchor)
+        ((make-anchor-interceptor :id-key stash-$id)
+         ((make-draft-interceptor)
+          (new->old check-schema-2))))))))))
 
 ;;------------------------------------------------------------------------------
 
