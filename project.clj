@@ -22,7 +22,7 @@
    [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
    [com.fasterxml.jackson.dataformat/jackson-dataformat-smile ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
    ;; clj
-   [org.clojure/clojure "1.12.2"] ;; https://clojure.org/releases/downloads
+   [org.clojure/clojure "1.12.3"] ;; https://clojure.org/releases/downloads
    [org.clojure/tools.logging "1.3.0"] ;; https://github.com/clojure/tools.logging
    [cheshire/cheshire "6.1.0"] ;; https://github.com/dakrone/cheshire
    ;; cljs
