@@ -103,7 +103,6 @@
     ["dynamicRef.json" "strict-tree schema, guards against misspelled properties" "instance with misspelled field"]
     ["dynamicRef.json" "tests for implementation dynamic a dependentSchemas in draft2019-09 - you are using: draft-nexnchor and reference link" "incorrect extended schema"]
     ["dynamicRef.json" "tests for implementation dynamic anchor and reference link" "incorrect extended schema"]
-    ["extends.json" "extends simple types" "mismatch extends"]
     ["id.json" "$id inside an enum is not a real identifier" "match $ref to $id"]
     ["id.json" "id inside an enum is not a real identifier" "match $ref to id"]
     ["recursiveRef.json" "$recursiveRef with nesting" "integer now matches as a property value"]
@@ -127,6 +126,7 @@
     ;; draft3
     ["enum.json" "enums in properties" "missing required property is invalid"]
     ["enum.json" "enums in properties" "missing all properties is invalid"]
+    ["extends.json" "extends simple types" "mismatch extends"]
     ["extends.json" "extends" "mismatch extends"]
     ["extends.json" "extends" "mismatch extended"]
     ["extends.json" "multiple extends" "mismatch first extends"]
