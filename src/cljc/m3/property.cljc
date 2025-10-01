@@ -160,20 +160,15 @@
                      (try
                        ;; IMPORTANT: uri->schema returns [c2 path schema], not just schema!
                        (let [[_ _ ms] (uri->schema c2 [] uri)]
-                         ;; DEBUG
-                         ;; (when (and ms (get ms "$vocabulary"))
-                         ;;   (log/info (str "Loaded metaschema with $vocabulary: " v2 " => " (get ms "$vocabulary"))))
                          ms)
                        (catch #?(:clj Exception :cljs js/Error) e
                          (log/info (str "Could not load metaschema: " v2 " - " (.getMessage e)))
                          nil)))
         ;; Extract $vocabulary from metaschema (if present)
         vocab-map (get metaschema "$vocabulary")
-        ;; Build dialect: use $vocabulary if present, otherwise use default
+;; Build dialect: use $vocabulary if present, otherwise use default
         new-dialect (if vocab-map
-                      (do
-                        ;;(log/info (str "Building dialect from $vocabulary: " vocab-map))
-                        ((deref (resolve 'm3.vocabulary/make-dialect)) draft vocab-map))
+                      ((deref (resolve 'm3.vocabulary/make-dialect)) draft vocab-map)
                       ((deref (resolve 'm3.vocabulary/draft->default-dialect)) draft))
         new-c2 (assoc c2
                       :dialect new-dialect

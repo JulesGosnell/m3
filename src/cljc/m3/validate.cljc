@@ -326,11 +326,8 @@
   (if-let [dir (uri-base->dir origin)]
     (let [f (str dir path (if (ends-with? path ".json") "" ".json"))
           s (try (json-decode (slurp f)) (catch #?(:cljs js/Error :clj Exception) _))]
-      ;;(log/info "uri->schema: loaded: " (pr-str (str origin path)) " -> " (pr-str f))
       ;; TODO: ref resolution needs to be done in new context...
-      s)
-    ;;(log/info "uri->schema: could not load: " (pr-str (str origin path)))
-    ))
+      s)))
 
 (def uri->schema-2 (partial uri->schema uri-base->dir))
 
@@ -355,9 +352,6 @@
   (if (or (:path->uri c) (:uri->path c))
     c
     (let [tmp (json-walk stash (assoc c :uri->path (if sid {(parse-uri sid) []} {})) {} [] m)]
-      ;; (prn "M2:" m)
-      ;; (prn "OLD:" (marker-stash tmp))
-      ;; (prn "NEW:" (:marker-stash c))
       tmp)))
 
 (defn make-context [{draft :draft u->s :uri->schema :as c2} {s "$schema" :as m2}]
@@ -384,8 +378,6 @@
   (let [{draft :draft id-key :id-key :as c2} (make-context c2 schema)
         [c2 m2 cs] (check-schema c2 [] schema)]
     (fn [c1 {did id-key _dsid "$schema" :as document}]
-      ;;(log/info "validate:" sid "/" did)
-      ;;(when (and dsid (not (= sid dsid))) (log/warn (pformat "document schema id not consistent with schema id: %s != %s" dsid sid)))
       (let [c1 (assoc
                 c1
                 :id-key id-key
@@ -400,9 +392,6 @@
 
 (defn $schema->m2 [s]
   (uri->schema-2 {} [] (parse-uri s)))
-
-(defn $schema-uri->schema [uri]
-  (uri->schema-2 {} [] uri))
 
 (declare validate-m2)
 
@@ -444,7 +433,6 @@
             (constantly r)))
         ;; keep going - inheriting relevant parts of c1
         (let [[{vs :dialect u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)]
-          ;;(prn "STASH:" u->p p->u)
           (if (empty? es)
             (validate-2 (assoc c2
                                :marker-stash {:uri->path (or u->p {}) :path->uri (or p->u {})}
@@ -457,17 +445,6 @@
 (defn reformat [[_ es]]
   {:valid? (empty? es) :errors es})
 
-;; TODO: handle non object docs - arrays, strings, booleans...
-;; (defn validate-m1 [c2 {s "$schema" :as m1}]
-;;   (if s
-;;     (if-let [m2 ($schema->m2 s)]
-;;       ((validate-m2 c2 m2) {} m1)
-;;       [{} {:errors (str "could not resolve $schema: " s)}])
-;;     [{} {:errors "no $schema given"}]))
-
-;; this should work but doesn't
 (defn validate
-  ;; ([c2 m1]
-  ;;  (validate-m1 c2 m1))
   ([c2 m2 c1 m1]
    (reformat ((validate-m2 (assoc c2 :m2? true) m2) c1 m1))))
