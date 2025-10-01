@@ -184,35 +184,35 @@
   ;; TODO; this needs to be simplified
   [c2
    m2
-  (cond
-    (true? m2)
-    (fn [c1 _p1 m1]
-      [c1 m1 nil])
+   (cond
+     (true? m2)
+     (fn [c1 _p1 m1]
+       [c1 m1 nil])
 
-    (false? m2)
-    (fn [c1 p1 m1]
-      [c1
-       m1
-       (when (present? m1)
-         [(make-error "schema is false: nothing will match" p2 m2 p1 m1)])])
+     (false? m2)
+     (fn [c1 p1 m1]
+       [c1
+        m1
+        (when (present? m1)
+          [(make-error "schema is false: nothing will match" p2 m2 p1 m1)])])
 
-    :else
-    (fn [c1 p1 m1]
-      (if (present? m1)
-        (let [[new-c1 m1 es]
-              (reduce
-               (fn [[c1 m1 acc] [new-p2 cp]]
-                 (let [[c1
-                        m1
-                        [{m :message} :as es]] (cp c1 p1 m1)]
-                   (when t? (println (pr-str new-p2) (pr-str p1) (if (seq es) ["❌" m] "✅")))
-                   [c1 m1 (concatv acc es)]))
-               [c1 m1 []]
-               (compile-m2 c2 p2 m2))]
-          [new-c1 ;; (first (stash new-c1 {} m1 p1))
-           m1
-           (make-error-on-failure "schema: document did not conform" p2 m2 p1 m1 es)])
-        [c1 m1 []])))])
+     :else
+     (fn [c1 p1 m1]
+       (if (present? m1)
+         (let [[new-c1 m1 es]
+               (reduce
+                (fn [[c1 m1 acc] [new-p2 cp]]
+                  (let [[c1
+                         m1
+                         [{m :message} :as es]] (cp c1 p1 m1)]
+                    (when t? (println (pr-str new-p2) (pr-str p1) (if (seq es) ["❌" m] "✅")))
+                    [c1 m1 (concatv acc es)]))
+                [c1 m1 []]
+                (compile-m2 c2 p2 m2))]
+           [new-c1 ;; (first (stash new-c1 {} m1 p1))
+            m1
+            (make-error-on-failure "schema: document did not conform" p2 m2 p1 m1 es)])
+         [c1 m1 []])))])
 
 ;; quicker than actual 'apply' [?]
 (defn apply3 [f [c p m]]
@@ -409,8 +409,7 @@
         ;; we are at the top
         (let [draft ($schema->draft s)
               c2 (assoc c2
-                        :dialect (if $vocabulary (make-dialect draft $vocabulary) (draft->default-dialect draft))
-                        ) ;; handle drafts that are too early to know about $vocabulary
+                        :dialect (if $vocabulary (make-dialect draft $vocabulary) (draft->default-dialect draft))) ;; handle drafts that are too early to know about $vocabulary
               uri (parse-uri s) ;; duplicate work
               stash (uri->marker-stash uri)
               _ (when-not stash (prn "NO STASH FOR:" s))
@@ -427,8 +426,7 @@
               (v
                (assoc c1
                       ;; think about draft
-                      :dialect (or (and $vocabulary (make-dialect draft $vocabulary)) (c2 :dialect))
-                      )
+                      :dialect (or (and $vocabulary (make-dialect draft $vocabulary)) (c2 :dialect)))
                m1))
             (constantly r)))
         ;; keep going - inheriting relevant parts of c1
@@ -437,8 +435,7 @@
           (if (empty? es)
             (validate-2 (assoc c2
                                :marker-stash {:uri->path (or u->p {}) :path->uri (or p->u {})}
-                               :dialect vs
-                               ) m1)
+                               :dialect vs) m1)
             (constantly r))))
       (constantly [c2 [(str "could not resolve $schema: " s)]]))))
 
