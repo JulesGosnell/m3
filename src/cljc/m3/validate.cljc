@@ -286,7 +286,7 @@
        m2
        (fn [c1 p1 m1]
          (let [[c1 es] (f1 c1 p1 m1)]
-            -           [c1 m1 es]))])))
+           [c1 m1 es]))])))
 
 (def check-schema
   (old->new
