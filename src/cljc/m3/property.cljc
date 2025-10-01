@@ -32,18 +32,18 @@
   ;; TODO
   [c2
    m2
-  (fn [c1 _p1 m1]
-    [c1 m1 nil])])
+   (fn [c1 _p1 m1]
+     [c1 m1 nil])])
 
 (defn check-property-disallow [_property c2 p2 m2 v2]
   (let [[c2 m2 ct] (check-type v2 c2 p2 m2)]
     [c2
      m2
      (fn [c1 p1 m1]
-      (let [[c1 m1 es] (ct c1 p1 m1)]
-        [c1
-         m1
-         (when (nil? es) [(make-error "disallow: type matched" p2 m2 p1 m1)])]))]))
+       (let [[c1 m1 es] (ct c1 p1 m1)]
+         [c1
+          m1
+          (when (nil? es) [(make-error "disallow: type matched" p2 m2 p1 m1)])]))]))
 
 (defn check-property-type [_property c2 p2 m2 v2]
   (check-type v2 c2 p2 m2))
@@ -215,9 +215,9 @@
 (defn check-property-exclusiveMinimum-old [_property c2 _p2 {m "minimum" :as m2} _v2]
   [c2
    m2
-  (fn [c1 _p1 m1]
-    (when-not m (log/warn "exclusiveMinimum: no minimum present to modify"))
-    [c1 m1 []])])
+   (fn [c1 _p1 m1]
+     (when-not m (log/warn "exclusiveMinimum: no minimum present to modify"))
+     [c1 m1 []])])
 
 (defn check-property-exclusiveMinimum-new [_property c2 p2 m2 v2]
   [c2
@@ -258,10 +258,10 @@
   [c2
    m2
    (make-new-type-checker
-   json-number?
-   (fn [c1 _p1 m1]
-     (when-not m (log/warn "exclusiveMaximum: no maximum present to modify"))
-     [c1 m1 []]))])
+    json-number?
+    (fn [c1 _p1 m1]
+      (when-not m (log/warn "exclusiveMaximum: no maximum present to modify"))
+      [c1 m1 []]))])
 
 (defn check-property-exclusiveMaximum-new [_property c2 p2 m2 v2]
   [c2
@@ -760,29 +760,29 @@
   (let [pp2 (butlast p2)]
     [c2
      m2
-    (fn [c1 p1 m1 i-and-css message]
-      (let [old-local-c1
-            (-> c1
-                (update :matched assoc pp2 #{})
-                (update :evaluated assoc p1 #{}))
-            [c1 es]
-            (reduce
-             (fn [[old-c old-es] [[i cs] sub-document]]
-               (let [[_ _ new-es] (cs old-local-c1 (conj p1 i) sub-document)
-                     new-c (if (empty? new-es)
-                             (-> old-c
-                                 (update :matched update pp2 conj-set i)
-                                 (update :evaluated update p1 conj-set i))
-                             old-c)]
-                 [new-c (concatv old-es new-es)]))
-             [c1 []]
-             (map vector i-and-css m1))]
-        [c1 m1 (make-error-on-failure message p2 m2 p1 m1 es)]))]))
+     (fn [c1 p1 m1 i-and-css message]
+       (let [old-local-c1
+             (-> c1
+                 (update :matched assoc pp2 #{})
+                 (update :evaluated assoc p1 #{}))
+             [c1 es]
+             (reduce
+              (fn [[old-c old-es] [[i cs] sub-document]]
+                (let [[_ _ new-es] (cs old-local-c1 (conj p1 i) sub-document)
+                      new-c (if (empty? new-es)
+                              (-> old-c
+                                  (update :matched update pp2 conj-set i)
+                                  (update :evaluated update p1 conj-set i))
+                              old-c)]
+                  [new-c (concatv old-es new-es)]))
+              [c1 []]
+              (map vector i-and-css m1))]
+         [c1 m1 (make-error-on-failure message p2 m2 p1 m1 es)]))]))
 
 
 (defn tweak [m1 [c1 es]]
   [c1 m1 es])
-  
+
 (defn check-property-prefixItems [_property c2 p2 m2 v2]
   (let [f2 (get-check-schema)
         i-and-css (vec (map-indexed (fn [i sub-schema] [i (third (f2 c2 (conj p2 i) sub-schema))]) v2))
