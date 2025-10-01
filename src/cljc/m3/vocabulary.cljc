@@ -474,7 +474,12 @@
     second
     (filter
      (comp (into #{} (keys v->b)) first)
-     (draft->vocab d)))
+     ;; TEMPORARY: draft-next is not yet finalized. During the transition period,
+     ;; some schemas may use draft-next $schema but reference draft2020-12 vocabulary URIs.
+     ;; This concat allows both sets of URIs to work. Remove once draft-next is stable.
+     (if (= d :draft-next)
+       (concat (draft->vocab d) (draft->vocab :draft2020-12))
+       (draft->vocab d))))
    first
    (juxt first (comp third second))))
 
@@ -486,16 +491,3 @@
      (make-dialect k (into {} (map (fn [v] [v true]) (distinct (map first v))))))
    draft->vocab))
 
-;;------------------------------------------------------------------------------
-
-(defn new-make-dialect-2 [vocab v->b]
-  (partial
-   (make-stable-sort-by
-    second
-    (filter
-     (comp (into #{} (keys v->b)) first)
-     vocab))
-   first
-   (juxt first (comp third second))))
-
-(def new-make-dialect (memoize new-make-dialect-2))

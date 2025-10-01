@@ -261,27 +261,6 @@
 ;; if validation was also a c2 reduction we could use that for vocabularies and maybe the marker-stash
 ;; investigate...
 
-;; TODO: replace with check-property-$schema...
-(defn make-draft-interceptor []
-  ;; TODO:
-  ;; we should be recursing up our own schema hierarchy to reet our marker stash, dialect etc
-  (fn [delegate]
-    (fn [c2 p2 {s "$schema" :as m2}]
-      (delegate
-       ;; c2
-       (if-let [d (and s ($schema->draft s))]
-         (update
-          c2
-          :draft
-          (fn [old-d new-d]
-            ;; (when (not= old-d new-d)
-            ;;   (log/info (str "switching draft: " old-d " -> " new-d)))
-            new-d)
-          d)
-         c2)
-       p2
-       m2))))
-
 (defn make-ref-interceptor [k merger]
   (fn [delegate]
     (fn this [c2 p2 {r k :as m2}]
@@ -331,8 +310,7 @@
       ((make-anchor-interceptor (constantly "$dynamicAnchor") stash-$dynamic-anchor)
        ((make-anchor-interceptor (constantly "$recursiveAnchor") stash-$recursive-anchor)
         ((make-anchor-interceptor :id-key stash-$id)
-         ((make-draft-interceptor)
-          (new->old check-schema-2))))))))))
+         (new->old check-schema-2)))))))))
 
 ;;------------------------------------------------------------------------------
 

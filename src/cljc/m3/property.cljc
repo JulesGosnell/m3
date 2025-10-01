@@ -145,25 +145,45 @@
      [c1 m1 nil])])
 
 (defn check-property-$schema [_property c2 _p2 m2 v2]
-  ;; TODO:
-  ;; in f2 we should:
-  ;; - recurse to top of schema hierrchy
-  ;; - descend hierarchy with a new :dialect, :draft and :schema-uri
-  ;; - this should all be memoised so take no time
-  ;; - validate our given m2 against our given $schema
-  ;; - copy the given :dialect, :draft and :schema-uri into our c2 for subsequent checkers...
-  [c2
-   ;; (if-let [d ($schema->draft v2)]
-   ;;   (update
-   ;;    c2
-   ;;    :draft
-   ;;    (fn [old-d new-d]
-   ;;      (when (not= old-d new-d) (log/info (str "switching draft: " old-d " -> " new-d)))
-   ;;      new-d)
-   ;;    d)
-   ;;   c2)
-   m2
-   (fn [c1 _p1 m1] [c1 m1 nil])])
+  ;; This is where dialect switching happens!
+  ;; When we encounter a $schema, we:
+  ;; 1. Parse it to determine the draft
+  ;; 2. Try to load the metaschema to extract its $vocabulary
+  ;; 3. Build the appropriate dialect
+  ;; 4. Return updated c2 with new dialect - compile-m2's loop/recur will handle the rest
+  (let [uri (parse-uri v2)
+        draft (or ((deref (resolve 'm3.draft/$schema-uri->draft)) uri)
+                  (:draft c2))
+        ;; Try to load the metaschema to get its $vocabulary
+        uri->schema (:uri->schema c2)
+        metaschema (when uri->schema
+                     (try
+                       ;; IMPORTANT: uri->schema returns [c2 path schema], not just schema!
+                       (let [[_ _ ms] (uri->schema c2 [] uri)]
+                         ;; DEBUG
+                         ;; (when (and ms (get ms "$vocabulary"))
+                         ;;   (log/info (str "Loaded metaschema with $vocabulary: " v2 " => " (get ms "$vocabulary"))))
+                         ms)
+                       (catch #?(:clj Exception :cljs js/Error) e
+                         (log/info (str "Could not load metaschema: " v2 " - " (.getMessage e)))
+                         nil)))
+        ;; Extract $vocabulary from metaschema (if present)
+        vocab-map (get metaschema "$vocabulary")
+        ;; Build dialect: use $vocabulary if present, otherwise use default
+        new-dialect (if vocab-map
+                      (do
+                        ;;(log/info (str "Building dialect from $vocabulary: " vocab-map))
+                        ((deref (resolve 'm3.vocabulary/make-dialect)) draft vocab-map))
+                      ((deref (resolve 'm3.vocabulary/draft->default-dialect)) draft))
+        new-c2 (assoc c2
+                      :dialect new-dialect
+                      :draft draft)]
+    [new-c2
+     m2
+     (fn [c1 _p1 m1]
+       ;; TODO: In the future, we could validate m2 against its meta-schema here
+       ;; For now, just pass through
+       [c1 m1 nil])]))
 
 (defn check-property-$recursiveRef [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
 (defn check-property-$dynamicRef   [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
@@ -175,13 +195,16 @@
 (defn check-property-examples      [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
 
 (defn check-property-$vocabulary [_property {d :draft :as c2} _p2 m2 v2]
-  [c2
-   m2
-   (fn [c1 _p1 m1]
-     ;; TODO - needs work
-     [(assoc c1 :dialect ((deref (resolve 'm3.vocabulary/make-dialect)) d v2))
-      m1
-      nil])])
+  ;; $vocabulary specifies which vocabularies are active for this schema
+  ;; v2 is a map like: {"vocab-uri-1" true, "vocab-uri-2" false, ...}
+  ;; Build a new dialect using only the vocabularies that are true
+  (let [new-dialect ((deref (resolve 'm3.vocabulary/make-dialect)) d v2)
+        new-c2 (assoc c2 :dialect new-dialect)]
+    [new-c2
+     m2
+     (fn [c1 _p1 m1]
+       ;; No validation work needed - just pass through
+       [c1 m1 nil])]))
 
 ;; TODO: issue a warning somehow
 (defn check-property-deprecated [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])]) ;; TODO: issue a warning or error ?
