@@ -132,17 +132,52 @@
       ;; should this be returning the dynamic anchor?
       :path->uri (constantly draft2020-12)}}))
 
-(defn compile-m2 [{vs :dialect d :draft :as c2} old-p2 m2]
-  (let [vs (if vs vs (draft->default-dialect d))]
-    (let [[_c2 _m2 p2-and-f1s]
-          (reduce
-           (fn [[c2 m2 acc] [[k v] cp]]
-             (let [new-p2 (conj old-p2 k)
-                   [c2 m2 f1] (cp k c2 new-p2 m2 v)]
-               [c2 m2 (conj acc (list new-p2 f1))]))
-           [c2 m2 []]
-           (vs m2))]
-      p2-and-f1s)))
+(defn compile-m2 [{dialect :dialect draft :draft :as c2} old-p2 m2]
+  (let [effective-draft (or draft :draft2020-12)
+        initial-dialect (or dialect (draft->default-dialect effective-draft))]
+    (loop [dialect initial-dialect
+           remaining (dialect m2)
+           c2 c2
+           m2 m2
+           acc []
+           processed-keys #{}]
+      (if (empty? remaining)
+        ;; Done - return accumulated checkers
+        acc
+
+        ;; Process next property
+        (let [[[k v] cp] (first remaining)]
+          ;; Skip if we've already processed this key
+          (if (contains? processed-keys k)
+            (recur dialect
+                   (rest remaining)
+                   c2
+                   m2
+                   acc
+                   processed-keys)
+
+            ;; Haven't processed this key yet
+            (let [new-p2 (conj old-p2 k)
+                  [new-c2 new-m2 f1] (cp k c2 new-p2 m2 v)
+                  new-dialect (or (:dialect new-c2) dialect)]
+
+              ;; Check if dialect changed
+              (if (identical? dialect new-dialect)
+                ;; Same dialect - continue with remaining properties
+                (recur dialect
+                       (rest remaining)
+                       new-c2
+                       new-m2
+                       (conj acc (list new-p2 f1))
+                       (conj processed-keys k))
+
+                ;; Dialect changed! Re-evaluate remaining properties with new dialect
+                (recur new-dialect
+                       (new-dialect m2)
+                       new-c2
+                       new-m2
+                       (conj acc (list new-p2 f1))
+                       (conj processed-keys k))))))))))
 
 ;;------------------------------------------------------------------------------
 ;; tmp solution - does not understand about schema structure
