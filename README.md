@@ -273,8 +273,6 @@ To develop with Claude
 - run `./bin/nrepl.sh` in a terminal
 - run claude-desktop (https://claude.ai/download, https://github.com/bsneed/claude-desktop-fedora) in a third terminal
 
-I found that Claude seemed to understand the code and was fun to talk to but soon got lost in refactoring and didn't create anything useful
-
 
 To develop with Grok [4] (WIP)
 
@@ -424,6 +422,64 @@ lein test-cljs         # ClojureScript tests
 - `check-schema`: Main validation entry point
 - `make-dialect`: Composes vocabularies into validation function
 - `draft->vocab-and-group-and-property-and-semantics`: Vocabulary definition table
+
+### Session Startup Protocol
+
+When starting a new session, AI assistants should perform these verification steps:
+
+1. **Verify MCP Connections**:
+   - Test clojure-tools, clojure-language-server, and emacs MCP connections
+   - If any fail, notify user immediately
+
+2. **Check Tool Versions**:
+   - Clojure CLI: `clojure --version` (ensure latest)
+   - Clojure LSP: `clojure-lsp --version` (ensure latest)
+   - Leiningen: `lein version`
+   - Java: `java -version`
+
+3. **Run Project Tests**:
+   - `lein test` (CLJ) - should complete in ~10 seconds
+   - `lein test-cljs` (CLJS) - may take longer
+   - Verify baseline: 24,021 assertions, 0 failures, 0 errors
+
+4. **Check Project Status**:
+   - Recent commits: `git log --oneline -10`
+   - Uncommitted changes: `git status`
+   - Dependency updates: `lein ancient`
+   - GitHub Actions: https://github.com/JulesGosnell/m3/actions
+
+### Code Changes Process
+
+**CRITICAL**: Follow this process for all code modifications:
+
+**Before Making Changes**:
+- Understand existing code structure and patterns
+- Review related test files for expected behavior
+- Consider impact on both CLJ and CLJS platforms
+
+**After Making Changes**:
+- Run tests: `lein test` and `lein test-cljs`
+- Verify tests still pass with same assertion count
+- Check for any new warnings in test output
+
+**CODE REVIEW REQUIRED**:
+- **DO NOT COMMIT** without user review
+- Present changes to user with:
+  * Summary of what was changed
+  * Rationale for the approach taken
+  * Any trade-offs or alternatives considered
+- Wait for user approval or feedback
+- Be prepared to revise based on user input
+
+**After Review Approval**:
+- Only then use `git add` and `git commit`
+- Write clear, detailed commit messages explaining the why, not just the what
+- Reference any relevant issue numbers or prior commits
+
+**New Files**:
+- When creating a new code file, copy copyright notice from an existing file
+
+Remember: Code review is a learning opportunity. The user may have better approaches or additional context to improve solutions.
 
 ---
 
