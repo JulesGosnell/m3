@@ -76,9 +76,10 @@
                              [binaryage/devtools "1.0.7"]
                              [prone "2021-04-23"]
                              [nrepl "1.5.0"]
-                             [pjstadig/humane-test-output "0.11.0"]]
+                             [pjstadig/humane-test-output "0.11.0"]
+                             ;; MCP dependencies (excluded from uberjar by :dev profile)
+                             [com.bhauman/clojure-mcp "0.1.6-SNAPSHOT" :exclusions [org.slf4j/slf4j-nop]]] ;; only currently available on my local box :-(
 
-              :source-paths ["env/dev/clj"]
               :plugins [[cider/cider-nrepl "0.57.0"]
                         [org.clojure/tools.namespace "1.5.0" :exclusions [org.clojure/tools.reader]]
                         [refactor-nrepl "3.11.0" :exclusions [org.clojure/clojure3]]]
@@ -90,7 +91,6 @@
 
              :uberjar
              {:hooks [minify-assets.plugin/hooks]
-              :source-paths ["env/prod/clj"]
               :prep-tasks ["compile" ["cljsbuild" "once" "min"]]
               :env {:production true}
               :aot :all
@@ -99,15 +99,7 @@
              :cloverage ;; output is written to ./target/coverage/index.html
              {:cloverage {:fail-threshold 90}}
 
-             :nrepl {:dependencies [[nrepl "1.4.0"]
-                                    ;;[ch.qos.logback/logback-classic "1.4.14"]
-                                    ]
-                     :jvm-opts ["-Djdk.attach.allowAttachSelf"]}
-
-             :mcp {:dependencies [[org.slf4j/slf4j-nop "2.0.17"]
-                                  [com.bhauman/clojure-mcp "0.1.6-SNAPSHOT"]] ;; only currently available on my local box :-(
-                   :source-paths ["mcp/src"]
-                   :main ^:skip-aot m3.clojure-mcp}}
+             :mcp {:main ^:skip-aot m3.clojure-mcp}}
 
   :aliases {"test-cljs" ["do"
                          ["shadow" "compile" "test"]

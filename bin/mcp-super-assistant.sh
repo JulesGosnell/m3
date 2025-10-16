@@ -2,4 +2,4 @@
 
 cd "$(dirname "$0")/.."
 
-npx @srbhptl39/mcp-superassistant-proxy@latest --config ./mcp/config/super-assistant.json
+npx @srbhptl39/mcp-superassistant-proxy@latest --config ./resources/super-assistant.json
