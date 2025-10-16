@@ -75,7 +75,7 @@
               :dependencies [[cider/piggieback "0.6.1"]
                              [binaryage/devtools "1.0.7"]
                              [prone "2021-04-23"]
-                             [nrepl "1.4.0"]
+                             [nrepl "1.5.0"]
                              [pjstadig/humane-test-output "0.11.0"]]
 
               :source-paths ["env/dev/clj"]
