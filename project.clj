@@ -107,7 +107,7 @@
              :mcp {:dependencies [[org.slf4j/slf4j-nop "2.0.17"]
                                   [com.bhauman/clojure-mcp "0.1.6-SNAPSHOT"]] ;; only currently available on my local box :-(
                    :source-paths ["mcp/src"]
-                   :main ^:skip-aot m3.mcp-runner}}
+                   :main ^:skip-aot m3.clojure-mcp}}
 
   :aliases {"test-cljs" ["do"
                          ["shadow" "compile" "test"]

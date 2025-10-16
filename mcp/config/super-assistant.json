@@ -7,8 +7,7 @@
         "mcp",
         "run",
         "-m",
-        "m3.mcp-runner",
-        "7888"
+        "m3.clojure-mcp"
       ]
     }
   }

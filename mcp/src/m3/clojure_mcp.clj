@@ -1,4 +1,4 @@
-(ns m3.mcp-runner
+(ns m3.clojure-mcp
   (:require
    [nrepl.server :refer [start-server] :rename {start-server start-nrepl-server}]
    [clojure-mcp.main :refer [start-mcp-server]]))
