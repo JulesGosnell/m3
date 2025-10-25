@@ -162,7 +162,7 @@
                        (let [[_ _ ms] (uri->schema c2 [] uri)]
                          ms)
                        (catch #?(:clj Exception :cljs js/Error) e
-                         (log/info (str "Could not load metaschema: " v2 " - " (.getMessage e)))
+                         (log/info (str "Could not load metaschema: " v2 " - " #?(:clj (.getMessage e) :cljs (.-message e))))
                          nil)))
         ;; Extract $vocabulary from metaschema (if present)
         vocab-map (get metaschema "$vocabulary")

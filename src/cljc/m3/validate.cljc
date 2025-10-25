@@ -14,7 +14,8 @@
 
 (ns m3.validate
   (:require
-   [clojure.string :refer [ends-with?]]
+   [clojure.string :refer [ends-with? starts-with?]]
+   #?(:clj [clojure.java.io :as io])
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.platform :refer [json-decode]]
    [m3.util :refer [present? concatv make-error make-error-on-failure]]
@@ -325,7 +326,18 @@
 (defn uri->schema [uri-base->dir _c _p {origin :origin path :path}]
   (if-let [dir (uri-base->dir origin)]
     (let [f (str dir path (if (ends-with? path ".json") "" ".json"))
-          s (try (json-decode (slurp f)) (catch #?(:cljs js/Error :clj Exception) _))]
+          s (try
+              #?(:clj (if-let [resource (io/resource
+                                         ;; Strip "resources/" prefix for resource loading
+                                         (if (starts-with? f "resources/")
+                                           (subs f 10)
+                                           f))]
+                        ;; Resource found on classpath (e.g., schemas in jar)
+                        (json-decode (slurp resource))
+                        ;; Fall back to file system (e.g., test-resources or running from source)
+                        (json-decode (slurp f)))
+                 :cljs (json-decode (slurp f)))
+              (catch #?(:cljs js/Error :clj Exception) _))]
       ;; TODO: ref resolution needs to be done in new context...
       s)))
 
