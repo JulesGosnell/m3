@@ -72,37 +72,41 @@
       (when-not (seq-contains? v2 json-= m1)
         [(make-error "enum: does not contain value" p2 m2 p1 m1)])])])
 
-(defn check-property-id [_property c2 _p2 m2 _v2]
-  [c2
-   m2
-   (fn [{old-id-uri :id-uri :as c1} p1 {id "id" :as m1}]
-     [(if-let [new-id-uri (and id (inherit-uri old-id-uri (parse-uri id)))]
-        (do
-         ;;(prn "ID:" old-id-uri "+" id "->" new-id-uri)
+(defn check-property-id [_property c2 _p2 m2 v2]
+  ;; Stash id into c2 for compile-time ref resolution (replaces interceptor)
+  (let [new-id-uri (inherit-uri (:id-uri c2) (parse-uri v2))
+        c2 (assoc c2 :id-uri new-id-uri)]
+    [c2
+     m2
+     ;; Also stash into c1 at runtime for document validation
+     (fn [{old-id-uri :id-uri :as c1} p1 {id "id" :as m1}]
+       [(if-let [new-id-uri (and id (inherit-uri old-id-uri (parse-uri id)))]
           (-> c1
               (update :path->uri assoc p1 new-id-uri)
               (update :uri->path assoc new-id-uri p1)
-              (assoc :id-uri new-id-uri)))
-        (-> c1
-            (update :path->uri assoc p1 old-id-uri)))
-      m1
-      nil])])
+              (assoc :id-uri new-id-uri))
+          (-> c1
+              (update :path->uri assoc p1 old-id-uri)))
+        m1
+        nil])]))
 
-(defn check-property-$id [_property c2 _p2 m2 _v2]
-  [c2
-   m2
-   (fn [{old-id-uri :id-uri :as c1} p1 {id "$id" :as m1}]
-     [(if-let [new-id-uri (and id (inherit-uri old-id-uri (parse-uri id)))]
-        (do
-         ;;(prn "$ID:" old-id-uri "+" id "->" new-id-uri)
+(defn check-property-$id [_property c2 _p2 m2 v2]
+  ;; Stash $id into c2 for compile-time ref resolution (replaces interceptor)
+  (let [new-id-uri (inherit-uri (:id-uri c2) (parse-uri v2))
+        c2 (assoc c2 :id-uri new-id-uri)]
+    [c2
+     m2
+     ;; Also stash into c1 at runtime for document validation
+     (fn [{old-id-uri :id-uri :as c1} p1 {id "$id" :as m1}]
+       [(if-let [new-id-uri (and id (inherit-uri old-id-uri (parse-uri id)))]
           (-> c1
               (update :path->uri assoc p1 new-id-uri)
               (update :uri->path assoc new-id-uri p1)
-              (assoc :id-uri new-id-uri)))
-        (-> c1
-            (update :path->uri assoc p1 old-id-uri)))
-      m1
-      nil])])
+              (assoc :id-uri new-id-uri))
+          (-> c1
+              (update :path->uri assoc p1 old-id-uri)))
+        m1
+        nil])]))
 
 ;; Anchors only need :uri->path (no change, but included for completeness)
 (defn check-property-$anchor [_property c2 _p2 m2 v2]
@@ -112,21 +116,37 @@
      (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
        [(update c1 :uri->path assoc anchor-uri p1) m1 nil]))])
 
-(defn check-property-$recursiveAnchor [_property c2 _p2 m2 v2]
-  [c2
-   m2
-   (fn [c1 p1 m1]
-     (if (true? v2)
-       (let [[uris top] (c1 :$recursive-anchor [#{} nil])]
-         [(assoc c1 :$recursive-anchor [(conj uris (c1 :id-uri)) (or top p1)]) m1 nil])
-       [c1 m1 nil]))])
+(defn check-property-$recursiveAnchor [_property c2 p2 m2 v2]
+  ;; Stash into c2 for compile-time ref resolution (replaces interceptor)
+  (let [schema-p2 (vec (butlast p2))
+        c2 (if (true? v2)
+             (let [[uris top] (:$recursive-anchor c2 [#{} nil])]
+               (assoc c2 :$recursive-anchor
+                      (if top
+                        [(conj uris (:id-uri c2)) top]
+                        [#{(:id-uri c2)} schema-p2])))
+             c2)]
+    [c2
+     m2
+     ;; Also stash into c1 at runtime for document validation
+     (fn [c1 p1 m1]
+       (if (true? v2)
+         (let [[uris top] (c1 :$recursive-anchor [#{} nil])]
+           [(assoc c1 :$recursive-anchor [(conj uris (c1 :id-uri)) (or top p1)]) m1 nil])
+         [c1 m1 nil]))]))
 
-(defn check-property-$dynamicAnchor [_property c2 _p2 m2 v2]
-  [c2
-   m2
-   (fn [c1 p1 m1]
-     (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
-       [(update c1 :$dynamic-anchor assoc anchor-uri p1) m1 nil]))])
+(defn check-property-$dynamicAnchor [_property c2 p2 m2 v2]
+  ;; Stash into c2 for compile-time ref resolution (replaces interceptor)
+  (let [schema-p2 (vec (butlast p2))
+        anchor-uri (inherit-uri (:id-uri c2) (parse-uri (str "#" v2)))
+        c2 (update-in c2 [:$dynamic-anchor anchor-uri]
+                       (fn [old new] (if old old new)) schema-p2)]
+    [c2
+     m2
+     ;; Also stash into c1 at runtime for document validation
+     (fn [c1 p1 m1]
+       (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
+         [(update c1 :$dynamic-anchor assoc anchor-uri p1) m1 nil]))]))
 
 (defn check-property-$comment [_property c2 _p2 m2 _v2]
   [c2

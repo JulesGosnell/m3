@@ -43,34 +43,6 @@
 ;;------------------------------------------------------------------------------
 
 ;;------------------------------------------------------------------------------
-;; d/$id/$anchor/$ref
-
-(defn stash-$id [{t? :trace? :as c} _p _m id]
-  (update
-   c
-   :id-uri
-   (fn [old new]
-     (let [uri (inherit-uri old new)]
-       (when t? (prn "base-uri:" old "->" uri))
-       uri))
-   (parse-uri id)))
-
-;;------------------------------------------------------------------------------
-;; $recursiveAnchor/Ref - 2019-09 only - sigh
-
-(defn stash-$recursive-anchor [c p _m a]
-  (if a
-    (update c :$recursive-anchor (fn [[uris top] uri] (if top [(conj uris uri) top] [#{} p])) (c :id-uri))
-    (log/warn "$recursiveAnchor: unexpected value:" (pr-str a))))
-
-;;------------------------------------------------------------------------------
-;; $dynamicAnchor/Ref - replaces $recursive-... in 2020-12
-
-(defn stash-$dynamic-anchor [c p _m a]
-  (let [uri (inherit-uri (c :id-uri) (parse-uri (str "#" a)))]
-    (update-in c [:$dynamic-anchor uri] (fn [old new] (if old old new)) p)))
-
-;;------------------------------------------------------------------------------
 
 ;; marker-stashes for the builtin meta-schemas
 (let [draft3 (parse-uri "http://json-schema.org/draft-03/schema#")
@@ -229,43 +201,7 @@
 ;; if validation was also a c2 reduction we could use that for vocabularies and maybe the marker-stash
 ;; investigate...
 
-(defn make-anchor-interceptor [kf stasher]
-  (fn [delegate]
-    (fn this [c2 p2 old-m2]
-      (let [k (kf c2)]
-        (if-let [a (get old-m2 k)] ;; TODO - how can m2 be nil ?
-          ;; TODO: not sure we should be deleting anchor...
-          (let [new-m2
-                old-m2 ;;(dissoc old-m2 k)
-                ]
-            (delegate (or (stasher c2 p2 new-m2 a) c2) p2 new-m2))
-          (delegate c2 p2 old-m2))))))
-
-;;------------------------------------------------------------------------------
-;; interceptor stack will be decommissioned rather than migrated...
-
-(defn new->old [cs]
-  (fn [c2 p2 m2]
-    (let [[c2 m2 f1] (cs c2 p2 m2)]
-      (fn [c1 p1 m1]
-        (let [[c1 m1 es] (f1 c1 p1 m1)]
-          [c1 es])))))
-
-(defn old->new [cs]
-  (fn [c2 p2 m2]
-    (let [f1 (cs c2 p2 m2)]
-      [c2
-       m2
-       (fn [c1 p1 m1]
-         (let [[c1 es] (f1 c1 p1 m1)]
-           [c1 m1 es]))])))
-
-(def check-schema
-  (old->new
-   ((make-anchor-interceptor (constantly "$dynamicAnchor") stash-$dynamic-anchor)
-    ((make-anchor-interceptor (constantly "$recursiveAnchor") stash-$recursive-anchor)
-     ((make-anchor-interceptor :id-key stash-$id)
-      (new->old check-schema-2))))))
+(def check-schema check-schema-2)
 
 ;;------------------------------------------------------------------------------
 
