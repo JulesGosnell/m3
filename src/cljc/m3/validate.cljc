@@ -311,11 +311,10 @@
 (def check-schema
   (old->new
    ((make-ref-interceptor "$dynamicRef" expand-$dynamic-ref)
-    ((make-ref-interceptor "$recursiveRef" expand-$recursive-ref)
-     ((make-anchor-interceptor (constantly "$dynamicAnchor") stash-$dynamic-anchor)
-      ((make-anchor-interceptor (constantly "$recursiveAnchor") stash-$recursive-anchor)
-       ((make-anchor-interceptor :id-key stash-$id)
-        (new->old check-schema-2))))))))
+    ((make-anchor-interceptor (constantly "$dynamicAnchor") stash-$dynamic-anchor)
+     ((make-anchor-interceptor (constantly "$recursiveAnchor") stash-$recursive-anchor)
+      ((make-anchor-interceptor :id-key stash-$id)
+       (new->old check-schema-2)))))))
 
 ;;------------------------------------------------------------------------------
 
