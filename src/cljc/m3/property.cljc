@@ -238,7 +238,32 @@
            (do (log/warn "$recursiveRef: unexpected value:" (pr-str v2))
                [c1 m1 nil]))
          [c1 m1 nil]))]))
-(defn check-property-$dynamicRef   [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
+(defn check-property-$dynamicRef [_property {id-uri :id-uri :as c2} p2 m2 v2]
+  (let [schema-p2 (vec (butlast p2))
+        uri (inherit-uri id-uri (parse-uri v2))]
+    [c2
+     m2
+     ;; f1: resolve LAZILY at runtime
+     (fn [c1 p1 m1]
+       (if (present? m1)
+         (let [check-schema-fn (get-check-schema)
+               da (:$dynamic-anchor c2)
+               m2-no-ref (dissoc m2 "$dynamicRef")
+               resolution (or (try-path c2 schema-p2 (get da uri) (:original-root c2))
+                              (resolve-uri c2 schema-p2 uri v2))]
+           (if resolution
+             (let [[new-c _new-p resolved-m] resolution
+                   melded (meld c2 m2-no-ref resolved-m)
+                   final-c2 (if (and (= c2 new-c)
+                                     (or (empty? schema-p2)
+                                         (some? (get-in (:root c2) schema-p2))))
+                              (assoc-in c2 (into [:root] schema-p2) melded)
+                              new-c)
+                   [_c2 _m2 compiled-f1] (check-schema-fn final-c2 schema-p2 melded)]
+               (compiled-f1 c1 p1 m1))
+             (let [[_c2 _m2 compiled-f1] (check-schema-fn c2 schema-p2 m2-no-ref)]
+               (compiled-f1 c1 p1 m1))))
+         [c1 m1 nil]))]))
 (defn check-property-description   [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
 (defn check-property-readOnly      [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
 (defn check-property-writeOnly     [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
