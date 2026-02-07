@@ -19,9 +19,10 @@
    [clojure.string :refer [starts-with? replace] :rename {replace string-replace}]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.platform :refer [pformat json-decode big-zero? big-mod pbigdec]]
-   [m3.util :refer [absent concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure get-check-schema third]]
+   [m3.util :refer [absent present? concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure get-check-schema third]]
    [m3.ecma :refer [ecma-pattern ecma-match]]
    [m3.uri :refer [parse-uri inherit-uri]]
+   [m3.ref :refer [resolve-uri meld]]
    [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker make-new-type-checker json-=]]
    [m3.format :as format :refer [draft->format->checker]]))
 
@@ -134,15 +135,41 @@
     ;;(log/info (str "$comment:" v2 " : " _p1))
      [c1 m1 nil])])
 
-;; hopefully during the f1 of an m2 we can precompile the $ref...
-;; will never be called because a $ref in the m2 is intercepted and expanded...
-;; TODO: think again...
-(defn check-property-$ref [_property c2 _p2 m2 _v2]
-  [c2
-   m2
-   (fn [c1 _p1 m1]
-    ;;(prn "$REF:")
-     [c1 m1 nil])])
+;; $ref resolution logic - called from the $ref interceptor.
+;; Resolution is LAZY (inside f1) to handle recursive schemas.
+(defn check-property-$ref [_property {id-uri :id-uri draft :draft path->uri :path->uri :as c2} p2 m2 v2]
+  (let [schema-p2 (vec (butlast p2))
+        ;; For draft <= draft7, $ref ignores sibling $id.
+        ;; Use the parent's id-uri from the pre-scan.
+        effective-id-uri (if (#{:draft3 :draft4 :draft6 :draft7} draft)
+                           (or (get path->uri schema-p2) id-uri)
+                           id-uri)
+        ref-uri (inherit-uri effective-id-uri (parse-uri v2))
+        m2-no-ref (dissoc m2 "$ref")
+        effective-c2 (assoc c2 :id-uri effective-id-uri)]
+    [c2
+     m2
+     ;; f1: resolve and compile LAZILY at runtime
+     (fn [c1 p1 m1]
+       (if (present? m1)
+         (let [check-schema-fn (get-check-schema)
+               resolution (resolve-uri effective-c2 schema-p2 ref-uri v2)]
+           (if resolution
+             (let [[new-c _new-p resolved-m] resolution
+                   melded (meld effective-c2 m2-no-ref resolved-m)
+                   ;; Update :root so nested $refs (e.g. "#/$defs/...") see melded schema.
+                   ;; Only safe when path exists in root (avoids creating maps for vector indices).
+                   final-c2 (if (and (= effective-c2 new-c)
+                                     (or (empty? schema-p2)
+                                         (some? (get-in (:root effective-c2) schema-p2))))
+                              (assoc-in effective-c2 (into [:root] schema-p2) melded)
+                              new-c)
+                   [_c2 _m2 compiled-f1] (check-schema-fn final-c2 schema-p2 melded)]
+               (compiled-f1 c1 p1 m1))
+             ;; Resolution failed - compile schema without $ref
+             (let [[_c2 _m2 compiled-f1] (check-schema-fn effective-c2 schema-p2 m2-no-ref)]
+               (compiled-f1 c1 p1 m1))))
+         [c1 m1 nil]))]))
 
 (defn check-property-$schema [_property c2 _p2 m2 v2]
   ;; This is where dialect switching happens!
