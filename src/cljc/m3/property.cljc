@@ -147,7 +147,10 @@
         ref-uri (inherit-uri effective-id-uri (parse-uri v2))
         m2-no-ref (dissoc m2 "$ref")
         effective-c2 (assoc c2 :id-uri effective-id-uri)]
-    [c2
+    [(if (#{:draft3 :draft4 :draft6 :draft7} draft)
+       ;; For old drafts, $ref overrides siblings — tell compile-m2 to skip them
+       (assoc c2 :skip-keys (set (keys m2-no-ref)))
+       c2)
      m2
      ;; f1: resolve and compile LAZILY at runtime
      (fn [c1 p1 m1]

@@ -148,8 +148,10 @@
 
         ;; Process next property
         (let [[[k v] cp] (first remaining)]
-          ;; Skip if we've already processed this key
-          (if (contains? processed-keys k)
+          ;; Skip if already processed or if a checker marked this key to skip
+          ;; (e.g., $ref in old drafts sets :skip-keys to suppress sibling processing)
+          (if (or (contains? processed-keys k)
+                  (contains? (:skip-keys c2) k))
             (recur dialect
                    (rest remaining)
                    c2
@@ -310,21 +312,10 @@
   (old->new
    ((make-ref-interceptor "$dynamicRef" expand-$dynamic-ref)
     ((make-ref-interceptor "$recursiveRef" expand-$recursive-ref)
-     ((fn [delegate]
-        ;; $ref interceptor: delegates to check-property-$ref (property checker)
-        (fn [c2 p2 {r "$ref" :as m2}]
-          (if r
-            (let [check-$ref (get-check-property-$ref)
-                  [_c2 _m2 f1] (check-$ref "$ref" c2 (conj p2 "$ref") m2 r)]
-              ;; Wrap checker's f1 (new API [c1 m1 es]) for old API [c1 es]
-              (fn [c1 p1 m1]
-                (let [[c1 m1 es] (f1 c1 p1 m1)]
-                  [c1 es])))
-            (delegate c2 p2 m2))))
-      ((make-anchor-interceptor (constantly "$dynamicAnchor") stash-$dynamic-anchor)
-       ((make-anchor-interceptor (constantly "$recursiveAnchor") stash-$recursive-anchor)
-        ((make-anchor-interceptor :id-key stash-$id)
-         (new->old check-schema-2)))))))))
+     ((make-anchor-interceptor (constantly "$dynamicAnchor") stash-$dynamic-anchor)
+      ((make-anchor-interceptor (constantly "$recursiveAnchor") stash-$recursive-anchor)
+       ((make-anchor-interceptor :id-key stash-$id)
+        (new->old check-schema-2))))))))
 
 ;;------------------------------------------------------------------------------
 
