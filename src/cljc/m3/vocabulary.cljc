@@ -72,10 +72,12 @@
      check-property-patternProperties
      check-property-prefixItems
      check-property-properties
+     check-property-properties-draft3
      check-property-propertyDependencies
      check-property-propertyNames
      check-property-readOnly
      check-property-required
+     check-property-required-draft3
      check-property-then
      check-property-title
      check-property-type
@@ -106,7 +108,7 @@
      ["https://json-schema.org/draft-03/vocab/applicator"             "not"                    check-property-not                                       #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "oneOf"                  check-property-oneOf                                     #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "patternProperties"      check-property-patternProperties                         #{"$schema"}]
-     ["https://json-schema.org/draft-03/vocab/applicator"             "properties"             check-property-properties                                #{"$schema"}]
+     ["https://json-schema.org/draft-03/vocab/applicator"             "properties"             check-property-properties-draft3                         #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "propertyDependencies"   check-property-propertyDependencies                      #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/core"                   "$ref"                   check-property-$ref                                      #{"$schema" "id" "definitions"}]
      ["https://json-schema.org/draft-03/vocab/core"                   "$schema"                check-property-$schema                                   #{"$ref"}]
@@ -132,7 +134,7 @@
      ["https://json-schema.org/draft-03/vocab/validation"             "minimum"                check-property-minimum-old                               #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "multipleOf"             check-property-multipleOf                                #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "pattern"                check-property-pattern                                   #{"$schema"}]
-     ["https://json-schema.org/draft-03/vocab/validation"             "required"               check-property-required                                  #{"$schema"}]
+     ["https://json-schema.org/draft-03/vocab/validation"             "required"               check-property-required-draft3                           #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "type"                   check-property-type                                      #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]])
    :draft4

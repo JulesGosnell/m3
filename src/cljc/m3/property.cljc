@@ -773,6 +773,32 @@
         (let [k-and-css (filter (fn [[k]] (contains? m1 k)) k-and-css)]
           (f1 c1 p1 m1 k-and-css "properties: at least one property did not conform to respective schema"))))]))
 
+;; draft3: "required" is a boolean inside each property sub-schema, not an array on the object.
+;; At the sub-schema level this is a no-op, since the checker only fires for present properties.
+;; The actual required check is done by check-property-properties-draft3 below.
+(defn check-property-required-draft3 [_property c2 _p2 m2 _v2]
+  [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
+
+;; draft3: variant of check-property-properties that also enforces "required": true
+;; in property sub-schemas. Extracts required keys at compile time.
+;; TODO: review when context-stashing (json-walk removal) work solidifies - required keys
+;; could be gathered during M3/M2 validation pass instead of scanning sub-schemas here.
+(defn check-property-properties-draft3 [_property c2 p2 m2 ps]
+  (let [f2 (get-check-schema)
+        k-and-css (mapv (fn [[k v]] [k (third (f2 c2 (conj p2 k) v))]) ps)
+        required-keys (vec (keep (fn [[k v]] (when (true? (get v "required")) k)) ps))
+        [c2 m2 f1] (check-properties c2 p2 m2)]
+    [c2
+     m2
+     (make-new-type-checker
+      json-object?
+      (fn [c1 p1 m1]
+        (let [k-and-css (filter (fn [[k]] (contains? m1 k)) k-and-css)
+              [c1 m1 prop-es] (f1 c1 p1 m1 k-and-css "properties: at least one property did not conform to respective schema")
+              missing (seq (remove #(contains? m1 %) required-keys))
+              req-es (when missing [(make-error ["required: missing properties (at least):" (vec missing)] p2 m2 p1 m1)])]
+          [c1 m1 (concatv prop-es req-es)])))]))
+
 ;; what is opposite of "additional" - "matched" - used by spec to refer to properties matched by "properties" or "patternProperties"
 
 (defn check-property-patternProperties [_property c2 p2 m2 pps]

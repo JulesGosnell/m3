@@ -117,15 +117,7 @@
     ;; draft3
     ["color.json" "validation of CSS colors" "an invalid CSS color name"]
     ["ecmascript-regex.json" "ECMA 262 regex dialect recognition" "ECMA 262 has no support for lookbehind"]
-    ["enum.json" "enums in properties" "missing required property is invalid"]
-    ["enum.json" "enums in properties" "missing all properties is invalid"]
-    ["extends.json" "extends" "mismatch extends"]
-    ["extends.json" "extends" "mismatch extended"]
-    ["extends.json" "multiple extends" "mismatch first extends"]
-    ["extends.json" "multiple extends" "mismatch second extends"]
-    ["extends.json" "multiple extends" "mismatch both"]
     ;; ["ref.json" "nested refs" "nested ref invalid"] ;; also in main list above
-    ["required.json" "required validation" "non-present required property is invalid"]
 
     #?@(:cljs
         [["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]
