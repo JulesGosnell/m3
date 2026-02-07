@@ -311,36 +311,12 @@
    ((make-ref-interceptor "$dynamicRef" expand-$dynamic-ref)
     ((make-ref-interceptor "$recursiveRef" expand-$recursive-ref)
      ((fn [delegate]
-        ;; Custom $ref interceptor: calls check-property-$ref and compares
-        ;; with expand-$ref. Logs warnings on mismatch.
+        ;; $ref interceptor: delegates to check-property-$ref (property checker)
         (fn [c2 p2 {r "$ref" :as m2}]
           (if r
             (let [check-$ref (get-check-property-$ref)
-                  ;; Call the checker (gets [c2, m2, f1])
-                  [_c2 _m2 f1] (check-$ref "$ref" c2 (conj p2 "$ref") m2 r)
-                  ;; Also compute interceptor's resolution for comparison
-                  int-new-m2 (dissoc m2 "$ref")
-                  int-result (expand-$ref c2 p2 int-new-m2 r)
-                  int-melded (when int-result (nth int-result 2))
-                  ;; Checker's resolution for comparison
-                  {id-uri :id-uri draft :draft path->uri :path->uri} c2
-                  eff-id-uri (if (#{:draft3 :draft4 :draft6 :draft7} draft)
-                               (or (get path->uri p2) id-uri)
-                               id-uri)
-                  eff-c2 (assoc c2 :id-uri eff-id-uri)
-                  ref-uri (inherit-uri eff-id-uri (parse-uri r))
-                  chk-resolution (resolve-uri eff-c2 p2 ref-uri r)
-                  chk-melded (when chk-resolution
-                               (let [[_ _ resolved-m] chk-resolution]
-                                 (meld eff-c2 int-new-m2 resolved-m)))]
-              ;; Compare
-              (when (not= int-melded chk-melded)
-                (log/warn "$ref MISMATCH:" (pr-str r) "at" (pr-str p2)
-                          "\n  int-id-uri:" (pr-str id-uri)
-                          "\n  chk-id-uri:" (pr-str eff-id-uri)
-                          "\n  int-melded:" (pr-str int-melded)
-                          "\n  chk-melded:" (pr-str chk-melded)))
-              ;; Use checker's f1 wrapped for old API
+                  [_c2 _m2 f1] (check-$ref "$ref" c2 (conj p2 "$ref") m2 r)]
+              ;; Wrap checker's f1 (new API [c1 m1 es]) for old API [c1 es]
               (fn [c1 p1 m1]
                 (let [[c1 m1 es] (f1 c1 p1 m1)]
                   [c1 es])))
