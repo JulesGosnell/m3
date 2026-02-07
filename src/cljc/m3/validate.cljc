@@ -21,7 +21,6 @@
    [m3.util :refer [present? concatv make-error make-error-on-failure]]
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.type :refer [json-object?]]
-   [m3.ref :refer [meld resolve-uri try-path]]
    [m3.draft :refer [draft->$schema $schema->draft $schema-uri->draft]]
    [m3.vocabulary :refer [draft->default-dialect make-dialect]]))
 
@@ -43,10 +42,6 @@
 
 ;;------------------------------------------------------------------------------
 
-(defn merge-helper [old-c parent [c p child :as x]]
-  (when x
-    [c p (meld old-c parent child)]))
-
 ;;------------------------------------------------------------------------------
 ;; d/$id/$anchor/$ref
 
@@ -60,12 +55,6 @@
        uri))
    (parse-uri id)))
 
-(defn expand-$ref [{id-uri :id-uri :as old-c} old-p old-m r]
-  (when-let [[new-c new-p new-m] (merge-helper old-c old-m (resolve-uri old-c old-p (inherit-uri id-uri (parse-uri r)) r))]
-    [(if (= old-c new-c) (assoc-in old-c (concat [:root] old-p) new-m) new-c)
-     new-p
-     new-m]))
-
 ;;------------------------------------------------------------------------------
 ;; $recursiveAnchor/Ref - 2019-09 only - sigh
 
@@ -74,32 +63,12 @@
     (update c :$recursive-anchor (fn [[uris top] uri] (if top [(conj uris uri) top] [#{} p])) (c :id-uri))
     (log/warn "$recursiveAnchor: unexpected value:" (pr-str a))))
 
-(defn expand-$recursive-ref [{[uris top] :$recursive-anchor :as c} p m r]
-  (if (= "#" r)
-    (let [uri (:id-uri c)]
-      (merge-helper
-       c
-       m
-       (or
-        (try-path c p (and uris (uris uri) top) (c :original-root))
-        (resolve-uri c p uri r))))
-    (log/warn "$recursiveRef: unexpected value:" (pr-str r))))
-
 ;;------------------------------------------------------------------------------
 ;; $dynamicAnchor/Ref - replaces $recursive-... in 2020-12
 
 (defn stash-$dynamic-anchor [c p _m a]
   (let [uri (inherit-uri (c :id-uri) (parse-uri (str "#" a)))]
     (update-in c [:$dynamic-anchor uri] (fn [old new] (if old old new)) p)))
-
-(defn expand-$dynamic-ref [{da :$dynamic-anchor :as c} p m r]
-  (let [uri (inherit-uri (:id-uri c) (parse-uri r))]
-    (merge-helper
-     c
-     m
-     (or
-      (try-path c p (get da uri) (c :original-root))
-      (resolve-uri c p uri r)))))
 
 ;;------------------------------------------------------------------------------
 
@@ -252,10 +221,6 @@
             (make-error-on-failure "schema: document did not conform" p2 m2 p1 m1 es)])
          [c1 m1 []])))])
 
-;; quicker than actual 'apply' [?]
-(defn apply3 [f [c p m]]
-  (f c p m))
-
 ;; At the moment a validation is only a reduction of c1, not c2.
 ;; Since a draft switch is something that happens at c2-level, I think we need an interceptor...
 ;; if m2-fn returned [new-c2 m2] perhaps we would not need interceptors !
@@ -263,16 +228,6 @@
 
 ;; if validation was also a c2 reduction we could use that for vocabularies and maybe the marker-stash
 ;; investigate...
-
-(defn make-ref-interceptor [k merger]
-  (fn [delegate]
-    (fn this [c2 p2 {r k :as m2}]
-      (if r
-        (fn [c1 p1 m1]
-          (when (present? m1)
-            (let [new-m2 (dissoc m2 k)]
-              ((apply3 this (or (merger c2 p2 new-m2 r) [c2 p2 new-m2])) c1 p1 m1))))
-        (delegate c2 p2 m2)))))
 
 (defn make-anchor-interceptor [kf stasher]
   (fn [delegate]
@@ -304,9 +259,6 @@
        (fn [c1 p1 m1]
          (let [[c1 es] (f1 c1 p1 m1)]
            [c1 m1 es]))])))
-
-(defn get-check-property-$ref []
-  @(resolve 'm3.property/check-property-$ref))
 
 (def check-schema
   (old->new
