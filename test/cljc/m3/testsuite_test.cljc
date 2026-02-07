@@ -119,7 +119,6 @@
     ["ecmascript-regex.json" "ECMA 262 regex dialect recognition" "ECMA 262 has no support for lookbehind"]
     ["enum.json" "enums in properties" "missing required property is invalid"]
     ["enum.json" "enums in properties" "missing all properties is invalid"]
-    ["extends.json" "extends simple types" "mismatch extends"]
     ["extends.json" "extends" "mismatch extends"]
     ["extends.json" "extends" "mismatch extended"]
     ["extends.json" "multiple extends" "mismatch first extends"]

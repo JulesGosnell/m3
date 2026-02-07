@@ -29,12 +29,8 @@
 ;;------------------------------------------------------------------------------
 ;; standard common properties
 
-(defn check-property-extends [_property c2 _p2 m2 _v2]
-  ;; TODO
-  [c2
-   m2
-   (fn [c1 _p1 m1]
-     [c1 m1 nil])])
+;; check-property-extends is defined later, near check-property-allOf
+(declare check-property-extends)
 
 (defn check-property-disallow [_property c2 p2 m2 v2]
   (let [[c2 m2 ct] (check-type v2 c2 p2 m2)]
@@ -1116,6 +1112,19 @@
         (co
          c1 p1 m1
          "allOf: document failed to conform to all sub-schemas"
+         seq)))]))
+
+(defn check-property-extends [_property c2 p2 m2 v2]
+  (let [schemas (if (sequential? v2) v2 [v2])
+        co (check-of c2 p2 m2 schemas)]
+    [c2
+     m2
+     (fn [c1 p1 m1]
+       (tweak
+        m1
+        (co
+         c1 p1 m1
+         "extends: document failed to conform to all extended schemas"
          seq)))]))
 
 ;; TODO: share check-of
