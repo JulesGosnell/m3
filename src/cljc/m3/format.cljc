@@ -53,6 +53,34 @@
        (and (empty? ymd) (empty? thms) (empty? w))
        (= "T" thms))))))
 
+(defn ^:private parse-int [s]
+  #?(:clj (Integer/parseInt s) :cljs (js/parseInt s 10)))
+
+(def ^:private leap-second-time-re
+  #"(?i)^(\d{2}):(\d{2}):(60(?:\.\d+)?)(z|([+-])(\d{2}):(\d{2}))$")
+
+(defn ^:private valid-leap-second-time?
+  "Returns true if s is a valid leap-second time, false if it contains :60 but
+   is invalid, nil if it does not contain :60 (not a leap second)."
+  [s]
+  (when-let [[_ hh mm _ss _tz tz-sign tz-hh tz-mm] (re-find leap-second-time-re s)]
+    (let [h (parse-int hh)
+          m (parse-int mm)]
+      (and (<= 0 h 23)
+           (<= 0 m 59)
+           (if (nil? tz-sign)
+             (and (= h 23) (= m 59))
+             (let [oh (parse-int tz-hh)
+                   om (parse-int tz-mm)]
+               (and (<= 0 oh 23)
+                    (<= 0 om 59)
+                    (let [local-min (+ (* h 60) m)
+                          off-min (* (if (= tz-sign "+") 1 -1) (+ (* oh 60) om))
+                          utc-min (mod (- local-min off-min) 1440)]
+                      (= utc-min 1439)))))))))
+
+(def ^:private date-time-split-re #"(?i)^(\d{4}-\d{2}-\d{2})t(.+)$")
+
 ;;------------------------------------------------------------------------------
 ;; Individual format checker functions
 
@@ -91,7 +119,18 @@
   (check-pattern hostname-pattern "hostname" _c2 p2 m2))
 
 (defn check-format-date-time [_c2 p2 m2]
-  (check-parse offset-date-time-parse "date-time" _c2 p2 m2))
+  (let [normal-check (check-parse offset-date-time-parse "date-time" _c2 p2 m2)]
+    (fn [_c1 p1 m1]
+      (if-let [[_ date-part time-part] (re-find date-time-split-re m1)]
+        (case (valid-leap-second-time? time-part)
+          true (try
+                 (local-date-parse date-part)
+                 nil
+                 (catch #?(:cljs js/Error :clj Exception) e
+                   [(make-error (str "format: not a valid date-time: " (ex-message e)) p2 m2 p1 m1)]))
+          false [(make-error "format: not a valid date-time" p2 m2 p1 m1)]
+          (normal-check _c1 p1 m1))
+        (normal-check _c1 p1 m1)))))
 
 (defn check-format-date [_c2 p2 m2]
   (check-parse local-date-parse "date" _c2 p2 m2))
@@ -100,7 +139,12 @@
   (check-pattern time-pattern "time" c2 p2 m2))
 
 (defn check-format-time-parse [_c2 p2 m2]
-  (check-parse offset-time-parse "time" _c2 p2 m2))
+  (let [normal-check (check-parse offset-time-parse "time" _c2 p2 m2)]
+    (fn [_c1 p1 m1]
+      (case (valid-leap-second-time? m1)
+        true nil
+        false [(make-error "format: not a valid time" p2 m2 p1 m1)]
+        (normal-check _c1 p1 m1)))))
 
 (defn check-format-json-pointer [_c2 p2 m2]
   (check-pattern json-pointer-pattern "json-pointer" _c2 p2 m2))
