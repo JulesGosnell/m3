@@ -14,7 +14,35 @@
 
 (ns m3.json-schema
   "M3 JSON Schema Validator — public API.
-   The most complete JSON Schema validator. All drafts 3 through draft-next."
+   The most complete JSON Schema validator. All drafts 3 through draft-next.
+
+   Quick start:
+
+     (require '[m3.json-schema :as m3])
+
+     ;; Validate a document against a schema
+     (m3/validate {\"type\" \"string\"} \"hello\")
+     ;; => {:valid? true, :errors nil}
+
+     (m3/validate {\"type\" \"number\"} \"oops\")
+     ;; => {:valid? false, :errors [{:schema-path [...] :message \"...\" ...}]}
+
+     ;; Compile once, validate many
+     (let [v (m3/validator {\"type\" \"object\" \"required\" [\"id\"]})]
+       (v {\"id\" 1})    ;; => {:valid? true, :errors nil}
+       (v {}))          ;; => {:valid? false, :errors [...]}
+
+   Supported drafts: :draft3, :draft4, :draft6, :draft7,
+                     :draft2019-09, :draft2020-12, :draft-next
+   Default: :draft2020-12
+
+   Error shape:
+     {:schema-path   [\"type\"]        ;; path into the schema that failed
+      :document-path [\"name\"]        ;; path into the document that failed
+      :message       \"...\"           ;; human-readable description
+      :document      ...              ;; the failing document fragment
+      :schema        ...              ;; the relevant schema fragment
+      :errors        [...]            ;; nested sub-errors (if applicable)}"
   (:require
    [m3.platform :refer [json-decode]]
    [m3.validate :as v]))

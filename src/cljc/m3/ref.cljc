@@ -65,11 +65,10 @@
       (or (path->uri p)
           (recur (vec (butlast p)))))))
 
-(defn try-path [{t? :trace? path->uri :path->uri id-uri :id-uri :as ctx} path p root]
+(defn try-path [{path->uri :path->uri id-uri :id-uri :as ctx} path p root]
   (when p
     (let [m (get-in root p absent)]
       (when (present? m)
-        (when t? (prn "resolved:" path "->" p))
         [;; Find the correct base URI for the resolved path.
          ;; If the path has its own $id (i.e. is in path->uri), walk up to
          ;; the PARENT scope — the $id will be reprocessed during compilation.

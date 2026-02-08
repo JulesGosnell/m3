@@ -24,14 +24,24 @@
    [m3.draft :refer [draft->$schema $schema->draft $schema-uri->draft]]
    [m3.vocabulary :refer [draft->default-dialect make-dialect]]))
 
-;; Naming conventions (L2 = compile time, L1 = runtime):
-;;   check-property-* (L2): (property, c2, p2, m2, v2) -> [c2, m2, f1]
-;;   f1               (L1): (c1, p1, m1) -> [c1, m1, errors]
+;; Architecture: Two-level currying (L2 compile → L1 validate)
+;;
+;;   L2 (compile time): check-property-*(property, c2, p2, m2, v2) → [c2, m2, f1]
+;;   L1 (runtime):      f1(c1, p1, m1) → [c1, m1, errors]
+;;
 ;;   c2 = compile-time context    c1 = runtime context
 ;;   p2 = schema path             p1 = document path
 ;;   m2 = schema (being compiled) m1 = document (being validated)
 ;;   v2 = property value in schema
 ;;   f1 = compiled checker function
+;;
+;; c2 carries schema compilation state: draft, dialect, id-uri, uri↔path stash,
+;;   root schema, c2-atom (for late-bound $ref), and user options.
+;; c1 carries runtime validation state: evaluation tracking (matched/evaluated
+;;   sets for unevaluated*), if/then/else results, dynamic anchor scope,
+;;   and content decoding state.
+;; Both contexts are threaded functionally — each checker receives and returns
+;; its context, accumulating state as compilation/validation progresses.
 
 #?(:cljs (def fs (js/require "fs")))
 
@@ -147,7 +157,7 @@
 
 ;;------------------------------------------------------------------------------
 
-(defn check-schema [{t? :trace? :as c2} p2 m2]
+(defn check-schema [c2 p2 m2]
   (cond
     (true? m2)
     [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])]
@@ -202,7 +212,6 @@
                  (reduce
                   (fn [[c1 m1 acc] [new-p2 cp]]
                     (let [[c1 m1 [{m :message} :as es]] (cp c1 p1 m1)]
-                      (when t? (println (pr-str new-p2) (pr-str p1) (if (seq es) ["❌" m] "✅")))
                       [c1 m1 (concatv acc es)]))
                   [c1 m1 []]
                   checkers)]
@@ -249,7 +258,7 @@
               compiling (or (:compiling c) #{})
               ctx (-> (make-context
                        (-> c
-                           (select-keys [:uri->schema :trace? :draft :id-key :quiet?])
+                           (select-keys [:uri->schema :draft :id-key :quiet?])
                            (assoc :id-uri base :compiling compiling))
                        m)
                       (assoc :id-uri base)
