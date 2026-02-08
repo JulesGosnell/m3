@@ -154,6 +154,7 @@
 (defmethod meld :draft2019-09   [ctx parent reffed] (meld-deep-over ctx parent reffed))
 (defmethod meld :draft2020-12   [ctx parent reffed] (meld-deep-over ctx parent reffed))
 (defmethod meld :draft-next     [ctx parent reffed] (meld-deep-over ctx parent reffed))
+(defmethod meld :latest         [ctx parent reffed] (meld-deep-over ctx parent reffed))
 
 ;;------------------------------------------------------------------------------
 

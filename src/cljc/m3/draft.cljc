@@ -23,11 +23,12 @@
    :draft7       "http://json-schema.org/draft-07/schema"
    :draft2019-09 "https://json-schema.org/draft/2019-09/schema"
    :draft2020-12 "https://json-schema.org/draft/2020-12/schema"
+   :latest       "https://json-schema.org/draft/2020-12/schema"
    :draft-next   "https://json-schema.org/draft/next/schema"})
 
 
 (def $schema->draft
-  (reduce-kv (fn [acc k v] (conj (conj acc [v k]) [(str v "#") k])) {} draft->$schema))
+  (reduce-kv (fn [acc k v] (conj (conj acc [v k]) [(str v "#") k])) {} (dissoc draft->$schema :latest)))
 
 
 (def $schema-uri->draft
