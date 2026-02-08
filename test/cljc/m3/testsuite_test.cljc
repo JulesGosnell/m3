@@ -22,7 +22,6 @@
    [clojure.pprint :refer [pprint]]
    [clojure.string :refer [ends-with?]]
    [m3.platform :refer [json-decode]]
-   [m3.util :refer [index-by]]
    [m3.validate :refer [validate validate-2 uri->continuation]]]
   [:import
    #?(:clj  [java.io File])])
@@ -152,6 +151,9 @@
 
 ;;------------------------------------------------------------------------------
 ;; REPL utilities
+
+(defn index-by [k ms]
+  (into (sorted-map) (map (fn [{v k :as m}][v m]) ms)))
 
 (defn find-test [draft feature description test-name]
   (let [{m2 "schema" m1s "tests"}

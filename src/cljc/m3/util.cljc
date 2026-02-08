@@ -95,9 +95,6 @@
 
 ;;------------------------------------------------------------------------------
 
-(defn index-by [k ms]
-  (into (sorted-map) (map (fn [{v k :as m}][v m]) ms)))
-
 (defn get-check-schema []
   ;; we have had to do this to break a circular dependency
   (deref (resolve 'm3.validate/check-schema)))
