@@ -225,9 +225,7 @@
 
 (def uri-base->dir
   {"http://json-schema.org" "resources/schemas"
-   "https://json-schema.org" "resources/schemas"
-   "http://localhost:1234" "test-resources/JSON-Schema-Test-Suite/remotes" ;; TODO: move to test config once $schema->m2 is parameterised
-   })
+   "https://json-schema.org" "resources/schemas"})
 
 ;; TODO: uris in sub-schema must inherit from uris in super-schema...
 (defn uri->schema [uri-base->dir _c _p {origin :origin path :path}]
@@ -320,8 +318,12 @@
             [c1 _m1 es] (cs c1 [] document)]
         [c1 es]))))
 
-(defn $schema->m2 [s]
-  (uri->schema* {} [] (parse-uri s)))
+(defn $schema->m2 [{u->s :uri->schema} s]
+  (let [uri (parse-uri s)]
+    (or (uri->schema* {} [] uri)
+        (when u->s
+          (let [result (u->s {} [] uri)]
+            (when result (nth result 2)))))))
 
 (declare validate-m2)
 
@@ -336,7 +338,7 @@
 ;; switching context will affect dialect, marker stash, draft etc... - consider
 (defn validate-m2-impl [{draft :draft :as c2} m1]
   (let [s (or (and (json-object? m1) (get m1 "$schema")) (draft->$schema draft))]
-    (if-let [{$vocabulary "$vocabulary" :as m2} ($schema->m2 s)]
+    (if-let [{$vocabulary "$vocabulary" :as m2} ($schema->m2 c2 s)]
       (if (= m2 m1)
         ;; we are at the top
         (let [draft ($schema->draft s)
