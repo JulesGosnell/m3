@@ -115,8 +115,6 @@
     ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches second anyOf, which has a real schema in it"]
 
     ;; draft3
-    ["color.json" "validation of CSS colors" "an invalid CSS color name"]
-    ["ecmascript-regex.json" "ECMA 262 regex dialect recognition" "ECMA 262 has no support for lookbehind"]
     ;; ["ref.json" "nested refs" "nested ref invalid"] ;; also in main list above
 
     #?@(:cljs

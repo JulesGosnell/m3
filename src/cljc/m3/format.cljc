@@ -17,6 +17,7 @@
    [cljc.java-time.local-date :refer [parse] :rename {parse local-date-parse}]
    [cljc.java-time.offset-date-time :refer [parse] :rename {parse offset-date-time-parse}]
    [cljc.java-time.offset-time :refer [parse] :rename {parse offset-time-parse}]
+   [clojure.string :as str]
    [m3.util :refer [make-error]]
    [m3.ecma :refer [ecma-pattern]]
    [m3.pattern :refer [email-pattern ipv4-pattern ipv6-pattern hostname-pattern
@@ -90,9 +91,15 @@
 (defn check-format-ip-address [_c2 p2 m2]
   (check-pattern ip-address-pattern "ip-address" _c2 p2 m2))
 
+(def ^:private css-color-names
+  #{"aqua" "black" "blue" "fuchsia" "gray" "green" "lime" "maroon"
+    "navy" "olive" "orange" "purple" "red" "silver" "teal" "white" "yellow"})
+
 (defn check-format-color [_c2 p2 m2]
-  ;; TODO: need to or this with a complete set of CSS2/CSS3 color names
-  (check-pattern color-pattern "color" _c2 p2 m2))
+  (fn [_c1 p1 m1]
+    (when-not (or (re-find color-pattern m1)
+                  (css-color-names (str/lower-case m1)))
+      [(make-error "format: not a valid color" p2 m2 p1 m1)])))
 
 (defn check-format-style [_c2 _p2 _m2]
   ;; Draft-03 specific, not validated
@@ -186,6 +193,15 @@
 (defn check-format-regex [_c2 p2 m2]
   (check-parse ecma-pattern "regex" _c2 p2 m2))
 
+(def ^:private lookbehind-re #"\(\?<[=!]")
+
+(defn check-format-regex-draft3 [_c2 p2 m2]
+  (let [base-check (check-format-regex _c2 p2 m2)]
+    (fn [_c1 p1 m1]
+      (if (re-find lookbehind-re m1)
+        [(make-error "format: not a valid regex (lookbehind not supported)" p2 m2 p1 m1)]
+        (base-check _c1 p1 m1)))))
+
 (defn check-format-unknown [_c2 _p2 _m2]
   (constantly nil))
 
@@ -200,7 +216,7 @@
    "ip-address"   check-format-ip-address   ; renamed to "ipv4" in draft-04
    "ipv6"         check-format-ipv6
    "phone"        check-format-phone        ; dropped in draft-04
-   "regex"        check-format-regex
+   "regex"        check-format-regex-draft3
    "style"        check-format-style        ; dropped in draft-04
    "time"         check-format-time-pattern ; uses pattern check in draft-03
    "uri"          check-format-uri
