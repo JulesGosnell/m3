@@ -50,7 +50,7 @@
 
   :min-lein-version "2.5.0"
   :uberjar-name "m3.jar"
-  :clean-targets ^{:protect false} [:target-path "target/shadow"]
+  :clean-targets ^{:protect false} [:target-path "target/shadow" ".shadow-cljs"]
 
   :source-paths ["src/clj" "src/cljc" "src/cljs"]
   :test-paths ["test/clj" "test/cljc" "test/cljs"]
@@ -106,4 +106,8 @@
   :aliases {"test-cljs" ["do"
                          ["shadow" "compile" "test"]
                          ["shell" "node" "target/shadow/test.js"]]
-            "quick-test" ["run" "-m" "m3.test-runner"]})
+            "quick-test" ["run" "-m" "m3.test-runner"]
+            "clean-all" ["do"
+                         ["clean"]
+                         ["shell" "bash" "-c"
+                          "rm -f npm-dist/*.js npm-dist/*.js.map"]]})
