@@ -278,9 +278,10 @@
           [ctx [] m])))))
 
 (defn make-context [{draft :draft u->s :uri->schema :as c2} {s "$schema" :as m2}]
-  (let [draft (or draft
-                  (when s ($schema-uri->draft (uri-base (parse-uri s))))
-                  :latest)
+  (let [draft (let [d (or draft
+                        (when s ($schema-uri->draft (uri-base (parse-uri s))))
+                        :draft2020-12)]
+                (if (= d :latest) :draft2020-12 d))
         id-key (if (#{:draft3 :draft4} draft) "id" "$id")
         sid (get m2 id-key)
         c2 (if-not u->s (assoc c2 :uri->schema (uri->continuation uri-base->dir)) c2) ;; TODO
