@@ -189,6 +189,8 @@
 (deftest json-schema-test-suite
   (doseq [[draft dir] [[:draft3       "draft3" "draft3/optional" "draft3/optional/format"]
                        [:draft4       "draft4"]
+                       [:draft4       "draft4/optional"]
+                       [:draft4       "draft4/optional/format"]
                        [:draft6       "draft6"]
                        [:draft6       "draft6/optional"]
                        [:draft6       "draft6/optional/format"]
