@@ -22,7 +22,7 @@
    [clojure.pprint :refer [pprint]]
    [clojure.string :refer [ends-with?]]
    [m3.platform :refer [json-decode]]
-   [m3.validate :refer [validate validate-2 uri->continuation]]]
+   [m3.validate :refer [validate uri->continuation]]]
   [:import
    #?(:clj  [java.io File])])
 
@@ -92,6 +92,7 @@
               (when-not (exclude-test? [feature d1 d2])
                 (let [c2 {:draft draft
                           :uri->schema (uri->continuation uri-base->dir)
+                          :quiet? true
                           :strict-format? (ends-with? (directory-name f) "optional/format")
                           :strict-integer? (and (= "zeroTerminatedFloats.json" feature)
                                                 (= "a float is not an integer even without fractional part" d2))}
@@ -139,12 +140,3 @@
     [m2 m1]))
 
 ;;------------------------------------------------------------------------------
-
-(defn test-m1 [c2 m2 {d "description" m1 "data" expected-v? "valid"}]
-  (testing d
-    (let [[_c es] ((validate-2 c2 m2) {} m1)]
-      (is (empty? es) expected-v?))))
-
-(defn test-m2 [c2 {d "description" m2 "schema" tests "tests"}]
-  (testing d
-    (doseq [test tests] (test-m1 c2 m2 test))))

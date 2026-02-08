@@ -29,6 +29,8 @@
 ;;------------------------------------------------------------------------------
 ;; standard common properties
 
+(defn- noop-checker [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
+
 ;; check-property-extends is defined later, near check-property-allOf
 (declare check-property-extends)
 
@@ -190,12 +192,14 @@
                            (or existing {:schema anchor-schema :c2-atom anchor-c2-atom}))))
           m1 nil]))]))
 
-(defn check-property-$comment [_property c2 _p2 m2 _v2]
+(defn check-property-$comment [_property {quiet? :quiet? :as c2} _p2 m2 v2]
   [c2
    m2
-   (fn [c1 _p1 m1]
-    ;;(log/info (str "$comment:" v2 " : " _p1))
-     [c1 m1 nil])])
+   (if quiet?
+     (fn [c1 _p1 m1] [c1 m1 nil])
+     (fn [c1 _p1 m1]
+       (log/info (str "$comment: " v2))
+       [c1 m1 nil]))])
 
 ;; $ref resolution logic - called from the $ref interceptor.
 ;; Resolution is LAZY (inside f1) to handle recursive schemas.
@@ -466,12 +470,13 @@
              (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc c2 :c2-atom) schema-p2 m2-no-ref)]
                (compiled-f1 c1 p1 m1))))
          [c1 m1 nil]))]))
-(defn check-property-description   [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
-(defn check-property-readOnly      [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
-(defn check-property-writeOnly     [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
-(defn check-property-title         [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
-(defn check-property-default       [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
-(defn check-property-examples      [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
+
+(def check-property-description noop-checker)
+(def check-property-readOnly    noop-checker)
+(def check-property-writeOnly   noop-checker)
+(def check-property-title       noop-checker)
+(def check-property-default     noop-checker)
+(def check-property-examples    noop-checker)
 
 (defn check-property-$vocabulary [_property {d :draft :as c2} _p2 m2 v2]
   ;; $vocabulary specifies which vocabularies are active for this schema
@@ -485,8 +490,14 @@
        ;; No validation work needed - just pass through
        [c1 m1 nil])]))
 
-;; TODO: issue a warning somehow
-(defn check-property-deprecated [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])]) ;; TODO: issue a warning or error ?
+(defn check-property-deprecated [_property {quiet? :quiet? :as c2} _p2 m2 v2]
+  [c2
+   m2
+   (if quiet?
+     (fn [c1 _p1 m1] [c1 m1 nil])
+     (fn [c1 _p1 m1]
+       (log/warn (str "deprecated: " v2))
+       [c1 m1 nil]))])
 
 ;; standard number properties
 

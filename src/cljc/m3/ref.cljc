@@ -112,23 +112,9 @@
 
    ;; did it match a remote schema
    (when-let [[c p _m] (and uri->schema (uri->schema ctx path uri))]
+     (resolve-uri c p (uri-fragment uri) (str "#" (:fragment uri))))
 
-     ;; this is how I would like it to work:
-     
-     ;; TODO: risk of a stack overflow here if uri does not resolve in context of remote schema...
-     ;; (try
-     ;;   (resolve-uri c p uri (str "#" (:fragment uri)))
-     ;;   (catch StackOverflowError _
-     ;;     (log/error "OVERFLOW:" (pr-str [uri (:uri->path c) c]))
-     ;;     ))
-
-     ;; but this is safer
-     (resolve-uri c p (uri-fragment uri) (str "#" (:fragment uri)))
-     )
-
-   (log/warn "$ref: could not resolve:" (pr-str $ref) (pr-str uri)))
-
-  )
+   (log/warn "$ref: could not resolve:" (pr-str $ref) (pr-str uri))))
 
 ;;------------------------------------------------------------------------------
 ;; expanding $refs

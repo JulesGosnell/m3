@@ -95,7 +95,7 @@
               :omit-source true}
 
              :cloverage ;; output is written to ./target/coverage/index.html
-             {:cloverage {:fail-threshold 90}}}
+             {:cloverage {:fail-threshold 95}}}
 
   :aliases {"test-cljs" ["do"
                          ["shadow" "compile" "test"]

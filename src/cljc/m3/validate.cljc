@@ -24,7 +24,14 @@
    [m3.draft :refer [draft->$schema $schema->draft $schema-uri->draft]]
    [m3.vocabulary :refer [draft->default-dialect make-dialect]]))
 
-;; consider https://docs.oracle.com/javase/8/docs/api/java/time/package-summary.html - other time types...
+;; Naming conventions (L2 = compile time, L1 = runtime):
+;;   check-property-* (L2): (property, c2, p2, m2, v2) -> [c2, m2, f1]
+;;   f1               (L1): (c1, p1, m1) -> [c1, m1, errors]
+;;   c2 = compile-time context    c1 = runtime context
+;;   p2 = schema path             p1 = document path
+;;   m2 = schema (being compiled) m1 = document (being validated)
+;;   v2 = property value in schema
+;;   f1 = compiled checker function
 
 #?(:cljs (def fs (js/require "fs")))
 
@@ -140,7 +147,7 @@
 
 ;;------------------------------------------------------------------------------
 
-(defn check-schema-2 [{t? :trace? :as c2} p2 m2]
+(defn check-schema [{t? :trace? :as c2} p2 m2]
   (cond
     (true? m2)
     [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])]
@@ -205,23 +212,12 @@
            [c1 m1 []]))])))
 
 
-;; At the moment a validation is only a reduction of c1, not c2.
-;; Since a draft switch is something that happens at c2-level, I think we need an interceptor...
-;; if m2-fn returned [new-c2 m2] perhaps we would not need interceptors !
-;; but we would have to thread m2 as well - can we do it - consider...
-
-;; if validation was also a c2 reduction we could use that for vocabularies and maybe the marker-stash
-;; investigate...
-
-(def check-schema check-schema-2)
-
 ;;------------------------------------------------------------------------------
 
-;; TODO: rename
 (def uri-base->dir
   {"http://json-schema.org" "resources/schemas"
    "https://json-schema.org" "resources/schemas"
-   "http://localhost:1234" "test-resources/JSON-Schema-Test-Suite/remotes" ;; TODO: should not be in production code
+   "http://localhost:1234" "test-resources/JSON-Schema-Test-Suite/remotes" ;; TODO: move to test config once $schema->m2 is parameterised
    })
 
 ;; TODO: uris in sub-schema must inherit from uris in super-schema...
@@ -243,7 +239,7 @@
       ;; TODO: ref resolution needs to be done in new context...
       s)))
 
-(def uri->schema-2 (partial uri->schema uri-base->dir))
+(def uri->schema* (partial uri->schema uri-base->dir))
 
 (defn uri->continuation [uri-base->dir]
   (let [uri->schema (partial uri->schema uri-base->dir)
@@ -253,7 +249,7 @@
         (let [base (uri-base uri)
               ctx (-> (make-context
                        (-> c
-                           (select-keys [:uri->schema :trace? :draft :id-key])
+                           (select-keys [:uri->schema :trace? :draft :id-key :quiet?])
                            (assoc :id-uri base))
                        m)
                       (assoc :id-uri base)
@@ -273,13 +269,6 @@
                                  :path->uri (:path->uri compiled-ctx)))))]
           [ctx [] m])))))
 
-(defn marker-stash [{pu :path->uri up :uri->path}]
-  {:path->uri pu :uri->path up})
-
-(defn add-marker-stash [c m _sid]
-  ;; TODO: remove entirely — stash will be built during compilation
-  c)
-
 (defn make-context [{draft :draft u->s :uri->schema :as c2} {s "$schema" :as m2}]
   (let [draft (or draft
                   (when s ($schema-uri->draft (uri-base (parse-uri s))))
@@ -288,8 +277,7 @@
         sid (get m2 id-key)
         c2 (if-not u->s (assoc c2 :uri->schema (uri->continuation uri-base->dir)) c2) ;; TODO
         c2 (assoc c2 :draft draft)
-        c2 (assoc c2 :id-key id-key)
-        c2 (add-marker-stash c2 m2 sid)]
+        c2 (assoc c2 :id-key id-key)]
     (assoc
      c2
      :id-uri (or (:id-uri c2) (when sid (parse-uri sid))) ;; should be receiver uri - but seems to default to id/$id - yeugh
@@ -302,7 +290,7 @@
      )))
 
 ;; TODO: rename :root to ?:expanded?
-(defn validate-2 [c2 schema]
+(defn validate* [c2 schema]
   (let [{draft :draft id-key :id-key :as c2} (make-context c2 schema)
         [c2 m2 cs] (check-schema c2 [] schema)]
     (fn [c1 {did id-key _dsid "$schema" :as document}]
@@ -324,7 +312,7 @@
         [c1 es]))))
 
 (defn $schema->m2 [s]
-  (uri->schema-2 {} [] (parse-uri s)))
+  (uri->schema* {} [] (parse-uri s)))
 
 (declare validate-m2)
 
@@ -337,7 +325,7 @@
 ;; I think this function needs decomposing and unit testing - it's too complicated...
 ;; and we need to be able to reuse the code when switching drafts or schema contexts...
 ;; switching context will affect dialect, marker stash, draft etc... - consider
-(defn validate-m2-2 [{draft :draft :as c2} m1]
+(defn validate-m2-impl [{draft :draft :as c2} m1]
   (let [s (or (and (json-object? m1) (m1 "$schema")) (draft->$schema draft))]
     (if-let [{$vocabulary "$vocabulary" :as m2} ($schema->m2 s)]
       (if (= m2 m1)
@@ -353,7 +341,7 @@
               c2 (assoc
                   (merge c2 stash)
                   :id-uri uri)
-              v (validate-2 c2 m2)
+              v (validate* c2 m2)
               [_ es :as r] (v {} m1)]
           (if (empty? es)
             ;; return a validator (f1) that will build its own dialect or inherit its meta-schema's
@@ -367,14 +355,17 @@
         ;; keep going - c1 from meta-schema validation becomes c2 for next level
         (let [[{vs :dialect u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)]
           (if (empty? es)
-            (validate-2 (assoc c2
+            (validate* (assoc c2
                                :uri->path (or u->p {})
                                :path->uri (or p->u {})
                                :dialect vs) m1)
             (constantly r))))
       (constantly [c2 [(str "could not resolve $schema: " s)]]))))
 
-(def validate-m2 (memoize validate-m2-2))
+;; Unbounded memoization: cache grows with distinct [c2, schema] pairs.
+;; In practice bounded by the number of unique schemas validated (not documents).
+;; Replace with LRU cache if memory pressure is observed in long-running processes.
+(def validate-m2 (memoize validate-m2-impl))
 
 (defn reformat [[_ es]]
   {:valid? (empty? es) :errors es})
