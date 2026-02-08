@@ -76,10 +76,7 @@
                              [binaryage/devtools "1.0.7"]
                              [prone "2021-04-23"]
                              [nrepl "1.5.0"]
-                             [pjstadig/humane-test-output "0.11.0"]
-                             ;; MCP dependencies (excluded from uberjar by :dev profile)
-                             ;;[com.bhauman/clojure-mcp "0.1.-SNAPSHOT" :exclusions [org.slf4j/slf4j-nop]] ;; only currently available on my local box :-(
-                             ]
+                             [pjstadig/humane-test-output "0.11.0"]]
 
               :plugins [[cider/cider-nrepl "0.57.0"]
                         [org.clojure/tools.namespace "1.5.0" :exclusions [org.clojure/tools.reader]]
@@ -98,9 +95,7 @@
               :omit-source true}
 
              :cloverage ;; output is written to ./target/coverage/index.html
-             {:cloverage {:fail-threshold 90}}
-
-             :mcp {:main ^:skip-aot m3.clojure-mcp}}
+             {:cloverage {:fail-threshold 90}}}
 
   :aliases {"test-cljs" ["do"
                          ["shadow" "compile" "test"]
