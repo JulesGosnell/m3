@@ -76,6 +76,8 @@
    "https://json-schema.org" "resources/schemas"
    "http://localhost:1234" "test-resources/JSON-Schema-Test-Suite/remotes"})
 
+(def test-uri->schema (uri->continuation uri-base->dir))
+
 (defn is-validated [c2 m2 c1 m1 expected-valid?]
   (let [{v? :valid? es :errors} (validate c2 m2 c1 m1)]
     (if expected-valid?
@@ -91,7 +93,7 @@
             (testing d2
               (when-not (exclude-test? [feature d1 d2])
                 (let [c2 {:draft draft
-                          :uri->schema (uri->continuation uri-base->dir)
+                          :uri->schema test-uri->schema
                           :quiet? true
                           :strict-format? (ends-with? (directory-name f) "optional/format")
                           :strict-integer? (and (= "zeroTerminatedFloats.json" feature)

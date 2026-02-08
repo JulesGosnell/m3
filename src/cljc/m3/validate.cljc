@@ -242,15 +242,15 @@
 (def uri->schema* (partial uri->schema uri-base->dir))
 
 (defn uri->continuation [uri-base->dir]
-  (let [uri->schema (partial uri->schema uri-base->dir)
-        compiling (atom #{})]
+  (let [uri->schema (partial uri->schema uri-base->dir)]
     (fn [c p uri]
       (when-let [m (uri->schema c p uri)] ;; TODO: what if schema is 'false'
         (let [base (uri-base uri)
+              compiling (or (:compiling c) #{})
               ctx (-> (make-context
                        (-> c
                            (select-keys [:uri->schema :trace? :draft :id-key :quiet?])
-                           (assoc :id-uri base))
+                           (assoc :id-uri base :compiling compiling))
                        m)
                       (assoc :id-uri base)
                       (update :uri->path assoc base [])
@@ -259,14 +259,13 @@
               ;; with any $id/$anchor entries found inside it.
               ;; Guard against re-entrant compilation (e.g. metaschema $schema
               ;; pointing to itself) to prevent infinite recursion.
-              ctx (if (contains? @compiling base)
+              ctx (if (contains? compiling base)
                     ctx
-                    (do (swap! compiling conj base)
-                        (let [[compiled-ctx _m2 _f1] (check-schema ctx [] m)]
-                          (swap! compiling disj base)
-                          (assoc ctx
-                                 :uri->path (:uri->path compiled-ctx)
-                                 :path->uri (:path->uri compiled-ctx)))))]
+                    (let [compile-ctx (update ctx :compiling conj base)
+                          [compiled-ctx _m2 _f1] (check-schema compile-ctx [] m)]
+                      (assoc ctx
+                             :uri->path (:uri->path compiled-ctx)
+                             :path->uri (:path->uri compiled-ctx))))]
           [ctx [] m])))))
 
 (defn make-context [{draft :draft u->s :uri->schema :as c2} {s "$schema" :as m2}]
