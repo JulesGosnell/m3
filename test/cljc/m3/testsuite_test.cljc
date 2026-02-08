@@ -66,38 +66,7 @@
 ;; https://github.com/json-schema-org/JSON-Schema-Test-Suite
 
 (def exclude-test?
-  #{;; ref / anchor / dynamicRef / id
-    ["anchor.json" "$anchor inside an enum is not a real identifier" "match $ref to $anchor"]
-    ["defs.json" "validate definition against metaschema" "invalid definition schema"]
-    ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected integers - additional property as not integer is invalid"]
-    ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected strings - additional property as not string is invalid"]
-    ["dynamicRef.json" "$ref and $dynamicAnchor are independent of order - $defs first" "incorrect extended schema"]
-    ["dynamicRef.json" "$ref and $dynamicAnchor are independent of order - $ref first" "incorrect extended schema"]
-    ["dynamicRef.json" "A $dynamicRef that initially resolves to a schema with a matching $dynamicAnchor resolves to the first $dynamicAnchor in the dynamic scope" "The recursive part is not valid against the root"]
-    ["dynamicRef.json" "A $dynamicRef with a non-matching $dynamicAnchor in the same schema resource behaves like a normal $ref to $anchor" "Any array is valid"]
-    ["dynamicRef.json" "A $dynamicRef without a matching $dynamicAnchor in the same schema resource behaves like a normal $ref to $anchor" "Any array is valid"]
-    ["dynamicRef.json" "An $anchor with the same name as a $dynamicAnchor is not used for dynamic scope resolution" "Any array is valid"]
-    ["dynamicRef.json" "after leaving a dynamic scope, it is not used by a $dynamicRef" "string matches /$defs/thingy, but the $dynamicRef does not stop here"]
-    ["dynamicRef.json" "after leaving a dynamic scope, it is not used by a $dynamicRef" "/then/$defs/thingy is the final stop for the $dynamicRef"]
-    ["dynamicRef.json" "strict-tree schema, guards against misspelled properties" "instance with misspelled field"]
-    ["dynamicRef.json" "tests for implementation dynamic anchor and reference link" "incorrect extended schema"]
-    ["id.json" "$id inside an enum is not a real identifier" "match $ref to $id"]
-    ["id.json" "id inside an enum is not a real identifier" "match $ref to id"]
-    ["recursiveRef.json" "$recursiveRef with nesting" "integer now matches as a property value"]
-    ["recursiveRef.json" "$recursiveRef with nesting" "two levels, properties match with $recursiveRef"]
-    ["recursiveRef.json" "$recursiveRef without $recursiveAnchor works like $ref" "recursive mismatch"]
-    ["ref.json" "$ref prevents a sibling id from changing the base uri" "$ref resolves to /definitions/base_foo, data does not validate"]
-    ["ref.json" "$ref with $recursiveAnchor" "extra items allowed for inner arrays"]
-    ["ref.json" "nested refs" "nested ref invalid"]
-    ["ref.json" "ref creates new scope when adjacent to keywords" "referenced subschema doesn't see annotations from properties"]
-    ["refRemote.json" "remote ref with ref to defs" "invalid"]
-    ["refRemote.json" "retrieved nested refs resolve relative to their URI not $id" "number is invalid"]
-    ["unevaluatedItems.json" "unevaluatedItems with $dynamicRef" "with no unevaluated items"]
-    ["unevaluatedItems.json" "unevaluatedItems with $recursiveRef" "with no unevaluated items"]
-    ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches non-schema in third anyOf"]
-    ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches second anyOf, which has a real schema in it"]
-
-    ;; CLJS: JS has no integer/float distinction — JSON.parse("1.0") === JSON.parse("1")
+  #{;; CLJS: JS has no integer/float distinction — JSON.parse("1.0") === JSON.parse("1")
     #?@(:cljs
         [["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]])
     })

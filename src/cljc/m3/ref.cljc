@@ -17,7 +17,7 @@
    [clojure.string :refer [split replace] :rename {replace string-replace}] 
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.util :refer [present? absent]]
-   [m3.uri :refer [uri-base uri-fragment]]))
+   [m3.uri :refer [uri-base uri-fragment inherit-uri]]))
 
 
 (defn parse-int [s]
@@ -56,13 +56,29 @@
    path
    (or (seq (if (= $ref "/") [""] (split $ref #"/" -1))) [""]))) ;; N.B.: -1 prevents trailing ""s being removed
 
-(defn try-path [{t? :trace? path->uri :path->uri :as ctx} path p root]
+(defn nearest-uri
+  "Walk up the path hierarchy to find the nearest ancestor with a path->uri entry.
+  Returns the URI of the nearest schema with an explicit $id."
+  [path->uri p]
+  (loop [p p]
+    (when (seq p)
+      (or (path->uri p)
+          (recur (vec (butlast p)))))))
+
+(defn try-path [{t? :trace? path->uri :path->uri id-uri :id-uri :as ctx} path p root]
   (when p
     (let [m (get-in root p absent)]
       (when (present? m)
         (when t? (prn "resolved:" path "->" p))
-        [;; use static (original) base uri rather than dynamic (inherited from ref)
-         (assoc ctx :id-uri (path->uri p))
+        [;; Find the correct base URI for the resolved path.
+         ;; If the path has its own $id (i.e. is in path->uri), walk up to
+         ;; the PARENT scope — the $id will be reprocessed during compilation.
+         ;; Otherwise walk up to find the nearest ancestor's scope.
+         (let [has-own-id? (contains? path->uri p)
+               resolved-uri (if has-own-id?
+                              (nearest-uri path->uri (vec (butlast p)))
+                              (nearest-uri path->uri p))]
+           (assoc ctx :id-uri (or resolved-uri id-uri)))
          path m]))))
 
 (declare resolve-$ref)
@@ -80,14 +96,19 @@
 
    ;; in all but fragment
    (when-let [path2 (uri->path (uri-base uri))]
-     (or
-      (try-path ctx path (canonicalise path2 f) m2)
-      ;; why ?
-      (try-path ctx path (concat path2 (canonicalise [] f)) m2)))
+     (if f
+       (or
+        (try-path ctx path (canonicalise path2 f) m2)
+        (try-path ctx path (concat path2 (canonicalise [] f)) m2))
+       (try-path ctx path path2 m2)))
 
-   ;; it's just a fragment
+   ;; it's just a fragment — try as anchor first, then JSON pointer
    (and (= t :fragment)
-        (try-path ctx path (canonicalise path (or f "")) m2)) ;TODO
+        (or
+         ;; anchor: resolve fragment against current base URI to find $anchor entry
+         (try-path ctx path (uri->path (inherit-uri (:id-uri ctx) uri)) m2)
+         ;; JSON pointer
+         (try-path ctx path (canonicalise path (or f "")) m2)))
 
    ;; did it match a remote schema
    (when-let [[c p _m] (and uri->schema (uri->schema ctx path uri))]

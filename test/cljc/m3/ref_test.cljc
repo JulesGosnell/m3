@@ -27,9 +27,15 @@
           c {"$id" "c"}
           m2 {"a" {"b" c}}
           path ["a"]
-          ctx {:root m2 :uri->path {uri ["a" "b"]} :path->uri {["a" "b"] uri}}]
+          ;; path ["a" "b"] has its own $id (it IS in path->uri), so try-path
+          ;; walks to the parent ["a"]. No parent scope → falls back to ctx's id-uri.
+          ;; Provide a parent scope so the test exercises the full resolution path.
+          parent-uri {:type :path :path "/a"}
+          ctx {:root m2 :id-uri parent-uri
+               :uri->path {uri ["a" "b"]}
+               :path->uri {["a" "b"] uri ["a"] parent-uri}}]
     (is (=
-         [(merge ctx {:id-uri uri}) path c]
+         [(merge ctx {:id-uri parent-uri}) path c]
          (resolve-uri ctx path uri :ref)))))
   )
 

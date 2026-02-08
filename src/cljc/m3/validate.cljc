@@ -44,7 +44,18 @@
 
 ;;------------------------------------------------------------------------------
 
-;; marker-stashes for the builtin meta-schemas
+;; Hand-built marker stashes for the builtin meta-schemas.
+;;
+;; At the top of the JSON Schema hierarchy, a meta-schema validates itself
+;; (e.g. draft2020-12/schema's $schema points to itself). To ground out this
+;; recursion without needing json-walk, we provide pre-built stashes here.
+;; Normal schemas discover their $id/$anchor entries during compilation, but
+;; meta-schemas need their stash to already exist before compilation begins.
+;;
+;; Each entry maps a meta-schema URI to its {:uri->path, :path->uri} stash.
+;; To add support for a new top-level meta-schema, add an entry here with
+;; at minimum the root mapping (uri → [], [] → uri) plus any anchors defined
+;; at the top level of that meta-schema.
 (let [draft3 (parse-uri "http://json-schema.org/draft-03/schema#")
       draft4 (parse-uri "http://json-schema.org/draft-04/schema#")
       draft6 (parse-uri "http://json-schema.org/draft-06/schema#")
@@ -54,29 +65,31 @@
   (def uri->marker-stash
     {draft3
      {:uri->path {draft3 []},
-      :path->uri (constantly draft3)},
+      :path->uri {[] draft3}},
      draft4
      {:uri->path {draft4 []},
-      :path->uri (constantly draft4)},
+      :path->uri {[] draft4}},
      draft6
      {:uri->path {draft6 []},
-      :path->uri (constantly draft6)},
+      :path->uri {[] draft6}},
      draft7
      {:uri->path {draft7 []},
-      :path->uri (constantly draft7)},
+      :path->uri {[] draft7}},
      draft2019-09
      {:uri->path {draft2019-09 []},
-      :path->uri (constantly draft2019-09)},
+      :path->uri {[] draft2019-09}},
      draft2020-12
      {:uri->path {draft2020-12 [],
                   ;; there is a $dynamicAnchor at top-level - figure it out later...
                   {:type :url, :origin "https://json-schema.org", :path "/draft/2020-12/schema", :fragment "meta"} []},
-      ;; should this be returning the dynamic anchor?
-      :path->uri (constantly draft2020-12)}}))
+      :path->uri {[] draft2020-12}}}))
 
 (defn compile-m2 [{dialect :dialect draft :draft :as c2} old-p2 m2]
   (let [effective-draft (or draft :draft2020-12)
-        initial-dialect (or dialect (draft->default-dialect effective-draft))]
+        initial-dialect (or dialect (draft->default-dialect effective-draft))
+        ;; Save the id-uri at entry — this is the parent schema's scope.
+        ;; Old-draft $ref uses this to ignore sibling $id.
+        c2 (assoc c2 :schema-parent-id-uri (:id-uri c2))]
     (loop [dialect initial-dialect
            remaining (dialect m2)
            c2 c2
@@ -84,13 +97,9 @@
            acc []
            processed-keys #{}]
       (if (empty? remaining)
-        ;; Done - return accumulated checkers
-        acc
+        [c2 acc]
 
-        ;; Process next property
         (let [[[k v] cp] (first remaining)]
-          ;; Skip if already processed or if a checker marked this key to skip
-          ;; (e.g., $ref in old drafts sets :skip-keys to suppress sibling processing)
           (if (or (contains? processed-keys k)
                   (contains? (:skip-keys c2) k))
             (recur dialect
@@ -100,14 +109,19 @@
                    acc
                    processed-keys)
 
-            ;; Haven't processed this key yet
             (let [new-p2 (conj old-p2 k)
+                  parent-id-uri (:id-uri c2)
                   [new-c2 new-m2 f1] (cp k c2 new-p2 m2 v)
+                  ;; Only $id/id should change id-uri for sibling properties.
+                  ;; All other property checkers may accumulate stash entries
+                  ;; but must not leak their sub-schemas' id-uri to siblings.
+                  id-key (:id-key c2)
+                  new-c2 (if (= k id-key)
+                           new-c2
+                           (assoc new-c2 :id-uri parent-id-uri))
                   new-dialect (or (:dialect new-c2) dialect)]
 
-              ;; Check if dialect changed
               (if (identical? dialect new-dialect)
-                ;; Same dialect - continue with remaining properties
                 (recur dialect
                        (rest remaining)
                        new-c2
@@ -115,7 +129,6 @@
                        (conj acc (list new-p2 f1))
                        (conj processed-keys k))
 
-                ;; Dialect changed! Re-evaluate remaining properties with new dialect
                 (recur new-dialect
                        (new-dialect m2)
                        new-c2
@@ -124,74 +137,73 @@
                        (conj processed-keys k))))))))))
 
 ;;------------------------------------------------------------------------------
-;; tmp solution - does not understand about schema structure
-
-;; acc travels around and gets returned
-;; stuff travels down and does not
-(defn json-walk [f acc stuff path tree]
-  (let [[acc stuff] (if (map? tree) (f acc stuff tree path) [acc stuff])]
-    (if (or (map? tree) (vector? tree))
-      (reduce-kv
-       (fn [acc k v]
-         (json-walk f acc stuff (conj path k) v))
-       acc
-       tree)
-      acc)))
-
-(defn stash-anchor [[acc {id-uri :id-uri :as stuff} :as x] path fragment? id? anchor]
-  (if (string? anchor)
-    (let [anchor-uri (inherit-uri id-uri (parse-uri (str (when fragment? "#") anchor)))]
-      [(update acc :uri->path assoc anchor-uri path)
-       (if id? (assoc stuff :id-uri anchor-uri) stuff)])
-    x))
-
-(defn get-id [{d :draft} m]
-  (case d
-    (:draft3 :draft4) (get m "id")
-    (or (get m "$id") (get m "id"))))
-
-(defn stash [acc stuff {a "$anchor" da "$dynamicAnchor" :as m} path]
-  (-> [acc stuff]
-      ((fn [[acc {id-uri :id-uri :as stuff}]] [(update acc :path->uri assoc path id-uri) stuff]))
-      (stash-anchor path false true (get-id acc m))
-      (stash-anchor path true false a)
-      (stash-anchor path true false da)))
 
 ;;------------------------------------------------------------------------------
 
 (defn check-schema-2 [{t? :trace? :as c2} p2 m2]
-  ;; TODO; this needs to be simplified
-  [c2
-   m2
-   (cond
-     (true? m2)
-     (fn [c1 _p1 m1]
-       [c1 m1 nil])
+  (cond
+    (true? m2)
+    [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])]
 
-     (false? m2)
-     (fn [c1 p1 m1]
-       [c1
-        m1
-        (when (present? m1)
-          [(make-error "schema is false: nothing will match" p2 m2 p1 m1)])])
+    (false? m2)
+    [c2 m2 (fn [c1 p1 m1]
+             [c1 m1
+              (when (present? m1)
+                [(make-error "schema is false: nothing will match" p2 m2 p1 m1)])])]
 
-     :else
-     (fn [c1 p1 m1]
-       (if (present? m1)
-         (let [[new-c1 m1 es]
-               (reduce
-                (fn [[c1 m1 acc] [new-p2 cp]]
-                  (let [[c1
-                         m1
-                         [{m :message} :as es]] (cp c1 p1 m1)]
-                    (when t? (println (pr-str new-p2) (pr-str p1) (if (seq es) ["❌" m] "✅")))
-                    [c1 m1 (concatv acc es)]))
-                [c1 m1 []]
-                (compile-m2 c2 p2 m2))]
-           [new-c1 ;; (first (stash new-c1 {} m1 p1))
-            m1
-            (make-error-on-failure "schema: document did not conform" p2 m2 p1 m1 es)])
-         [c1 m1 []])))])
+    :else
+    (let [c2-atom (or (:c2-atom c2) (atom nil))
+          c2 (assoc c2 :c2-atom c2-atom)
+          [c2 checkers] (compile-m2 c2 p2 m2)
+          _ (reset! c2-atom c2)
+          ;; Collect $dynamicAnchors from this schema's compile-time stash
+          ;; that belong to the current resource but are NOT at p2 itself.
+          ;; These are anchors inside $defs (whose f1 is a no-op at runtime),
+          ;; so they would never reach c1 otherwise.
+          resource-id-uri (:id-uri c2)
+          defs-dynamic-anchors
+          (when-let [da (:$dynamic-anchor c2)]
+            (let [resource-base (when resource-id-uri (uri-base resource-id-uri))]
+              (when resource-base
+                (not-empty
+                 (into {}
+                       (keep (fn [[anchor-uri anchor-path]]
+                               (let [anchor-name (:fragment anchor-uri)]
+                                 (when (and anchor-name
+                                            (= (uri-base anchor-uri) resource-base)
+                                            (not= anchor-path p2))
+                                   (let [schema (get-in (:root c2) anchor-path)]
+                                     (when (and (map? schema)
+                                                (= (get schema "$dynamicAnchor") anchor-name))
+                                       [anchor-name {:schema schema :c2-atom c2-atom}]))))))
+                       da)))))]
+      [c2
+       m2
+       (fn [c1 p1 m1]
+         (if (present? m1)
+           (let [;; Pre-stash resource-local $dynamicAnchors into c1.
+                 ;; "First wins": only set if not already present (outermost scope wins).
+                 c1 (if defs-dynamic-anchors
+                      (reduce-kv
+                       (fn [c anchor-name anchor-info]
+                         (update-in c [:$dynamic-anchor-schema anchor-name]
+                                    (fn [existing] (or existing anchor-info))))
+                       c1
+                       defs-dynamic-anchors)
+                      c1)
+                 [new-c1 m1 es]
+                 (reduce
+                  (fn [[c1 m1 acc] [new-p2 cp]]
+                    (let [[c1 m1 [{m :message} :as es]] (cp c1 p1 m1)]
+                      (when t? (println (pr-str new-p2) (pr-str p1) (if (seq es) ["❌" m] "✅")))
+                      [c1 m1 (concatv acc es)]))
+                  [c1 m1 []]
+                  checkers)]
+             [new-c1
+              m1
+              (make-error-on-failure "schema: document did not conform" p2 m2 p1 m1 es)])
+           [c1 m1 []]))])))
+
 
 ;; At the moment a validation is only a reduction of c1, not c2.
 ;; Since a draft switch is something that happens at c2-level, I think we need an interceptor...
@@ -234,27 +246,39 @@
 (def uri->schema-2 (partial uri->schema uri-base->dir))
 
 (defn uri->continuation [uri-base->dir]
-  (let [uri->schema (partial uri->schema uri-base->dir)]
+  (let [uri->schema (partial uri->schema uri-base->dir)
+        compiling (atom #{})]
     (fn [c p uri]
       (when-let [m (uri->schema c p uri)] ;; TODO: what if schema is 'false'
-        [(-> (make-context
-              (-> c
-                  (select-keys [:uri->schema :trace? :draft :id-key])
-                  (assoc :id-uri (uri-base uri)))
-              m)
-             (assoc :id-uri (uri-base uri))
-             (update :uri->path assoc (uri-base uri) []))
-         []
-         m]))))
+        (let [base (uri-base uri)
+              ctx (-> (make-context
+                       (-> c
+                           (select-keys [:uri->schema :trace? :draft :id-key])
+                           (assoc :id-uri base))
+                       m)
+                      (assoc :id-uri base)
+                      (update :uri->path assoc base [])
+                      (update :path->uri assoc [] base))
+              ;; Compile the remote schema to populate uri->path and path->uri
+              ;; with any $id/$anchor entries found inside it.
+              ;; Guard against re-entrant compilation (e.g. metaschema $schema
+              ;; pointing to itself) to prevent infinite recursion.
+              ctx (if (contains? @compiling base)
+                    ctx
+                    (do (swap! compiling conj base)
+                        (let [[compiled-ctx _m2 _f1] (check-schema ctx [] m)]
+                          (swap! compiling disj base)
+                          (assoc ctx
+                                 :uri->path (:uri->path compiled-ctx)
+                                 :path->uri (:path->uri compiled-ctx)))))]
+          [ctx [] m])))))
 
 (defn marker-stash [{pu :path->uri up :uri->path}]
   {:path->uri pu :uri->path up})
 
-(defn add-marker-stash [c m sid]
-  (if (or (:path->uri c) (:uri->path c))
-    c
-    (let [tmp (json-walk stash (assoc c :uri->path (if sid {(parse-uri sid) []} {})) {} [] m)]
-      tmp)))
+(defn add-marker-stash [c m _sid]
+  ;; TODO: remove entirely — stash will be built during compilation
+  c)
 
 (defn make-context [{draft :draft u->s :uri->schema :as c2} {s "$schema" :as m2}]
   (let [draft (or draft
@@ -269,6 +293,8 @@
     (assoc
      c2
      :id-uri (or (:id-uri c2) (when sid (parse-uri sid))) ;; should be receiver uri - but seems to default to id/$id - yeugh
+     :uri->path (or (:uri->path c2) {})
+     :path->uri (or (:path->uri c2) {})
      :original-root m2
      :recursive-anchor []
      :root m2
@@ -288,7 +314,12 @@
                 :recursive-anchor []
                 :root document
                 :draft draft
-                :melder (:melder c2))
+                :melder (:melder c2)
+                ;; Store root compilation c2-atom for $dynamicRef resolution.
+                ;; Remote schemas' $dynamicRef can fall back to the root c2
+                ;; to find $dynamicAnchors that are in $defs (whose f1 is
+                ;; a no-op at runtime, so they never reach c1).
+                :$root-c2-atom (:c2-atom c2))
             [c1 _m1 es] (cs c1 [] document)]
         [c1 es]))))
 
@@ -333,11 +364,12 @@
                       :dialect (or (and $vocabulary (make-dialect draft $vocabulary)) (c2 :dialect)))
                m1))
             (constantly r)))
-        ;; keep going - inheriting relevant parts of c1
+        ;; keep going - c1 from meta-schema validation becomes c2 for next level
         (let [[{vs :dialect u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)]
           (if (empty? es)
             (validate-2 (assoc c2
-                               :marker-stash {:uri->path (or u->p {}) :path->uri (or p->u {})}
+                               :uri->path (or u->p {})
+                               :path->uri (or p->u {})
                                :dialect vs) m1)
             (constantly r))))
       (constantly [c2 [(str "could not resolve $schema: " s)]]))))
