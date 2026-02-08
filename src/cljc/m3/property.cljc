@@ -130,9 +130,9 @@
         ;; compilation context of the outermost $recursiveAnchor — which may
         ;; differ from what's visible at compile time (e.g. the $recursiveRef
         ;; is inside a separately-compiled remote schema).
-        ;; We store the c2-atom (not the raw c2) so that at runtime we deref
-        ;; the FINAL c2 with all stash entries, not an early snapshot.
-        anchor-c2-atom (:c2-atom c2)
+        ;; We store the scope-id so that at runtime we can look up
+        ;; the FINAL c2 with all stash entries from c1, not an early snapshot.
+        anchor-scope-id (:scope-id c2)
         anchor-schema m2
         c2 (if (true? v2)
              (let [[uris top] (:$recursive-anchor c2 [#{} nil])]
@@ -153,12 +153,12 @@
          (let [[uris top] (c1 :$recursive-anchor [#{} nil])]
            [(-> c1
                 (assoc :$recursive-anchor [(conj uris (c1 :id-uri)) (or top p1)])
-                ;; Store the outermost anchor's schema and c2-atom for $recursiveRef.
+                ;; Store the outermost anchor's schema and scope-id for $recursiveRef.
                 ;; Only set once — the first $recursiveAnchor f1 to run is the
                 ;; outermost in the dynamic scope (validation descends outer→inner).
                 (update :$recursive-anchor-schema
                         (fn [existing]
-                          (or existing {:schema anchor-schema :c2-atom anchor-c2-atom}))))
+                          (or existing {:schema anchor-schema :scope-id anchor-scope-id}))))
             m1 nil])
          [c1 m1 nil]))]))
 
@@ -169,9 +169,9 @@
   (let [schema-p2 (vec (butlast p2))
         anchor-uri (inherit-uri (:id-uri c2) (parse-uri (str "#" v2)))
         ;; Capture compile-time context for runtime dynamic scope.
-        ;; Like $recursiveAnchor, we store schema+c2-atom so that
-        ;; $dynamicRef can compile the resolved schema at runtime.
-        anchor-c2-atom (:c2-atom c2)
+        ;; Like $recursiveAnchor, we store schema+scope-id so that
+        ;; $dynamicRef can look up the final c2 from c1 at runtime.
+        anchor-scope-id (:scope-id c2)
         anchor-schema m2
         c2 (-> c2
                (update-in [:$dynamic-anchor anchor-uri]
@@ -189,7 +189,7 @@
               ;; Only the first (outermost) anchor wins — like $recursiveRef.
               (update-in [:$dynamic-anchor-schema v2]
                          (fn [existing]
-                           (or existing {:schema anchor-schema :c2-atom anchor-c2-atom}))))
+                           (or existing {:schema anchor-schema :scope-id anchor-scope-id}))))
           m1 nil]))]))
 
 (defn check-property-$comment [_property {quiet? :quiet? :as c2} _p2 m2 v2]
@@ -224,13 +224,14 @@
        (if (present? m1)
          (let [check-schema-fn (get-check-schema)
                ;; Use late-bound c2 for resolution: after compile-m2 finishes,
-               ;; the c2-atom holds the final c2 with stash entries from ALL
-               ;; property compilations (including allOf, properties, if/then/else, etc.)
-               resolution-c2 (if-let [a (:c2-atom effective-c2)]
-                               (let [final-c2 @a]
+               ;; the final c2 with stash entries from ALL property compilations
+               ;; is stored in c1 under [:$compile-scopes scope-id].
+               resolution-c2 (if-let [sid (:scope-id effective-c2)]
+                               (if-let [scope-c2 (get-in c1 [:$compile-scopes sid])]
                                  (assoc effective-c2
-                                        :uri->path (:uri->path final-c2)
-                                        :path->uri (:path->uri final-c2)))
+                                        :uri->path (:uri->path scope-c2)
+                                        :path->uri (:path->uri scope-c2))
+                                 effective-c2)
                                effective-c2)
                resolution (resolve-uri resolution-c2 schema-p2 ref-uri v2)]
            (if resolution
@@ -268,48 +269,17 @@
                             (assoc effective-c2 :id-uri (:id-uri new-c))
                             :else new-c)
                    compile-schema (if needs-scope-isolation? resolved-m melded)
-                   [_c2 _m2 compiled-f1] (check-schema-fn (dissoc ref-c2 :c2-atom) schema-p2 compile-schema)]
+                   [_c2 _m2 compiled-f1] (check-schema-fn (dissoc ref-c2 :scope-id) schema-p2 compile-schema)]
                (compiled-f1 c1 p1 m1))
              ;; Resolution failed - compile schema without $ref
-             (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc effective-c2 :c2-atom) schema-p2 m2-no-ref)]
+             (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc effective-c2 :scope-id) schema-p2 m2-no-ref)]
                (compiled-f1 c1 p1 m1))))
          [c1 m1 nil]))]))
 
-(defn check-property-$schema [_property c2 _p2 m2 v2]
-  ;; This is where dialect switching happens!
-  ;; When we encounter a $schema, we:
-  ;; 1. Parse it to determine the draft
-  ;; 2. Try to load the metaschema to extract its $vocabulary
-  ;; 3. Build the appropriate dialect
-  ;; 4. Return updated c2 with new dialect - compile-m2's loop/recur will handle the rest
-  (let [uri (parse-uri v2)
-        draft (or ((deref (resolve 'm3.draft/$schema-uri->draft)) uri)
-                  (:draft c2))
-        ;; Try to load the metaschema to get its $vocabulary
-        uri->schema (:uri->schema c2)
-        metaschema (when uri->schema
-                     (try
-                       ;; IMPORTANT: uri->schema returns [c2 path schema], not just schema!
-                       (let [[_ _ ms] (uri->schema c2 [] uri)]
-                         ms)
-                       (catch #?(:clj Exception :cljs js/Error) e
-                         (log/info (str "Could not load metaschema: " v2 " - " #?(:clj (.getMessage e) :cljs (.-message e))))
-                         nil)))
-        ;; Extract $vocabulary from metaschema (if present)
-        vocab-map (get metaschema "$vocabulary")
-;; Build dialect: use $vocabulary if present, otherwise use default
-        new-dialect (if vocab-map
-                      ((deref (resolve 'm3.vocabulary/make-dialect)) draft vocab-map)
-                      ((deref (resolve 'm3.vocabulary/draft->default-dialect)) draft))
-        new-c2 (assoc c2
-                      :dialect new-dialect
-                      :draft draft)]
-    [new-c2
-     m2
-     (fn [c1 _p1 m1]
-       ;; TODO: In the future, we could validate m2 against its meta-schema here
-       ;; For now, just pass through
-       [c1 m1 nil])]))
+;; check-property-$schema lives in m3.vocabulary to avoid deref/resolve circularity.
+;; It needs make-dialect and draft->default-dialect which are defined there.
+
+;; check-property-$vocabulary also lives in m3.vocabulary for the same reason.
 
 (defn check-property-$recursiveRef [_property {id-uri :id-uri :as c2} p2 m2 v2]
   (let [schema-p2 (vec (butlast p2))]
@@ -331,16 +301,16 @@
                  ;; inside a schema whose c2 can't redirect to the correct outer
                  ;; anchor — e.g. separately compiled schemas, or when c2-top
                  ;; points to the wrong branch (multi-path if/then/else).
-                 ;; We use c2-atom (not raw c2) to get the FINAL compilation
-                 ;; context with all stash entries.
+                 ;; We use scope-id to look up the FINAL compilation
+                 ;; context with all stash entries from c1.
                  dynamic (:$recursive-anchor-schema c1)
                  initial-schema (when initial (nth initial 2))
                  use-dynamic? (and dynamic
                                    (map? initial-schema)
                                    (true? (get initial-schema "$recursiveAnchor")))
                  resolution (if use-dynamic?
-                              (let [{dyn-schema :schema dyn-atom :c2-atom} dynamic
-                                    dyn-c2 (when dyn-atom @dyn-atom)]
+                              (let [{dyn-schema :schema dyn-sid :scope-id} dynamic
+                                    dyn-c2 (when dyn-sid (get-in c1 [:$compile-scopes dyn-sid]))]
                                 (when dyn-c2
                                   [dyn-c2 schema-p2 dyn-schema]))
                               initial)]
@@ -363,18 +333,18 @@
                                      (assoc-in c2 (into [:root] schema-p2) resolved-m)
                                      new-c))
                      compile-p2 (if use-dynamic? [] schema-p2)
-                     [_c2a _m2a f1a] (check-schema-fn (dissoc resolved-c2 :c2-atom) compile-p2 resolved-m)
+                     [_c2a _m2a f1a] (check-schema-fn (dissoc resolved-c2 :scope-id) compile-p2 resolved-m)
                      ;; Apply the resolved schema to get evaluation state
                      [c1a _m1a es-a] (f1a c1 p1 m1)
                      ;; Then apply the non-ref sibling keywords (e.g.
                      ;; unevaluatedItems) using c1a which carries the
                      ;; evaluation state from the resolved schema.
                      [c1b _m1b es-b] (if (seq m2-no-ref)
-                                       (let [[_c2b _m2b f1b] (check-schema-fn (dissoc c2 :c2-atom) schema-p2 m2-no-ref)]
+                                       (let [[_c2b _m2b f1b] (check-schema-fn (dissoc c2 :scope-id) schema-p2 m2-no-ref)]
                                          (f1b c1a p1 m1))
                                        [c1a m1 nil])]
                  [c1b m1 (concatv es-a es-b)])
-               (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc c2 :c2-atom) schema-p2 m2-no-ref)]
+               (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc c2 :scope-id) schema-p2 m2-no-ref)]
                  (compiled-f1 c1 p1 m1))))
            (do (log/warn "$recursiveRef: unexpected value:" (pr-str v2))
                [c1 m1 nil]))
@@ -385,16 +355,17 @@
   Used when the $dynamicAnchor was in $defs (whose f1 is a no-op at runtime)
   so the anchor never made it into c1."
   [c1 anchor-name]
-  (when-let [root-atom (:$root-c2-atom c1)]
-    (let [root-c2 @root-atom
+  (when-let [root-sid (:$root-scope-id c1)]
+    (let [root-c2 (get-in c1 [:$compile-scopes root-sid])
           da (:$dynamic-anchor root-c2)]
-      (some (fn [[uri path]]
-              (when (= (:fragment uri) anchor-name)
-                (let [schema (get-in (:root root-c2) path)]
-                  (when (and (map? schema)
-                             (= (get schema "$dynamicAnchor") anchor-name))
-                    {:schema schema :c2-atom root-atom}))))
-            da))))
+      (when da
+        (some (fn [[uri path]]
+                (when (= (:fragment uri) anchor-name)
+                  (let [schema (get-in (:root root-c2) path)]
+                    (when (and (map? schema)
+                               (= (get schema "$dynamicAnchor") anchor-name))
+                      {:schema schema :scope-id root-sid}))))
+              da)))))
 
 (defn check-property-$dynamicRef [_property {id-uri :id-uri draft :draft :as c2} p2 m2 v2]
   (let [schema-p2 (vec (butlast p2))
@@ -439,8 +410,8 @@
                                       (resolve-dynamic-anchor-from-root-c2 c1 anchor-name)))
                use-dynamic? (boolean dynamic-override)
                resolution (if use-dynamic?
-                            (let [{dyn-schema :schema dyn-atom :c2-atom} dynamic-override
-                                  dyn-c2 (when dyn-atom @dyn-atom)]
+                            (let [{dyn-schema :schema dyn-sid :scope-id} dynamic-override
+                                  dyn-c2 (when dyn-sid (get-in c1 [:$compile-scopes dyn-sid]))]
                               (when dyn-c2
                                 [dyn-c2 schema-p2 dyn-schema]))
                             initial)]
@@ -456,18 +427,18 @@
                                    (assoc-in c2 (into [:root] schema-p2) resolved-m)
                                    new-c))
                    compile-p2 (if use-dynamic? [] schema-p2)
-                   [_c2a _m2a f1a] (check-schema-fn (dissoc resolved-c2 :c2-atom) compile-p2 resolved-m)
+                   [_c2a _m2a f1a] (check-schema-fn (dissoc resolved-c2 :scope-id) compile-p2 resolved-m)
                    ;; Apply the resolved schema to get evaluation state
                    [c1a _m1a es-a] (f1a c1 p1 m1)
                    ;; Then apply the non-ref sibling keywords (e.g.
                    ;; unevaluatedItems) using c1a which carries the
                    ;; evaluation state from the resolved schema.
                    [c1b _m1b es-b] (if (seq m2-no-ref)
-                                     (let [[_c2b _m2b f1b] (check-schema-fn (dissoc c2 :c2-atom) schema-p2 m2-no-ref)]
+                                     (let [[_c2b _m2b f1b] (check-schema-fn (dissoc c2 :scope-id) schema-p2 m2-no-ref)]
                                        (f1b c1a p1 m1))
                                      [c1a m1 nil])]
                [c1b m1 (concatv es-a es-b)])
-             (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc c2 :c2-atom) schema-p2 m2-no-ref)]
+             (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc c2 :scope-id) schema-p2 m2-no-ref)]
                (compiled-f1 c1 p1 m1))))
          [c1 m1 nil]))]))
 
@@ -478,17 +449,6 @@
 (def check-property-default     noop-checker)
 (def check-property-examples    noop-checker)
 
-(defn check-property-$vocabulary [_property {d :draft :as c2} _p2 m2 v2]
-  ;; $vocabulary specifies which vocabularies are active for this schema
-  ;; v2 is a map like: {"vocab-uri-1" true, "vocab-uri-2" false, ...}
-  ;; Build a new dialect using only the vocabularies that are true
-  (let [new-dialect ((deref (resolve 'm3.vocabulary/make-dialect)) d v2)
-        new-c2 (assoc c2 :dialect new-dialect)]
-    [new-c2
-     m2
-     (fn [c1 _p1 m1]
-       ;; No validation work needed - just pass through
-       [c1 m1 nil])]))
 
 (defn check-property-deprecated [_property {quiet? :quiet? :as c2} _p2 m2 v2]
   [c2

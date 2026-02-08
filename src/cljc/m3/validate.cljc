@@ -36,10 +36,10 @@
 ;;   f1 = compiled checker function
 ;;
 ;; c2 carries schema compilation state: draft, dialect, id-uri, uri↔path stash,
-;;   root schema, c2-atom (for late-bound $ref), and user options.
+;;   root schema, scope-id (for late-bound $ref lookup from c1), and user options.
 ;; c1 carries runtime validation state: evaluation tracking (matched/evaluated
 ;;   sets for unevaluated*), if/then/else results, dynamic anchor scope,
-;;   and content decoding state.
+;;   content decoding state, and :$compile-scopes (scope-id → final c2).
 ;; Both contexts are threaded functionally — each checker receives and returns
 ;; its context, accumulating state as compilation/validation progresses.
 
@@ -169,10 +169,10 @@
                 [(make-error "schema is false: nothing will match" p2 m2 p1 m1)])])]
 
     :else
-    (let [c2-atom (or (:c2-atom c2) (atom nil))
-          c2 (assoc c2 :c2-atom c2-atom)
+    (let [scope-id (or (:scope-id c2) (gensym "scope-"))
+          c2 (assoc c2 :scope-id scope-id)
           [c2 checkers] (compile-m2 c2 p2 m2)
-          _ (reset! c2-atom c2)
+          final-c2 c2
           ;; Collect $dynamicAnchors from this schema's compile-time stash
           ;; that belong to the current resource but are NOT at p2 itself.
           ;; These are anchors inside $defs (whose f1 is a no-op at runtime),
@@ -192,13 +192,18 @@
                                    (let [schema (get-in (:root c2) anchor-path)]
                                      (when (and (map? schema)
                                                 (= (get schema "$dynamicAnchor") anchor-name))
-                                       [anchor-name {:schema schema :c2-atom c2-atom}]))))))
+                                       [anchor-name {:schema schema :scope-id scope-id}]))))))
                        da)))))]
       [c2
        m2
        (fn [c1 p1 m1]
          (if (present? m1)
-           (let [;; Pre-stash resource-local $dynamicAnchors into c1.
+           (let [;; Inject final-c2 into c1 for lazy $ref/$dynamicRef lookup.
+                 ;; "First wins": only the outermost f1 for a scope-id injects.
+                 c1 (if (get-in c1 [:$compile-scopes scope-id])
+                      c1
+                      (assoc-in c1 [:$compile-scopes scope-id] final-c2))
+                 ;; Pre-stash resource-local $dynamicAnchors into c1.
                  ;; "First wins": only set if not already present (outermost scope wins).
                  c1 (if defs-dynamic-anchors
                       (reduce-kv
@@ -310,11 +315,11 @@
                 :root document
                 :draft draft
                 :melder (:melder c2)
-                ;; Store root compilation c2-atom for $dynamicRef resolution.
+                ;; Store root compilation scope-id for $dynamicRef resolution.
                 ;; Remote schemas' $dynamicRef can fall back to the root c2
                 ;; to find $dynamicAnchors that are in $defs (whose f1 is
                 ;; a no-op at runtime, so they never reach c1).
-                :$root-c2-atom (:c2-atom c2))
+                :$root-scope-id (:scope-id c2))
             [c1 _m1 es] (cs c1 [] document)]
         [c1 es]))))
 
