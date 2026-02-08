@@ -5,9 +5,7 @@
 
 **Every draft. Every keyword. Every language.**
 
-M3 is the only JSON Schema validator that passes **every test** in the official [JSON Schema Test Suite](https://github.com/json-schema-org/JSON-Schema-Test-Suite) across **every draft** from draft-03 through draft-next. No other validator in any language covers all seven drafts completely.
-
-On the JVM, M3 passes all **9,769 assertions** with zero failures. On JavaScript, it passes all but one — a single test that is impossible to pass because JavaScript has no integer/float distinction (`JSON.parse("1.0") === JSON.parse("1")`).
+M3 passes **every test**[^1] in the official [JSON Schema Test Suite][test-suite] across **every draft** from draft-03 through draft-next — **9,769 assertions** with zero failures. No other validator in any language covers all seven drafts completely, and M3 will use the same code to give you the same answer in both front and backend.
 
 This includes full support for every keyword: `$ref`, `$dynamicRef`, `$recursiveRef`, `unevaluatedProperties`, `unevaluatedItems`, `$vocabulary`, `$anchor`, `$dynamicAnchor`, `if`/`then`/`else`, `dependentSchemas`, `prefixItems`, `contentMediaType`, `contentEncoding`, and all format validators.
 
@@ -15,7 +13,7 @@ Use it from **Clojure**, **Java**, **Kotlin**, **Scala**, **JavaScript**, or **N
 
 ---
 
-## Test Suite Compliance
+## [Test Suite][test-suite] Compliance
 
 | Draft | JVM | JavaScript |
 |-------|-----|------------|
@@ -25,11 +23,9 @@ Use it from **Clojure**, **Java**, **Kotlin**, **Scala**, **JavaScript**, or **N
 | draft-07 | All tests passing | All tests passing |
 | draft 2019-09 | All tests passing | All tests passing |
 | draft 2020-12 | All tests passing | All tests passing |
-| draft-next | All tests passing | All tests passing* |
+| draft-next | All tests passing | All tests passing[^1] |
 
-*\*One test excluded: JavaScript cannot distinguish `1.0` from `1` at the JSON parse level.*
-
-No other JSON Schema validator supports all seven drafts. Most validators support only one or two. M3 is the only implementation listed for draft-next.
+No other JSON Schema validator supports all seven drafts. Most support only one or two. M3 is the only implementation listed for draft-next.
 
 Default draft: `draft2020-12`
 
@@ -207,12 +203,12 @@ lein clean-all
 
 ---
 
-## Platform Notes
-
-Java and JavaScript handle numbers differently — `(= 1 1.0)` is `false` in Clojure but `true` in JavaScript. This means one test in the official suite (`zeroTerminatedFloats.json`: "a float is not an integer even without fractional part") cannot pass on JavaScript because `JSON.parse("1.0")` produces the same value as `JSON.parse("1")`. On the JVM, all tests pass without exception.
-
----
-
 ## License
 
 Copyright 2025 Julian Gosnell. [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
+
+---
+
+[^1]: One test is excluded on JavaScript: `zeroTerminatedFloats.json` — "a float is not an integer even without fractional part". JavaScript has no integer/float distinction (`JSON.parse("1.0") === JSON.parse("1")`), making this test impossible to pass at the language level. On the JVM, all 9,769 assertions pass without exception.
+
+[test-suite]: https://github.com/json-schema-org/JSON-Schema-Test-Suite
