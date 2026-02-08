@@ -147,6 +147,10 @@ All JVM languages accept `java.util.Map` and `java.util.List` directly — docum
 | Strict format | `:strict-format? true` | `"strictFormat": true` | Treat `format` as assertion (default: annotation-only) |
 | Strict integer | `:strict-integer? true` | `"strictInteger": true` | Require actual integers (reject `1.0` for `"type": "integer"`) |
 
+Supported draft values: `draft3`, `draft4`, `draft6`, `draft7`, `draft2019-09`, `draft2020-12`, `draft-next`, `latest`.
+
+Use `latest` (`:latest` in Clojure) as an alias for the most recent stable draft (currently `draft2020-12`).
+
 ---
 
 ## Error Shape
