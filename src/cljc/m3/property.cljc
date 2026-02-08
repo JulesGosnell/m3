@@ -948,7 +948,8 @@
                       (:draft3 :draft4 :draft6 :draft7 :draft2019-09)
                       nil
                       (:draft2020-12 :draft-next)
-                      (log/info (str "prefixItems: was introduced in draft2020-12 to handle tuple version of items - you are using: " d)))
+                      (log/info (str "prefixItems: was introduced in draft2020-12 to handle tuple version of items - you are using: " d))
+                      nil)
                     ["respective " (map-indexed (fn [i v] (third (f2 c2 (conj p2 i) v))) v2)])
                   ["" (repeat (third (f2 c2 p2 v2)))])
         [c2 m2 f1] (check-items c2 p2 m2)]

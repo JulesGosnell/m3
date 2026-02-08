@@ -75,7 +75,8 @@
         [:fragment :urn]      child
         [:fragment :url]      child
         [:fragment :path]     child
-        [:fragment :fragment] child))))
+        [:fragment :fragment] child
+        (throw (ex-info "inherit-uri: unexpected type combination" {:parent pt :child ct}))))))
 
 (defn uri-base [uri]
   (dissoc uri :fragment))

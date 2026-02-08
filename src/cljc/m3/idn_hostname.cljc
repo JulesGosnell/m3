@@ -30,7 +30,7 @@
 ;; common platform
 
 (def code-point-at
-  #?(:clj (fn [^String s i] (Character/codePointAt s (int i)))
+  #?(:clj (fn [^String s i] (.codePointAt s (int i)))
      :cljs (fn [s i] (.codePointAt s i))))
 
 (def char-count
@@ -69,7 +69,7 @@
      :cljs (fn [acc] acc)))
 
 (def to-lower-case
-  #?(:clj (fn [cp] (Character/toLowerCase (char cp)))
+  #?(:clj (fn [cp] (Character/toLowerCase (int cp)))
      :cljs (fn [cp] (.codePointAt (.toLowerCase (js/String.fromCodePoint cp)) 0))))
 
 (defn case-fold [s]
@@ -109,7 +109,7 @@
                  label)))))
 
 (def unicode-script-of
-  #?(:clj (fn [cp] (keyword (.name (Character$UnicodeScript/of cp))))
+  #?(:clj (fn [cp] (keyword (.name ^Character$UnicodeScript (Character$UnicodeScript/of (int cp)))))
      :cljs (fn [cp]
              (let [s (js/String.fromCodePoint cp)]
                (cond
@@ -138,7 +138,7 @@
 (def CHARACTER_OTHER_SYMBOL            28)
 
 (def get-char-type
-  #?(:clj (fn [cp] (Character/getType (char cp)))
+  #?(:clj (fn [cp] (Character/getType (int cp)))
      :cljs (fn [cp]
              (let [s (js/String.fromCodePoint cp)]
                (cond
@@ -158,14 +158,14 @@
                  :else 0)))))
 
 (def is-defined
-  #?(:clj (fn [cp] (Character/isDefined (char cp)))
+  #?(:clj (fn [cp] (Character/isDefined (int cp)))
      :cljs (fn [cp]
              (and (<= 0 cp 0x10ffff)
                   (or (not= (get-char-type cp) 0)
                       (= cp 0x002D)))))); Special for hyphen
 
 (def is-whitespace
-  #?(:clj (fn [cp] (Character/isWhitespace (char cp)))
+  #?(:clj (fn [cp] (Character/isWhitespace (int cp)))
      :cljs (fn [cp]
              (let [s (js/String.fromCodePoint cp)]
                (boolean (.match s (js/RegExp "\\s" "u")))))))

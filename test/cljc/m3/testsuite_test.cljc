@@ -22,12 +22,13 @@
    [clojure.pprint :refer [pprint]]
    [clojure.string :refer [ends-with?]]
    [m3.platform :refer [json-decode]]
+   [m3.util :refer [index-by]]
    [m3.validate :refer [validate validate-2 uri->continuation]]]
   [:import
    #?(:clj  [java.io File])])
 
 ;;------------------------------------------------------------------------------
-;; file stuff
+;; file helpers
 
 #?(:cljs (def fs (js/require "fs")))
 
@@ -42,49 +43,32 @@
 (defn directory-name [f]
   #?(:clj (.getParent ^File f)
      :cljs (.dirname node-path f)))
-  
+
 (defn directory? [f]
   #?(:clj (.isDirectory ^File f)
      :cljs (-> (.statSync fs f) .isDirectory)))
+
+(defn symlink? [f]
+  #?(:clj (java.nio.file.Files/isSymbolicLink (.toPath ^File f))
+     :cljs (.isSymbolicLink (.lstatSync fs f))))
+
+(defn list-children [d]
+  #?(:clj  (sort (.listFiles ^File d))
+     :cljs (->> (.readdirSync fs d) (into []) (map #(.resolve node-path d %)) sort)))
 
 #?(:cljs (defn slurp [path] (.readFileSync fs path "utf8")))
 
 #?(:cljs (def Throwable js/Error))
 
-#?(:cljs
-   (defn file-seq [d]
-     (letfn [(node-file-seq [dir]
-               ;; Each directory yields itself plus its children
-               (lazy-seq
-                (cons dir
-                      (mapcat
-                       (fn [entry]
-                         (let [full-path (.resolve node-path dir entry)
-                               stats (.statSync fs full-path)]
-                           (if (.isDirectory stats)
-                             (node-file-seq full-path)
-                             (list full-path))))
-                       (.readdirSync fs dir)))))]
-       (node-file-seq d))))
-
 #?(:cljs (defn format [fmt & args] (apply gstring/format fmt args)))
 
 ;;------------------------------------------------------------------------------
-;; run our validator against: https://github.com/json-schema-org/JSON-Schema-Test-Suite.git JSON-Schema-Test-Suite
-
-(defn json->string [json]
-  (with-out-str (pprint json)))
-
-;; TODO:
-;; - make sure that we are recursing into all subdirectories
-;; - fix dynamic anchors, refs...
-;; - maybe fix remaining tests
-
-(def exclude-module?
-  #{})
+;; JSON Schema Test Suite runner
+;; https://github.com/json-schema-org/JSON-Schema-Test-Suite
 
 (def exclude-test?
-  #{["anchor.json" "$anchor inside an enum is not a real identifier" "match $ref to $anchor"]
+  #{;; ref / anchor / dynamicRef / id
+    ["anchor.json" "$anchor inside an enum is not a real identifier" "match $ref to $anchor"]
     ["defs.json" "validate definition against metaschema" "invalid definition schema"]
     ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected integers - additional property as not integer is invalid"]
     ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected strings - additional property as not string is invalid"]
@@ -114,104 +98,60 @@
     ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches non-schema in third anyOf"]
     ["unknownKeyword.json" "$id inside an unknown keyword is not a real identifier" "type matches second anyOf, which has a real schema in it"]
 
-    ;; draft3
-    ;; ["ref.json" "nested refs" "nested ref invalid"] ;; also in main list above
-
+    ;; CLJS: JS has no integer/float distinction — JSON.parse("1.0") === JSON.parse("1")
     #?@(:cljs
         [["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]])
-
     })
-
-(defn load-schema [s]
-  (json-decode (slurp (format "resources/schemas/%s/schema.json" s))))
-
-;; TODO: remote schemas should:
-;; - default to the base-uri from which they loaded
-;; - have their own self-contained context inheriting nothing from the client schema
-;; - indicate their draft via $schema
-;; - be treated according to their draft (hmmm... but what happens if you import a bit of schema of a different draft - I guess you switch the :draft in the context)
-;; - be loaded as resources not files
-;; hmmm... this means that context etc should be threaded through ref resolution so schema below the ref can switch its context etc...
-;; I ithink uri->schema might need to become base -> path -> uri -> schema ...
-;; we should validate remoteSchemas as we load them
-;; see validate.uri->schema - TODO - share
-
 
 (def uri-base->dir
   {"http://json-schema.org" "resources/schemas"
    "https://json-schema.org" "resources/schemas"
    "http://localhost:1234" "test-resources/JSON-Schema-Test-Suite/remotes"})
 
-(defn is-validated [c2 m2 c1 m1 & [sign]]
+(defn is-validated [c2 m2 c1 m1 expected-valid?]
   (let [{v? :valid? es :errors} (validate c2 m2 c1 m1)]
-    (if (or (nil? sign) (true? sign))
-      (is v? (json->string es))
+    (if expected-valid?
+      (is v? (with-out-str (pprint es)))
       (is (not v?) (str "should not be valid: " (pr-str m2 m1))))))
 
-(defn test-file [dname f draft]
+(defn test-file [f draft]
   (let [feature (file-name f)]
-    (testing (str "\"" feature "\"")
-      (if (not (exclude-module? (file-name f)))
-        (doseq [{d1 "description" m2 "schema" ts "tests"} (json-decode (slurp f))]
-          (let [c2 {:draft draft :uri->schema (uri->continuation uri-base->dir)}
-                c1 {:draft draft}]
-            (testing (str "\"" d1 "\"")
-              (doseq [{d2 "description" m1 "data" v? "valid"} ts]
-                (testing (str "\"" d2 "\"" ":")
-                  (if (not (exclude-test? [(file-name f) d1 d2]))
-                    (do
-                      (let [c2 (-> c2
-                                   (assoc
-                                    :strict-format? (ends-with? (directory-name f) "optional/format")
-                                    :strict-integer?
-                                    (and (= "zeroTerminatedFloats.json" feature)
-                                         (= "a float is not an integer even without fractional part" d2))))]
-                        ;;(prn "testing: " dname (file-name f) d1 d2)
-                        (try (testing "m2/m1" (is-validated c2 m2 c1 m1 v?)) (catch Throwable e (prn [(file-name f) d1 d2] e)))))
-                    ;;(println "skipping:" d2)
-                    ))))))))))
-  
-(defn test-directory [d draft]
-  (let [dname (file-name d)]
-    (testing (str dname ":")
-      (doall
-       (#?(:clj pmap :cljs map)
-        (fn [f]
-          (if (directory? f)
-            (test-directory f draft)
-            (test-file dname f draft)))
-        (drop 1 (file-seq d)))))))
+    (testing feature
+      (doseq [{d1 "description" m2 "schema" ts "tests"} (json-decode (slurp f))]
+        (testing d1
+          (doseq [{d2 "description" m1 "data" v? "valid"} ts]
+            (testing d2
+              (when-not (exclude-test? [feature d1 d2])
+                (let [c2 {:draft draft
+                          :uri->schema (uri->continuation uri-base->dir)
+                          :strict-format? (ends-with? (directory-name f) "optional/format")
+                          :strict-integer? (and (= "zeroTerminatedFloats.json" feature)
+                                                (= "a float is not an integer even without fractional part" d2))}
+                      c1 {:draft draft}]
+                  (try
+                    (is-validated c2 m2 c1 m1 v?)
+                    (catch Throwable e
+                      (prn [feature d1 d2] e))))))))))))
 
-      
+(defn test-directory [d draft]
+  (testing (file-name d)
+    (doall
+     (#?(:clj pmap :cljs map)
+      (fn [f]
+        (if (directory? f)
+          (test-directory f draft)
+          (test-file f draft)))
+      (list-children d)))))
 
 (def json-schema-test-suite-root "test-resources/JSON-Schema-Test-Suite/tests/")
 
 (deftest json-schema-test-suite
-  (doseq [[draft dir] [[:draft3       "draft3" "draft3/optional" "draft3/optional/format"]
-                       [:draft4       "draft4"]
-                       [:draft4       "draft4/optional"]
-                       [:draft4       "draft4/optional/format"]
-                       [:draft6       "draft6"]
-                       [:draft6       "draft6/optional"]
-                       [:draft6       "draft6/optional/format"]
-                       [:draft7       "draft7"]
-                       [:draft7       "draft7/optional"]
-                       [:draft7       "draft7/optional/format"]
-                       [:draft2019-09 "draft2019-09"]
-                       [:draft2019-09 "draft2019-09/optional"]
-                       [:draft2019-09 "draft2019-09/optional/format"]
-                       [:draft2020-12 "draft2020-12"]
-                       [:draft2020-12 "draft2020-12/optional"]
-                       [:draft2020-12 "draft2020-12/optional/format"]
-                       [:draft-next  "draft-next"]
-                       [:draft-next  "draft-next/optional"]
-                       [:draft-next  "draft-next/optional/format"]]]
-    (test-directory (file (str json-schema-test-suite-root dir)) draft)))
+  (doseq [d (list-children (file json-schema-test-suite-root))
+          :when (and (directory? d) (not (symlink? d)))]
+    (test-directory d (keyword (file-name d)))))
 
 ;;------------------------------------------------------------------------------
-
-(defn index-by [k ms]
-  (into (sorted-map) (map (fn [{v k :as m}][v m]) ms)))
+;; REPL utilities
 
 (defn find-test [draft feature description test-name]
   (let [{m2 "schema" m1s "tests"}
@@ -233,7 +173,6 @@
   (testing d
     (let [[_c es] ((validate-2 c2 m2) {} m1)]
       (is (empty? es) expected-v?))))
-    
 
 (defn test-m2 [c2 {d "description" m2 "schema" tests "tests"}]
   (testing d

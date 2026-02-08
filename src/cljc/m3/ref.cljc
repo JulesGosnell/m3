@@ -31,8 +31,8 @@
 
 (defn uri-decode
   "URI-decodes a percent-encoded string."
-  [s]
-  #?(:clj  (java.net.URLDecoder/decode ^String s "UTF-8")
+  [^String s]
+  #?(:clj  (java.net.URLDecoder/decode s "UTF-8")
      :cljs (try
              (js/decodeURIComponent s)
              (catch :default e
