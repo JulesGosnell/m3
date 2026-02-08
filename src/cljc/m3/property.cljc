@@ -503,7 +503,11 @@
      (defn base64-decode [^String s] (String. (.decode decoder (.getBytes s "UTF-8")) "UTF-8")))
 
    :cljs
-   (defn base64-decode [s] (.toString (js/Buffer.from s "base64") "utf8")))
+   (let [base64-re #"^[A-Za-z0-9+/]*={0,2}$"]
+     (defn base64-decode [s]
+       (when-not (re-find base64-re s)
+         (throw (ex-info (str "Illegal base64 character") {})))
+       (.toString (js/Buffer.from s "base64") "utf8"))))
 
 (def ce->decoder
   {absent identity
