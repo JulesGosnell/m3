@@ -325,7 +325,7 @@
 ;; and we need to be able to reuse the code when switching drafts or schema contexts...
 ;; switching context will affect dialect, marker stash, draft etc... - consider
 (defn validate-m2-impl [{draft :draft :as c2} m1]
-  (let [s (or (and (json-object? m1) (m1 "$schema")) (draft->$schema draft))]
+  (let [s (or (and (json-object? m1) (get m1 "$schema")) (draft->$schema draft))]
     (if-let [{$vocabulary "$vocabulary" :as m2} ($schema->m2 s)]
       (if (= m2 m1)
         ;; we are at the top

@@ -95,6 +95,47 @@
 
 ;;------------------------------------------------------------------------------
 
+;;------------------------------------------------------------------------------
+;; Output container conversion (Approach B: boundary conversion).
+;; Internal errors remain Clojure maps/vectors; facades convert at the boundary.
+
+(def ^:private error-key-map
+  {:schema-path   "schemaPath"
+   :document-path "documentPath"
+   :message       "message"
+   :document      "document"
+   :schema        "schema"
+   :errors        "errors"
+   :valid?        "valid"})
+
+(defn convert-output
+  "Recursively convert a Clojure result/error tree using the given output fns.
+   output-fns is a map with :make-map, :make-vec, :make-kw keys.
+   If output-fns is nil, returns the value unchanged (Clojure default)."
+  [output-fns v]
+  (if (nil? output-fns)
+    v
+    (let [{:keys [make-map make-vec make-kw]} output-fns]
+      (cond
+        (map? v)
+        (apply make-map
+               (mapcat (fn [[k val]]
+                         (let [out-key (if (keyword? k)
+                                         (make-kw (or (error-key-map k) (name k)))
+                                         (make-kw (str k)))]
+                           [out-key (convert-output output-fns val)]))
+                       v))
+
+        (vector? v)
+        (make-vec (mapv (partial convert-output output-fns) v))
+
+        (seq? v)
+        (make-vec (mapv (partial convert-output output-fns) v))
+
+        :else v))))
+
+;;------------------------------------------------------------------------------
+
 (defn get-check-schema []
   ;; we have had to do this to break a circular dependency
   (deref (resolve 'm3.validate/check-schema)))

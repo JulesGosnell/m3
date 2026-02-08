@@ -1,0 +1,69 @@
+;; Copyright 2025 Julian Gosnell
+;;
+;; Licensed under the Apache License, Version 2.0 (the "License");
+;; you may not use this file except in compliance with the License.
+;; You may obtain a copy of the License at
+;;
+;;     http://www.apache.org/licenses/LICENSE-2.0
+;;
+;; Unless required by applicable law or agreed to in writing, software
+;; distributed under the License is distributed on an "AS IS" BASIS,
+;; WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+;; See the License for the specific language governing permissions and
+;; limitations under the License.
+
+(ns m3.json-schema
+  "M3 JSON Schema Validator — public API.
+   The most complete JSON Schema validator. All drafts 3 through draft-next."
+  (:require
+   [m3.platform :refer [json-decode]]
+   [m3.validate :as v]))
+
+(defn- opts->c2 [{:keys [draft strict-format? strict-integer? quiet?]}]
+  (cond-> {:quiet? true :draft (or draft :draft2020-12)}
+    strict-format?  (assoc :strict-format? true)
+    strict-integer? (assoc :strict-integer? true)
+    (some? quiet?)  (assoc :quiet? quiet?)))
+
+(defn validate
+  "Validate a document against a JSON Schema.
+   Returns {:valid? bool, :errors [...]}
+
+   Both-strings form: schema and document are both JSON strings.
+     (validate \"{\\\"type\\\":\\\"string\\\"}\" \"\\\"hello\\\"\")
+
+   Parsed form: schema is a map, document is any Clojure/Java value.
+     (validate {\"type\" \"string\"} \"hello\")
+
+   opts - optional map:
+     :draft            - :draft3, :draft4, :draft6, :draft7, :draft2019-09, :draft2020-12, :draft-next
+     :strict-format?   - true to treat format as assertion (default: annotation-only)
+     :strict-integer?  - true to require actual integers (not 1.0 for integer type)
+     :quiet?           - false to enable logging (default: true)"
+  ([schema document]
+   (validate schema document nil))
+  ([schema document opts]
+   (let [;; If schema is a string, parse both as JSON (the "JSON strings" form).
+         ;; If schema is already a map, document is used as-is (the "parsed" form).
+         json-strings? (string? schema)
+         schema   (if json-strings? (json-decode schema) schema)
+         document (if json-strings? (json-decode document) document)
+         c2       (opts->c2 (or opts {}))]
+     (v/validate c2 schema {} document))))
+
+(defn validator
+  "Compile a schema, return a reusable validation function.
+   The returned function takes a document (any value) and
+   returns {:valid? bool, :errors [...]}.
+   More efficient for validating many documents against one schema.
+
+   schema - map (parsed schema) or JSON string
+   opts   - same as validate."
+  ([schema]
+   (validator schema nil))
+  ([schema opts]
+   (let [schema (if (string? schema) (json-decode schema) schema)
+         c2     (opts->c2 (or opts {}))
+         f      (v/validate-m2 (assoc c2 :m2? true) schema)]
+     (fn [document]
+       (v/reformat (f {} document))))))

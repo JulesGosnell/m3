@@ -502,7 +502,7 @@
 ;; standard number properties
 
 (defn check-property-minimum-old [_property c2 p2 m2 v2]
-  (let [e? (m2 "exclusiveMinimum")
+  (let [e? (get m2 "exclusiveMinimum")
         p? (if e? < <=)]
     [c2
      m2
@@ -544,7 +544,7 @@
          [(make-error "minimum: value to low" p2 m2 p1 m1)])]))])
 
 (defn check-property-maximum-old [_property c2 p2 m2 v2]
-  (let [e? (m2 "exclusiveMaximum")
+  (let [e? (get m2 "exclusiveMaximum")
         p? (if e? > >=)]
     [c2
      m2
@@ -871,7 +871,7 @@
       (fn [c1 p1 m1]
         (reduce
          (fn [[c1 m1 old-es] k]
-           (let [v (m1 k)]
+           (let [v (get m1 k)]
              (if-let [checker (and (json-string? v) (checkers [k v]))]
                (let [[c1 m1 new-es] (checker c1 p1 m1)]
                  [c1 m1 (concatv old-es new-es)])
@@ -983,7 +983,7 @@
                 (let [[c m new-es] (cs c (conj p1 k) sub-document)]
                   [c (concatv old-es new-es)]))
               [c1 []]
-              (map (fn [[k :as k-and-cs]] [k-and-cs (m1 k)]) k-and-css))]
+              (map (fn [[k :as k-and-cs]] [k-and-cs (get m1 k)]) k-and-css))]
          [(let [ks (map first k-and-css)]
             (-> c1
            ;; TODO: only record matched if additonalProperties needed later ?
@@ -1202,7 +1202,7 @@
 (defn check-property-items [_property {d :draft :as c2} p2 m2 v2]
   (let [f2 (get-check-schema)
         parent-id-uri (:id-uri c2)
-        n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
+        n (count (get m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
         [c2 m css] (if (json-array? v2)
                      (do
                        (case d

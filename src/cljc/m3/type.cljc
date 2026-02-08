@@ -32,10 +32,10 @@
   (string? v))
 
 (defn json-array? [v]
-  (vector? v))
+  (or (vector? v) #?(:clj (instance? java.util.List v) :cljs false)))
 
 (defn json-object? [v]
-  (map? v))
+  (or (map? v) #?(:clj (instance? java.util.Map v) :cljs false)))
 
 (defn json-= [l r]
   (cond

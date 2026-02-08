@@ -67,7 +67,11 @@
                           :output-dir "target/node"
                           :output-to "target/node/repl.js"
                           :main m3.repl/-main
-                          :devtools {:autoload true}}}}
+                          :devtools {:autoload true}}
+                         :npm
+                         {:target :npm-module
+                          :output-dir "npm-dist"
+                          :entries [m3.js]}}}
 
   :profiles {:dev
              {:repl-options {;;:init-ns m3.repl
@@ -76,7 +80,9 @@
                              [binaryage/devtools "1.0.7"]
                              [prone "2021-04-23"]
                              [nrepl "1.5.0"]
-                             [pjstadig/humane-test-output "0.11.0"]]
+                             [pjstadig/humane-test-output "0.11.0"]
+                             [com.fasterxml.jackson.core/jackson-databind ~jackson-version]
+                             [com.google.code.gson/gson "2.12.1"]]
 
               :plugins [[cider/cider-nrepl "0.57.0"]
                         [org.clojure/tools.namespace "1.5.0" :exclusions [org.clojure/tools.reader]]
