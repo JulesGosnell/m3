@@ -29,10 +29,7 @@ jobs:
         run: lein test
 
       - name: Install NPM deps
-        run: |
-          npm install source-map-support --save-dev
-          npm install big.js
-          npm install punycode
+        run: npm install
 
       - name: Run CLJS tests
         run: lein test-cljs

@@ -1,0 +1,11 @@
+{
+  "name": "org.clojars.jules_gosnell.m3",
+  "dependencies": {
+    "@js-joda/core": "3.2.0",
+    "big.js": "^7.0.1",
+    "punycode": "^2.3.1"
+  },
+  "devDependencies": {
+    "source-map-support": "^0.5.21"
+  }
+}
