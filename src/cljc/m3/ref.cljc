@@ -82,38 +82,39 @@
 
 (declare resolve-$ref)
 
-(defn resolve-uri [{m2 :root uri->path :uri->path uri->schema :uri->schema :as ctx} path {t :type f :fragment :as uri} $ref]
+(defn resolve-uri
+  ([ctx path uri $ref] (resolve-uri ctx path uri $ref false))
+  ([{m2 :root uri->path :uri->path uri->schema :uri->schema :as ctx} path {t :type f :fragment :as uri} $ref quiet?]
 
-  ;;(prn "resolve-uri:" uri $ref)
+   (or
 
-  (or
+    ;; did it match a stashed [$]id or $.*anchor ?
 
-   ;; did it match a stashed [$]id or $.*anchor ?
+    ;; exactly
+    (try-path ctx path (uri->path uri) m2)
 
-   ;; exactly
-   (try-path ctx path (uri->path uri) m2)
-
-   ;; in all but fragment
-   (when-let [path2 (uri->path (uri-base uri))]
-     (if f
-       (or
-        (try-path ctx path (canonicalise path2 f) m2)
-        (try-path ctx path (concat path2 (canonicalise [] f)) m2))
-       (try-path ctx path path2 m2)))
-
-   ;; it's just a fragment — try as anchor first, then JSON pointer
-   (and (= t :fragment)
+    ;; in all but fragment
+    (when-let [path2 (uri->path (uri-base uri))]
+      (if f
         (or
-         ;; anchor: resolve fragment against current base URI to find $anchor entry
-         (try-path ctx path (uri->path (inherit-uri (:id-uri ctx) uri)) m2)
-         ;; JSON pointer
-         (try-path ctx path (canonicalise path (or f "")) m2)))
+         (try-path ctx path (canonicalise path2 f) m2)
+         (try-path ctx path (concat path2 (canonicalise [] f)) m2))
+        (try-path ctx path path2 m2)))
 
-   ;; did it match a remote schema
-   (when-let [[c p _m] (and uri->schema (uri->schema ctx path uri))]
-     (resolve-uri c p (uri-fragment uri) (str "#" (:fragment uri))))
+    ;; it's just a fragment — try as anchor first, then JSON pointer
+    (and (= t :fragment)
+         (or
+          ;; anchor: resolve fragment against current base URI to find $anchor entry
+          (try-path ctx path (uri->path (inherit-uri (:id-uri ctx) uri)) m2)
+          ;; JSON pointer
+          (try-path ctx path (canonicalise path (or f "")) m2)))
 
-   (log/warn "$ref: could not resolve:" (pr-str $ref) (pr-str uri))))
+    ;; did it match a remote schema
+    (when-let [[c p _m] (and uri->schema (uri->schema ctx path uri))]
+      (resolve-uri c p (uri-fragment uri) (str "#" (:fragment uri)) quiet?))
+
+    (when-not quiet?
+      (log/warn "$ref: could not resolve:" (pr-str $ref) (pr-str uri))))))
 
 ;;------------------------------------------------------------------------------
 ;; expanding $refs

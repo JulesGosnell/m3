@@ -1,0 +1,203 @@
+[
+    {
+        "description": "$dynamicRef with bookend in nested $defs (draft2020-12)",
+        "comment": "Regression: the $dynamicAnchor bookend in $defs/baseSchema/$defs/defaultAddons must be reachable by $dynamicRef inside baseSchema. Static resolution via uri->path stash must find the anchor even though it was compiled inside a nested $defs.",
+        "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://test.m3/dynamicRef-bookend/root",
+
+            "$ref": "./base",
+
+            "$defs": {
+                "override": {
+                    "$dynamicAnchor": "extension",
+                    "properties": {
+                        "extra": { "type": "string" }
+                    }
+                },
+                "base": {
+                    "$id": "./base",
+                    "type": "object",
+                    "properties": {
+                        "name": { "type": "string" }
+                    },
+                    "$dynamicRef": "#extension",
+                    "unevaluatedProperties": false,
+
+                    "$defs": {
+                        "defaultExtension": {
+                            "$comment": "Bookend: ensures $dynamicRef has a static target",
+                            "$dynamicAnchor": "extension"
+                        }
+                    }
+                }
+            }
+        },
+        "tests": [
+            {
+                "description": "base properties only — valid",
+                "data": {"name": "Alice"},
+                "valid": true
+            },
+            {
+                "description": "base + override properties — valid via dynamic override",
+                "data": {"name": "Alice", "extra": "hello"},
+                "valid": true
+            },
+            {
+                "description": "unknown property — invalid via unevaluatedProperties",
+                "data": {"name": "Alice", "unknown": 42},
+                "valid": false
+            },
+            {
+                "description": "override property with wrong type — invalid",
+                "data": {"name": "Alice", "extra": 42},
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "$dynamicRef without bookend (draft-next, no bookending required)",
+        "comment": "Regression: draft-next removed the bookending requirement. $dynamicRef should resolve dynamically even when the target schema has no $dynamicAnchor bookend. Static resolution failure is expected and must not cause validation errors.",
+        "schema": {
+            "$schema": "https://json-schema.org/draft/next/schema",
+            "$id": "https://test.m3/dynamicRef-no-bookend/root",
+
+            "$ref": "./base",
+
+            "$defs": {
+                "override": {
+                    "$dynamicAnchor": "extension",
+                    "properties": {
+                        "extra": { "type": "string" }
+                    }
+                },
+                "base": {
+                    "$id": "./base",
+                    "type": "object",
+                    "properties": {
+                        "name": { "type": "string" }
+                    },
+                    "$dynamicRef": "#extension",
+                    "unevaluatedProperties": false
+                }
+            }
+        },
+        "tests": [
+            {
+                "description": "base properties only — valid",
+                "data": {"name": "Alice"},
+                "valid": true
+            },
+            {
+                "description": "base + override properties — valid via dynamic override",
+                "data": {"name": "Alice", "extra": "hello"},
+                "valid": true
+            },
+            {
+                "description": "unknown property — invalid via unevaluatedProperties",
+                "data": {"name": "Alice", "unknown": 42},
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "$dynamicRef scope-id enrichment — stash from later-compiled properties",
+        "comment": "Regression: $dynamicRef compiles before $defs in some property orderings. The scope-id enrichment mechanism must provide the final uri->path (with entries from all property compilations) to $dynamicRef at runtime, not just the compile-time snapshot.",
+        "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://test.m3/dynamicRef-scope-id/root",
+            "type": "object",
+            "properties": {
+                "value": { "type": "string" }
+            },
+            "$dynamicRef": "#ext",
+            "unevaluatedProperties": false,
+
+            "$defs": {
+                "default": {
+                    "$dynamicAnchor": "ext"
+                }
+            }
+        },
+        "tests": [
+            {
+                "description": "matching property — valid",
+                "data": {"value": "hello"},
+                "valid": true
+            },
+            {
+                "description": "no properties — valid (empty object matches)",
+                "data": {},
+                "valid": true
+            },
+            {
+                "description": "unknown property — invalid",
+                "data": {"value": "hello", "other": 1},
+                "valid": false
+            }
+        ]
+    },
+    {
+        "description": "$dynamicRef with $ref to sub-schema containing $dynamicRef (scope isolation)",
+        "comment": "Regression: when $ref resolves to a sub-schema with unevaluatedProperties, scope isolation compiles the ref'd schema alone. The compilation must still find $dynamicAnchors within the ref'd schema's own $defs.",
+        "schema": {
+            "$schema": "https://json-schema.org/draft/2020-12/schema",
+            "$id": "https://test.m3/dynamicRef-scope-iso/root",
+
+            "$ref": "./inner",
+
+            "$defs": {
+                "override": {
+                    "$dynamicAnchor": "addons",
+                    "prefixItems": [
+                        true,
+                        { "type": "string" }
+                    ]
+                },
+                "inner": {
+                    "$id": "./inner",
+                    "type": "array",
+                    "prefixItems": [
+                        { "type": "integer" }
+                    ],
+                    "$dynamicRef": "#addons",
+                    "unevaluatedItems": false,
+
+                    "$defs": {
+                        "defaultAddons": {
+                            "$dynamicAnchor": "addons"
+                        }
+                    }
+                }
+            }
+        },
+        "tests": [
+            {
+                "description": "base prefix item only — valid",
+                "data": [1],
+                "valid": true
+            },
+            {
+                "description": "base + override prefix items — valid via dynamic override",
+                "data": [1, "hello"],
+                "valid": true
+            },
+            {
+                "description": "extra item beyond prefix — invalid via unevaluatedItems",
+                "data": [1, "hello", true],
+                "valid": false
+            },
+            {
+                "description": "wrong type in base prefix — invalid",
+                "data": ["not-an-int"],
+                "valid": false
+            },
+            {
+                "description": "wrong type in override prefix — invalid",
+                "data": [1, 42],
+                "valid": false
+            }
+        ]
+    }
+]

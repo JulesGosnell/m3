@@ -291,11 +291,19 @@
          (if (= "#" v2)
            (let [check-schema-fn (get-check-schema)
                  m2-no-ref (dissoc m2 "$recursiveRef")
-                 ;; Step 1: resolve "#" via c2 to find the initial target
+                 ;; Step 1: resolve "#" via c2 to find the initial target.
+                 ;; Use late-bound c2 for resolution (same as $ref/$dynamicRef).
+                 resolution-c2 (if-let [sid (:scope-id c2)]
+                                 (if-let [scope-c2 (get-in c1 [:$compile-scopes sid])]
+                                   (assoc c2
+                                          :uri->path (:uri->path scope-c2)
+                                          :path->uri (:path->uri scope-c2))
+                                   c2)
+                                 c2)
                  ref-uri (or id-uri (parse-uri v2))
-                 [c2-uris c2-top] (:$recursive-anchor c2)
-                 initial (or (try-path c2 schema-p2 (and c2-uris (c2-uris id-uri) c2-top) (:original-root c2))
-                             (resolve-uri c2 schema-p2 ref-uri v2))
+                 [c2-uris c2-top] (:$recursive-anchor resolution-c2)
+                 initial (or (try-path resolution-c2 schema-p2 (and c2-uris (c2-uris id-uri) c2-top) (:original-root resolution-c2))
+                             (resolve-uri resolution-c2 schema-p2 ref-uri v2))
                  ;; Step 2: check runtime dynamic scope (c1) for outermost anchor.
                  ;; The c1 dynamic override is needed when the $recursiveRef is
                  ;; inside a schema whose c2 can't redirect to the correct outer
@@ -386,11 +394,23 @@
        (if (present? m1)
          (let [check-schema-fn (get-check-schema)
                m2-no-ref (dissoc m2 "$dynamicRef")
+               ;; Use late-bound c2 for resolution: after compile-m2 finishes,
+               ;; the final c2 with stash entries from ALL property compilations
+               ;; is stored in c1 under [:$compile-scopes scope-id].
+               resolution-c2 (if-let [sid (:scope-id c2)]
+                               (if-let [scope-c2 (get-in c1 [:$compile-scopes sid])]
+                                 (assoc c2
+                                        :uri->path (:uri->path scope-c2)
+                                        :path->uri (:path->uri scope-c2))
+                                 c2)
+                               c2)
                ;; Step 1: Static resolution (find initial target / bookend).
                ;; Use resolve-uri only — the $dynamic-anchor c2 shortcut can
                ;; find the wrong schema when meld mixes $defs from different
                ;; resources into the root.
-               initial (resolve-uri c2 schema-p2 uri v2)
+               ;; Quiet: static resolution failure is expected when
+               ;; $dynamicRef has a dynamic fallback path.
+               initial (resolve-uri resolution-c2 schema-p2 uri v2 true)
                ;; Step 2: Check bookending — the initial target must have
                ;; a $dynamicAnchor whose name matches the fragment.
                ;; If not bookended, $dynamicRef behaves as a normal $ref.

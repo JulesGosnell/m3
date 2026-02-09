@@ -49,10 +49,27 @@
   (let [s (join "/" (drop-last (split p #"/" -1)))]
     (when-not (empty? s) s)))
 
+(defn- normalize-path
+  "Remove . and .. segments from a URI path per RFC 3986 Section 5.2.4."
+  [path]
+  (let [segments (split path #"/" -1)
+        ;; Preserve leading empty segment (absolute path starts with /)
+        result (reduce
+                (fn [acc seg]
+                  (case seg
+                    "." acc
+                    ".." (if (and (seq acc) (not= (peek acc) ""))
+                           (pop acc)
+                           acc)
+                    (conj acc seg)))
+                []
+                segments)]
+    (join "/" result)))
+
 (defn inherit-path [parent child]
   (if (starts-with? child "/")
-    child
-    (str (and parent (strip-path parent)) "/" child)))
+    (normalize-path child)
+    (normalize-path (str (and parent (strip-path parent)) "/" child))))
 
 (defn inherit-uri [parent child]
   (if (nil? parent)
