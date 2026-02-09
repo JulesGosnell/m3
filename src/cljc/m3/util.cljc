@@ -88,7 +88,8 @@
 
 (defn make-error-on [message schema-path schema document-path document failed? errors]
   (when (failed? errors)
-    [(assoc (make-error message schema-path schema document-path document) :errors errors)]))
+    (let [msg (if (fn? message) (message errors) message)]
+      [(assoc (make-error msg schema-path schema document-path document) :errors errors)])))
 
 (defn make-error-on-failure [message schema-path schema document-path document errors]
   (make-error-on message schema-path schema document-path document seq errors))
@@ -98,3 +99,7 @@
 (defn get-check-schema []
   ;; we have had to do this to break a circular dependency
   (deref (resolve 'm3.validate/check-schema)))
+
+(defn get-compile-m2 []
+  ;; break circular dependency for property.cljc -> validate.cljc
+  (deref (resolve 'm3.validate/compile-m2)))

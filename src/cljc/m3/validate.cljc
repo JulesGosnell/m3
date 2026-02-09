@@ -19,7 +19,7 @@
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.platform :refer [json-decode]]
    [m3.util :refer [present? concatv make-error make-error-on-failure]]
-   [m3.uri :refer [parse-uri inherit-uri uri-base]]
+   [m3.uri :refer [parse-uri uri-base]]
    [m3.type :refer [json-object?]]
    [m3.draft :refer [draft->$schema $schema->draft $schema-uri->draft]]
    [m3.vocabulary :refer [draft->default-dialect make-dialect]]))
@@ -54,29 +54,32 @@
   (def uri->marker-stash
     {draft3
      {:uri->path {draft3 []},
-      :path->uri (constantly draft3)},
+      :path->uri {[] draft3}},
      draft4
      {:uri->path {draft4 []},
-      :path->uri (constantly draft4)},
+      :path->uri {[] draft4}},
      draft6
      {:uri->path {draft6 []},
-      :path->uri (constantly draft6)},
+      :path->uri {[] draft6}},
      draft7
      {:uri->path {draft7 []},
-      :path->uri (constantly draft7)},
+      :path->uri {[] draft7}},
      draft2019-09
      {:uri->path {draft2019-09 []},
-      :path->uri (constantly draft2019-09)},
+      :path->uri {[] draft2019-09}},
      draft2020-12
      {:uri->path {draft2020-12 [],
                   ;; there is a $dynamicAnchor at top-level - figure it out later...
                   {:type :url, :origin "https://json-schema.org", :path "/draft/2020-12/schema", :fragment "meta"} []},
-      ;; should this be returning the dynamic anchor?
-      :path->uri (constantly draft2020-12)}}))
+      :path->uri {[] draft2020-12}}}))
 
 (defn compile-m2 [{dialect :dialect draft :draft :as c2} old-p2 m2]
   (let [effective-draft (or draft :draft2020-12)
-        initial-dialect (or dialect (draft->default-dialect effective-draft))]
+        initial-dialect (or dialect (draft->default-dialect effective-draft))
+        ;; Stash path->uri: map this schema path to its inherited id-uri
+        c2 (update c2 :path->uri assoc old-p2 (:id-uri c2))
+        ;; Capture parent's id-uri before $id processing (used by old-draft $ref)
+        c2 (assoc c2 :inherited-id-uri (:id-uri c2))]
     (loop [dialect initial-dialect
            remaining (dialect m2)
            c2 c2
@@ -84,8 +87,8 @@
            acc []
            processed-keys #{}]
       (if (empty? remaining)
-        ;; Done - return accumulated checkers
-        acc
+        ;; Done - return accumulated checkers and final c2
+        [acc c2]
 
         ;; Process next property
         (let [[[k v] cp] (first remaining)]
@@ -124,74 +127,45 @@
                        (conj processed-keys k))))))))))
 
 ;;------------------------------------------------------------------------------
-;; tmp solution - does not understand about schema structure
-
-;; acc travels around and gets returned
-;; stuff travels down and does not
-(defn json-walk [f acc stuff path tree]
-  (let [[acc stuff] (if (map? tree) (f acc stuff tree path) [acc stuff])]
-    (if (or (map? tree) (vector? tree))
-      (reduce-kv
-       (fn [acc k v]
-         (json-walk f acc stuff (conj path k) v))
-       acc
-       tree)
-      acc)))
-
-(defn stash-anchor [[acc {id-uri :id-uri :as stuff} :as x] path fragment? id? anchor]
-  (if (string? anchor)
-    (let [anchor-uri (inherit-uri id-uri (parse-uri (str (when fragment? "#") anchor)))]
-      [(update acc :uri->path assoc anchor-uri path)
-       (if id? (assoc stuff :id-uri anchor-uri) stuff)])
-    x))
-
-(defn get-id [{d :draft} m]
-  (case d
-    (:draft3 :draft4) (get m "id")
-    (or (get m "$id") (get m "id"))))
-
-(defn stash [acc stuff {a "$anchor" da "$dynamicAnchor" :as m} path]
-  (-> [acc stuff]
-      ((fn [[acc {id-uri :id-uri :as stuff}]] [(update acc :path->uri assoc path id-uri) stuff]))
-      (stash-anchor path false true (get-id acc m))
-      (stash-anchor path true false a)
-      (stash-anchor path true false da)))
-
-;;------------------------------------------------------------------------------
 
 (defn check-schema-2 [{t? :trace? :as c2} p2 m2]
-  ;; TODO; this needs to be simplified
-  [c2
-   m2
-   (cond
-     (true? m2)
-     (fn [c1 _p1 m1]
-       [c1 m1 nil])
+  (cond
+    (true? m2)
+    [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])]
 
-     (false? m2)
+    (false? m2)
+    [c2 m2
      (fn [c1 p1 m1]
        [c1
         m1
         (when (present? m1)
-          [(make-error "schema is false: nothing will match" p2 m2 p1 m1)])])
+          [(make-error "schema is false: nothing will match" p2 m2 p1 m1)])])]
 
-     :else
-     (fn [c1 p1 m1]
-       (if (present? m1)
-         (let [[new-c1 m1 es]
-               (reduce
-                (fn [[c1 m1 acc] [new-p2 cp]]
-                  (let [[c1
-                         m1
-                         [{m :message} :as es]] (cp c1 p1 m1)]
-                    (when t? (println (pr-str new-p2) (pr-str p1) (if (seq es) ["❌" m] "✅")))
-                    [c1 m1 (concatv acc es)]))
-                [c1 m1 []]
-                (compile-m2 c2 p2 m2))]
-           [new-c1 ;; (first (stash new-c1 {} m1 p1))
-            m1
-            (make-error-on-failure "schema: document did not conform" p2 m2 p1 m1 es)])
-         [c1 m1 []])))])
+    :else
+    ;; Eagerly compile to build uri->path/path->uri.
+    ;; Propagate those maps but preserve original id-uri to prevent scope leaking.
+    (let [[checkers final-c2] (compile-m2 c2 p2 m2)
+          updated-c2 (-> c2
+                         (assoc :uri->path (:uri->path final-c2))
+                         (assoc :path->uri (:path->uri final-c2)))]
+      [updated-c2
+       m2
+       (fn [c1 p1 m1]
+         (if (present? m1)
+           (let [[new-c1 m1 es]
+                 (reduce
+                  (fn [[c1 m1 acc] [new-p2 cp]]
+                    (let [[c1
+                           m1
+                           [{m :message} :as es]] (cp c1 p1 m1)]
+                      (when t? (println (pr-str new-p2) (pr-str p1) (if (seq es) ["❌" m] "✅")))
+                      [c1 m1 (concatv acc es)]))
+                  [c1 m1 []]
+                  checkers)]
+             [new-c1
+              m1
+              (make-error-on-failure "schema: document did not conform" p2 m2 p1 m1 es)])
+           [c1 m1 []]))])))
 
 ;; At the moment a validation is only a reduction of c1, not c2.
 ;; Since a draft switch is something that happens at c2-level, I think we need an interceptor...
@@ -237,24 +211,20 @@
   (let [uri->schema (partial uri->schema uri-base->dir)]
     (fn [c p uri]
       (when-let [m (uri->schema c p uri)] ;; TODO: what if schema is 'false'
-        [(-> (make-context
-              (-> c
-                  (select-keys [:uri->schema :trace? :draft :id-key])
-                  (assoc :id-uri (uri-base uri)))
-              m)
-             (assoc :id-uri (uri-base uri))
-             (update :uri->path assoc (uri-base uri) []))
-         []
-         m]))))
-
-(defn marker-stash [{pu :path->uri up :uri->path}]
-  {:path->uri pu :uri->path up})
-
-(defn add-marker-stash [c m sid]
-  (if (or (:path->uri c) (:uri->path c))
-    c
-    (let [tmp (json-walk stash (assoc c :uri->path (if sid {(parse-uri sid) []} {})) {} [] m)]
-      tmp)))
+        (let [ctx (-> (make-context
+                       (-> c
+                           (select-keys [:uri->schema :trace? :draft :id-key])
+                           (assoc :id-uri (uri-base uri)))
+                       m)
+                      (assoc :id-uri (uri-base uri))
+                      (update :uri->path assoc (uri-base uri) []))
+              ;; Eagerly compile remote schema to build uri->path/path->uri.
+              ;; Guard against infinite recursion (metaschema loading metaschema).
+              ctx (if (:compiling-remote? c)
+                    ctx
+                    (let [[ctx _m2 _f1] (check-schema (assoc ctx :compiling-remote? true) [] m)]
+                      ctx))]
+          [ctx [] m])))))
 
 (defn make-context [{draft :draft u->s :uri->schema :as c2} {s "$schema" :as m2}]
   (let [draft (or draft
@@ -265,7 +235,11 @@
         c2 (if-not u->s (assoc c2 :uri->schema (uri->continuation uri-base->dir)) c2) ;; TODO
         c2 (assoc c2 :draft draft)
         c2 (assoc c2 :id-key id-key)
-        c2 (add-marker-stash c2 m2 sid)]
+        ;; Initialize uri->path and path->uri if not already set
+        c2 (if (:uri->path c2) c2
+               (assoc c2 :uri->path (if sid {(parse-uri sid) []} {})))
+        c2 (if (:path->uri c2) c2
+               (assoc c2 :path->uri {}))]
     (assoc
      c2
      :id-uri (or (:id-uri c2) (when sid (parse-uri sid))) ;; should be receiver uri - but seems to default to id/$id - yeugh
@@ -288,7 +262,9 @@
                 :recursive-anchor []
                 :root document
                 :draft draft
-                :melder (:melder c2))
+                :melder (:melder c2)
+                :uri->path (merge (:uri->path c1) (:uri->path c2))
+                :path->uri (merge (:path->uri c1) (:path->uri c2)))
             [c1 _m1 es] (cs c1 [] document)]
         [c1 es]))))
 
@@ -337,7 +313,8 @@
         (let [[{vs :dialect u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)]
           (if (empty? es)
             (validate-2 (assoc c2
-                               :marker-stash {:uri->path (or u->p {}) :path->uri (or p->u {})}
+                               :uri->path (or u->p {})
+                               :path->uri (or p->u {})
                                :dialect vs) m1)
             (constantly r))))
       (constantly [c2 [(str "could not resolve $schema: " s)]]))))

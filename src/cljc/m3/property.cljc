@@ -19,7 +19,7 @@
    [clojure.string :refer [starts-with? replace] :rename {replace string-replace}]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.platform :refer [pformat json-decode big-zero? big-mod pbigdec]]
-   [m3.util :refer [absent present? concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure get-check-schema third]]
+   [m3.util :refer [absent present? concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure get-check-schema get-compile-m2 third]]
    [m3.ecma :refer [ecma-pattern ecma-match]]
    [m3.uri :refer [parse-uri inherit-uri]]
    [m3.ref :refer [resolve-uri meld try-path]]
@@ -68,10 +68,13 @@
       (when-not (seq-contains? v2 json-= m1)
         [(make-error "enum: does not contain value" p2 m2 p1 m1)])])])
 
-(defn check-property-id [_property c2 _p2 m2 v2]
-  ;; Stash id into c2 for compile-time ref resolution (replaces interceptor)
+(defn check-property-id [_property c2 p2 m2 v2]
+  ;; Stash id into c2 for compile-time ref resolution
   (let [new-id-uri (inherit-uri (:id-uri c2) (parse-uri v2))
-        c2 (assoc c2 :id-uri new-id-uri)]
+        schema-p2 (vec (butlast p2))
+        c2 (-> c2
+               (assoc :id-uri new-id-uri)
+               (update :uri->path assoc new-id-uri schema-p2))]
     [c2
      m2
      ;; Also stash into c1 at runtime for document validation
@@ -86,10 +89,13 @@
         m1
         nil])]))
 
-(defn check-property-$id [_property c2 _p2 m2 v2]
-  ;; Stash $id into c2 for compile-time ref resolution (replaces interceptor)
+(defn check-property-$id [_property c2 p2 m2 v2]
+  ;; Stash $id into c2 for compile-time ref resolution
   (let [new-id-uri (inherit-uri (:id-uri c2) (parse-uri v2))
-        c2 (assoc c2 :id-uri new-id-uri)]
+        schema-p2 (vec (butlast p2))
+        c2 (-> c2
+               (assoc :id-uri new-id-uri)
+               (update :uri->path assoc new-id-uri schema-p2))]
     [c2
      m2
      ;; Also stash into c1 at runtime for document validation
@@ -104,13 +110,15 @@
         m1
         nil])]))
 
-;; Anchors only need :uri->path (no change, but included for completeness)
-(defn check-property-$anchor [_property c2 _p2 m2 v2]
-  [c2
-   m2
-   (fn [c1 p1 m1]
-     (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
-       [(update c1 :uri->path assoc anchor-uri p1) m1 nil]))])
+(defn check-property-$anchor [_property c2 p2 m2 v2]
+  (let [schema-p2 (vec (butlast p2))
+        anchor-uri (inherit-uri (:id-uri c2) (parse-uri (str "#" v2)))
+        c2 (update c2 :uri->path assoc anchor-uri schema-p2)]
+    [c2
+     m2
+     (fn [c1 p1 m1]
+       (let [anchor-uri (inherit-uri (c1 :id-uri) (parse-uri (str "#" v2)))]
+         [(update c1 :uri->path assoc anchor-uri p1) m1 nil]))]))
 
 (defn check-property-$recursiveAnchor [_property c2 p2 m2 v2]
   ;; Stash into c2 for compile-time ref resolution (replaces interceptor)
@@ -132,11 +140,13 @@
          [c1 m1 nil]))]))
 
 (defn check-property-$dynamicAnchor [_property c2 p2 m2 v2]
-  ;; Stash into c2 for compile-time ref resolution (replaces interceptor)
+  ;; Stash into c2 for compile-time ref resolution
   (let [schema-p2 (vec (butlast p2))
         anchor-uri (inherit-uri (:id-uri c2) (parse-uri (str "#" v2)))
-        c2 (update-in c2 [:$dynamic-anchor anchor-uri]
-                       (fn [old new] (if old old new)) schema-p2)]
+        c2 (-> c2
+               (update-in [:$dynamic-anchor anchor-uri]
+                          (fn [old new] (if old old new)) schema-p2)
+               (update :uri->path assoc anchor-uri schema-p2))]
     [c2
      m2
      ;; Also stash into c1 at runtime for document validation
@@ -153,12 +163,12 @@
 
 ;; $ref resolution logic - called from the $ref interceptor.
 ;; Resolution is LAZY (inside f1) to handle recursive schemas.
-(defn check-property-$ref [_property {id-uri :id-uri draft :draft path->uri :path->uri :as c2} p2 m2 v2]
+(defn check-property-$ref [_property {id-uri :id-uri draft :draft :as c2} p2 m2 v2]
   (let [schema-p2 (vec (butlast p2))
         ;; For draft <= draft7, $ref ignores sibling $id.
-        ;; Use the parent's id-uri from the pre-scan.
+        ;; Use the parent's id-uri captured at compile-m2 start (before $id processing).
         effective-id-uri (if (#{:draft3 :draft4 :draft6 :draft7} draft)
-                           (or (get path->uri schema-p2) id-uri)
+                           (or (:inherited-id-uri c2) id-uri)
                            id-uri)
         ref-uri (inherit-uri effective-id-uri (parse-uri v2))
         m2-no-ref (dissoc m2 "$ref")
@@ -172,17 +182,22 @@
      (fn [c1 p1 m1]
        (if (present? m1)
          (let [check-schema-fn (get-check-schema)
-               resolution (resolve-uri effective-c2 schema-p2 ref-uri v2)]
+               ;; Use c1's uri->path/path->uri for resolution (populated by validate-2 with complete schema maps)
+               resolve-c2 (-> effective-c2
+                              (assoc :uri->path (merge (:uri->path effective-c2) (:uri->path c1)))
+                              (assoc :path->uri (merge (:path->uri effective-c2) (:path->uri c1))))
+               resolution (resolve-uri resolve-c2 schema-p2 ref-uri v2)]
            (if resolution
              (let [[new-c _new-p resolved-m] resolution
                    melded (meld effective-c2 m2-no-ref resolved-m)
                    ;; Update :root so nested $refs (e.g. "#/$defs/...") see melded schema.
-                   ;; Only safe when path exists in root (avoids creating maps for vector indices).
-                   final-c2 (if (and (= effective-c2 new-c)
-                                     (or (empty? schema-p2)
-                                         (some? (get-in (:root effective-c2) schema-p2))))
-                              (assoc-in effective-c2 (into [:root] schema-p2) melded)
-                              new-c)
+                   ;; Always update regardless of context equality — new-c from try-path
+                   ;; has the original root, which may not contain the melded content.
+                   base-c2 (if (= effective-c2 new-c) effective-c2 new-c)
+                   final-c2 (if (or (empty? schema-p2)
+                                    (some? (get-in (:root base-c2) schema-p2)))
+                              (assoc-in base-c2 (into [:root] schema-p2) melded)
+                              base-c2)
                    [_c2 _m2 compiled-f1] (check-schema-fn final-c2 schema-p2 melded)]
                (compiled-f1 c1 p1 m1))
              ;; Resolution failed - compile schema without $ref
@@ -235,10 +250,13 @@
        (if (present? m1)
          (if (= "#" v2)
            (let [check-schema-fn (get-check-schema)
-                 [uris top] (:$recursive-anchor c2)
+                 resolve-c2 (-> c2
+                                (assoc :uri->path (merge (:uri->path c2) (:uri->path c1)))
+                                (assoc :path->uri (merge (:path->uri c2) (:path->uri c1))))
+                 [uris top] (:$recursive-anchor resolve-c2)
                  m2-no-ref (dissoc m2 "$recursiveRef")
-                 resolution (or (try-path c2 schema-p2 (and uris (uris id-uri) top) (:original-root c2))
-                                (resolve-uri c2 schema-p2 id-uri v2))]
+                 resolution (or (try-path resolve-c2 schema-p2 (and uris (uris id-uri) top) (:original-root resolve-c2))
+                                (resolve-uri resolve-c2 schema-p2 id-uri v2))]
              (if resolution
                (let [[new-c _new-p resolved-m] resolution
                      melded (meld c2 m2-no-ref resolved-m)
@@ -263,10 +281,13 @@
      (fn [c1 p1 m1]
        (if (present? m1)
          (let [check-schema-fn (get-check-schema)
-               da (:$dynamic-anchor c2)
+               resolve-c2 (-> c2
+                              (assoc :uri->path (merge (:uri->path c2) (:uri->path c1)))
+                              (assoc :path->uri (merge (:path->uri c2) (:path->uri c1))))
+               da (:$dynamic-anchor resolve-c2)
                m2-no-ref (dissoc m2 "$dynamicRef")
-               resolution (or (try-path c2 schema-p2 (get da uri) (:original-root c2))
-                              (resolve-uri c2 schema-p2 uri v2))]
+               resolution (or (try-path resolve-c2 schema-p2 (get da uri) (:original-root resolve-c2))
+                              (resolve-uri resolve-c2 schema-p2 uri v2))]
            (if resolution
              (let [[new-c _new-p resolved-m] resolution
                    melded (meld c2 m2-no-ref resolved-m)
@@ -591,23 +612,19 @@
                 (:errors (ex-data e))))]))])))
 
 (defn check-property-dependencies [_property c2 p2 m2 v2]
-  (let [property->checker
+  (let [[c2 property->checker]
         (reduce
-         (fn [acc [k v]]
-           (assoc
-            acc
-            k
-            (cond
-              (json-string? v) ;; a single property dependency
-              (fn [c1 _p1 m1] [c1 m1 (when (not (contains? m1 v)) [v v])])
-              (json-array? v) ;; a multiple property dependency
-              ;; TODO: this looks very suspect
-              (fn [c1 _p1 m1] [c1 m1 (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v)])
-              (or (json-object? v) (boolean? v)) ;; a schema dependency
-              (third ((get-check-schema) c2 p2 v)) ; TODO: we are throwing away c2/m2
-              ;; we should not need to check other cases as m2 should have been validated against m3
-              )))
-         {}
+         (fn [[c2 acc] [k v]]
+           (cond
+             (json-string? v)
+             [c2 (assoc acc k (fn [c1 _p1 m1] [c1 m1 (when (not (contains? m1 v)) [v v])]))]
+             (json-array? v)
+             [c2 (assoc acc k (fn [c1 _p1 m1] [c1 m1 (reduce (fn [acc2 k2] (if (contains? m1 k2) acc2 (conj acc2 [k k2]))) [] v)]))]
+             (or (json-object? v) (boolean? v))
+             (let [[c2 _m2 f1] ((get-check-schema) c2 p2 v)]
+               [c2 (assoc acc k f1)])
+             :else [c2 acc]))
+         [c2 {}]
          v2)]
     [c2
      m2
@@ -629,11 +646,12 @@
              [(make-error ["dependencies: missing properties (at least):" missing] p2 m2 p1 m1)])])))]))
 
 (defn check-property-dependentSchemas [_property c2 p2 m2 v2]
-  (let [property->checker
+  (let [[c2 property->checker]
         (reduce
-         (fn [acc [k v]]
-           (assoc acc k (third ((get-check-schema) c2 p2 v)))) ;TODO: we are throwing away c2/m2
-         {}
+         (fn [[c2 acc] [k v]]
+           (let [[c2 _m2 f1] ((get-check-schema) c2 p2 v)]
+             [c2 (assoc acc k f1)]))
+         [c2 {}]
          v2)]
     [c2
      m2
@@ -656,7 +674,17 @@
 
 (defn check-property-propertyDependencies [_property c2 p2 m2 v2]
   (let [f2 (get-check-schema)
-        checkers (into {} (mapcat (fn [[k1 vs]] (map (fn [[k2 s]] [[k1 k2] (third (f2 c2 p2 s))]) vs)) v2))
+        [c2 checkers]
+        (reduce
+         (fn [[c2 acc] [k1 vs]]
+           (reduce
+            (fn [[c2 acc] [k2 s]]
+              (let [[c2 _m2 f1] (f2 c2 p2 s)]
+                [c2 (assoc acc [k1 k2] f1)]))
+            [c2 acc]
+            vs))
+         [c2 {}]
+         v2)
         ks (keys v2)]
     [c2
      m2
@@ -737,11 +765,36 @@
 ;; definitions/$defs
 ;; m3/m2 time - validate structure of content
 ;; m2/m1 time - hmmm...
-(defn check-property-definitions [_property c2 _p2 m2 _v2]
-  [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
+(defn compile-defs-sub-schemas
+  "Eagerly compile $defs sub-schemas to build uri->path/path->uri.
+   Only propagates uri->path and path->uri back to parent c2,
+   NOT id-uri (which is scoped to each sub-schema)."
+  [c2 p2 v2]
+  (let [compile-m2-fn (get-compile-m2)]
+    (reduce
+     (fn [c2 [k sub-schema]]
+       (if (or (true? sub-schema) (false? sub-schema) (not (map? sub-schema)))
+         c2
+         (let [sub-p2 (conj p2 k)
+               sub-c2 (-> c2
+                          (update :path->uri assoc sub-p2 (:id-uri c2)))
+               [_checkers final-c2] (compile-m2-fn sub-c2 sub-p2 sub-schema)]
+           ;; Selectively propagate uri->path and path->uri only
+           (-> c2
+               (assoc :uri->path (:uri->path final-c2))
+               (assoc :path->uri (:path->uri final-c2))))))
+     c2
+     v2)))
 
-(defn check-property-$defs [_property c2 _p2 m2 _v2]
-  [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
+(defn check-property-definitions [_property c2 p2 m2 v2]
+  [(compile-defs-sub-schemas c2 p2 v2)
+   m2
+   (fn [c1 _p1 m1] [c1 m1 nil])])
+
+(defn check-property-$defs [_property c2 p2 m2 v2]
+  [(compile-defs-sub-schemas c2 p2 v2)
+   m2
+   (fn [c1 _p1 m1] [c1 m1 nil])])
 
 ;; bifurcate upwards to reduce amount of work done to just what it required...
 (defn check-properties [c2 p2 m2]
@@ -767,7 +820,13 @@
 
 (defn check-property-properties [_property c2 p2 m2 ps]
   (let [f2 (get-check-schema)
-        k-and-css (mapv (fn [[k v]] [k (third (f2 c2 (conj p2 k) v))]) ps)
+        [c2 k-and-css]
+        (reduce
+         (fn [[c2 acc] [k v]]
+           (let [[c2 _m2 f1] (f2 c2 (conj p2 k) v)]
+             [c2 (conj acc [k f1])]))
+         [c2 []]
+         ps)
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
@@ -807,7 +866,13 @@
 
 (defn check-property-patternProperties [_property c2 p2 m2 pps]
   (let [f2 (get-check-schema)
-        cp-and-pattern-and-ks (mapv (fn [[k v]] [(third (f2 c2 (conj p2 k) v)) (ecma-pattern k) k]) pps)
+        [c2 cp-and-pattern-and-ks]
+        (reduce
+         (fn [[c2 acc] [k v]]
+           (let [[c2 _m2 f1] (f2 c2 (conj p2 k) v)]
+             [c2 (conj acc [f1 (ecma-pattern k) k])]))
+         [c2 []]
+         pps)
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
@@ -930,7 +995,13 @@
 
 (defn check-property-prefixItems [_property c2 p2 m2 v2]
   (let [f2 (get-check-schema)
-        i-and-css (vec (map-indexed (fn [i sub-schema] [i (third (f2 c2 (conj p2 i) sub-schema))]) v2))
+        [c2 i-and-css]
+        (reduce
+         (fn [[c2 acc] [i sub-schema]]
+           (let [[c2 _m2 f1] (f2 c2 (conj p2 i) sub-schema)]
+             [c2 (conj acc [i f1])]))
+         [c2 []]
+         (map-indexed vector v2))
         [c2 m2 f1] (check-items c2 p2 m2)]
     [c2
      m2
@@ -942,16 +1013,24 @@
 (defn check-property-items [_property {d :draft :as c2} p2 m2 v2]
   (let [f2 (get-check-schema)
         n (count (m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
-        [m css] (if (json-array? v2)
-                  (do
-                    (case d
-                      (:draft3 :draft4 :draft6 :draft7 :draft2019-09)
-                      nil
-                      (:draft2020-12 :draft-next)
-                      (log/info (str "prefixItems: was introduced in draft2020-12 to handle tuple version of items - you are using: " d))
-                      nil)
-                    ["respective " (map-indexed (fn [i v] (third (f2 c2 (conj p2 i) v))) v2)])
-                  ["" (repeat (third (f2 c2 p2 v2)))])
+        [c2 m css] (if (json-array? v2)
+                     (do
+                       (case d
+                         (:draft3 :draft4 :draft6 :draft7 :draft2019-09)
+                         nil
+                         (:draft2020-12 :draft-next)
+                         (log/info (str "prefixItems: was introduced in draft2020-12 to handle tuple version of items - you are using: " d))
+                         nil)
+                       (let [[c2 css]
+                             (reduce
+                              (fn [[c2 acc] [i v]]
+                                (let [[c2 _m2 f1] (f2 c2 (conj p2 i) v)]
+                                  [c2 (conj acc f1)]))
+                              [c2 []]
+                              (map-indexed vector v2))]
+                         [c2 "respective " css]))
+                     (let [[c2 _m2 f1] (f2 c2 p2 v2)]
+                       [c2 "" (repeat f1)]))
         [c2 m2 f1] (check-items c2 p2 m2)]
     [c2
      m2
@@ -989,7 +1068,8 @@
 
 (defn check-property-unevaluatedItems [_property c2 p2 m2 v2]
   (let [f2 (get-check-schema)
-        css (repeat (third (f2 c2 p2 v2)))
+        [c2 _m2 f1-single] (f2 c2 p2 v2)
+        css (repeat f1-single)
         [c2 m2 f1] (check-items c2 p2 m2)]
     [c2
      m2
@@ -1092,23 +1172,30 @@
 ;; TODO: merge code with check-items...
 (defn check-of [c2 p2 m2 v2]
   (let [f2 (get-check-schema)
-        i-and-css (vec (map-indexed (fn [i sub-schema] [i (third (f2 c2 (conj p2 i) sub-schema))]) v2))]
-    (fn [c1 p1 m1 message failed?]
-      (let [old-local-c1 (update c1 :evaluated dissoc p1)
-            [c1 es]
-            (reduce
-             (fn [[old-c old-es] [_i cs]]
-               (let [[new-local-c1 m1 new-es] (cs old-local-c1 p1 m1)
-                     new-c (if (empty? new-es) (update old-c :evaluated update p1 into-set (get (get new-local-c1 :evaluated) p1)) old-c)
-                     es (concatv old-es new-es)]
-                 [new-c es]))
-             [c1 []]
-             i-and-css)]
-        [c1
-         (make-error-on message p2 m2 p1 m1 failed? es)]))))
+        [c2 i-and-css]
+        (reduce
+         (fn [[c2 acc] [i sub-schema]]
+           (let [[c2 _m2 f1] (f2 c2 (conj p2 i) sub-schema)]
+             [c2 (conj acc [i f1])]))
+         [c2 []]
+         (map-indexed vector v2))]
+    [c2
+     (fn [c1 p1 m1 message failed?]
+       (let [old-local-c1 (update c1 :evaluated dissoc p1)
+             [c1 es]
+             (reduce
+              (fn [[old-c old-es] [_i cs]]
+                (let [[new-local-c1 m1 new-es] (cs old-local-c1 p1 m1)
+                      new-c (if (empty? new-es) (update old-c :evaluated update p1 into-set (get (get new-local-c1 :evaluated) p1)) old-c)
+                      es (concatv old-es new-es)]
+                  [new-c es]))
+              [c1 []]
+              i-and-css)]
+         [c1
+          (make-error-on message p2 m2 p1 m1 failed? es)]))]))
 
 (defn check-property-oneOf [_property c2 p2 m2 v2]
-  (let [co (check-of c2 p2 m2 v2)
+  (let [[c2 co] (check-of c2 p2 m2 v2)
         m2-count (count v2)]
     [c2
      m2
@@ -1117,11 +1204,12 @@
         m1
         (co
          c1 p1 m1
-         "oneOf: document failed to conform to one and only one sub-schema"
+         (fn [es] (let [matched (- m2-count (count es))]
+                    (str "oneOf: " matched " out of " m2-count " schemas matched; exactly 1 must match")))
          (fn [es] (not= 1 (- m2-count (count es)))))))]))
 
 (defn check-property-anyOf [_property c2 p2 m2 v2]
-  (let [co (check-of c2 p2 m2 v2)
+  (let [[c2 co] (check-of c2 p2 m2 v2)
         m2-count (count v2)]
     [c2
      m2
@@ -1130,11 +1218,13 @@
         m1
         (co
          c1 p1 m1
-         "anyOf: document failed to conform to at least one sub-schema"
+         (fn [es] (let [matched (- m2-count (count es))]
+                    (str "anyOf: " matched " out of " m2-count " schemas matched; at least 1 must match")))
          (fn [es] (not (< (count es) m2-count))))))]))
 
 (defn check-property-allOf [_property c2 p2 m2 v2]
-  (let [co (check-of c2 p2 m2 v2)]
+  (let [[c2 co] (check-of c2 p2 m2 v2)
+        m2-count (count v2)]
     [c2
      m2
      (fn [c1 p1 m1]
@@ -1142,12 +1232,14 @@
         m1
         (co
          c1 p1 m1
-         "allOf: document failed to conform to all sub-schemas"
+         (fn [es] (let [matched (- m2-count (count es))]
+                    (str "allOf: " matched " out of " m2-count " schemas matched; all must match")))
          seq)))]))
 
 (defn check-property-extends [_property c2 p2 m2 v2]
   (let [schemas (if (sequential? v2) v2 [v2])
-        co (check-of c2 p2 m2 schemas)]
+        [c2 co] (check-of c2 p2 m2 schemas)
+        m2-count (count schemas)]
     [c2
      m2
      (fn [c1 p1 m1]
@@ -1155,7 +1247,8 @@
         m1
         (co
          c1 p1 m1
-         "extends: document failed to conform to all extended schemas"
+         (fn [es] (let [matched (- m2-count (count es))]
+                    (str "extends: " matched " out of " m2-count " schemas matched; all must match")))
          seq)))]))
 
 ;; TODO: share check-of

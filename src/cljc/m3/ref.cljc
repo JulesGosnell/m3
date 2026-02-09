@@ -17,7 +17,7 @@
    [clojure.string :refer [split replace] :rename {replace string-replace}] 
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.util :refer [present? absent]]
-   [m3.uri :refer [uri-base uri-fragment]]))
+   [m3.uri :refer [uri-base uri-fragment inherit-uri]]))
 
 
 (defn parse-int [s]
@@ -101,8 +101,9 @@
      ;;     (log/error "OVERFLOW:" (pr-str [uri (:uri->path c) c]))
      ;;     ))
 
-     ;; but this is safer
-     (resolve-uri c p (uri-fragment uri) (str "#" (:fragment uri)))
+     ;; Reconstruct full URI with remote's base so anchors (stashed under full URLs) are found
+     (let [remote-uri (inherit-uri (:id-uri c) (uri-fragment uri))]
+       (resolve-uri c p remote-uri (str "#" (:fragment uri))))
      )
 
    (log/warn "$ref: could not resolve:" (pr-str $ref) (pr-str uri)))
