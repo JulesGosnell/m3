@@ -5,11 +5,42 @@
 
 **Every draft. Every keyword. Every language.**
 
-M3 passes **every test**[^1] in the official [JSON Schema Test Suite][test-suite] across **every draft** from draft-03 through draft-next — **9,769 assertions** with zero failures. No other validator in any language covers all seven drafts completely, and M3 will use the same code to give you the same answer in both front and backend.
+M3 passes **every test**[^1] in the official [JSON Schema Test Suite][test-suite] across **every draft** from draft-03 through draft-next — **9,622 assertions** with zero failures. No other validator in any language covers all seven drafts completely, and M3 will use the same code to give you the same answer in both front and backend.
 
-This includes full support for every keyword: `$ref`, `$dynamicRef`, `$recursiveRef`, `unevaluatedProperties`, `unevaluatedItems`, `$vocabulary`, `$anchor`, `$dynamicAnchor`, `if`/`then`/`else`, `dependentSchemas`, `prefixItems`, `contentMediaType`, `contentEncoding`, and all format validators.
+This includes full support for every keyword: `$ref`, `$dynamicRef`, `$recursiveRef`, `unevaluatedProperties`, `unevaluatedItems`, `$vocabulary`, `$anchor`, `$dynamicAnchor`, `if`/`then`/`else`, `dependentSchemas`, `prefixItems`, `contentMediaType`, `contentEncoding`, ...and all format validators.
 
 Use it from **Clojure**, **Java**, **Kotlin**, **Scala**, **JavaScript**, or **Node.js**.
+
+### Installation
+
+**Leiningen/Boot:**
+```clojure
+[org.clojars.jules_gosnell/m3 "0.1.0-SNAPSHOT"]
+```
+
+**deps.edn:**
+```clojure
+org.clojars.jules_gosnell/m3 {:mvn/version "0.1.0-SNAPSHOT"}
+```
+
+**Maven:**
+```xml
+<dependency>
+  <groupId>org.clojars.jules_gosnell</groupId>
+  <artifactId>m3</artifactId>
+  <version>0.1.0-SNAPSHOT</version>
+</dependency>
+```
+
+**Gradle:**
+```groovy
+implementation 'org.clojars.jules_gosnell:m3:0.1.0-SNAPSHOT'
+```
+
+**npm:**
+```bash
+npm install m3-json-schema
+```
 
 ---
 
@@ -175,6 +206,8 @@ M3 uses a two-level curried design:
 
 This means schema compilation is done once and the compiled validator can be reused across many documents — use `validator` / `JsonSchema.validate(Map, Object)` for best performance.
 
+Dialects are composable: each draft is defined as an ordered set of vocabularies, and each vocabulary maps keywords to checker functions. This makes M3 extensible — custom dialects can be assembled from existing or new vocabularies.
+
 Internally, two context maps thread through validation:
 - **c2** (compile-time): draft, dialect, URI resolution, schema stash
 - **c1** (runtime): evaluation tracking, dynamic anchor scope, conditional state
@@ -187,7 +220,7 @@ Internally, two context maps thread through validation:
 git clone --recursive git@github.com:JulesGosnell/m3.git
 cd m3
 
-# Run Clojure tests (9,769 assertions)
+# Run Clojure tests (9,622 test-suite assertions)
 lein test
 
 # Run ClojureScript tests
@@ -209,6 +242,6 @@ Copyright 2025 Julian Gosnell. [Apache License, Version 2.0](https://www.apache.
 
 ---
 
-[^1]: One test is excluded on JavaScript: `zeroTerminatedFloats.json` — "a float is not an integer even without fractional part". JavaScript has no integer/float distinction (`JSON.parse("1.0") === JSON.parse("1")`), making this test impossible to pass at the language level. On the JVM, all 9,769 assertions pass without exception.
+[^1]: One test is excluded on JavaScript: `zeroTerminatedFloats.json` — "a float is not an integer even without fractional part". JavaScript has no integer/float distinction (`JSON.parse("1.0") === JSON.parse("1")`), making this test impossible to pass at the language level. On the JVM, all 9,622 test-suite assertions pass without exception.
 
 [test-suite]: https://github.com/json-schema-org/JSON-Schema-Test-Suite
