@@ -1393,7 +1393,8 @@
         m1
         (co
          c1 p1 m1
-         "oneOf: document failed to conform to one and only one sub-schema"
+         (fn [es] (let [matched (- m2-count (count es))]
+                    (str "oneOf: " matched " out of " m2-count " schemas matched; exactly 1 must match")))
          (fn [es] (not= 1 (- m2-count (count es)))))))]))
 
 (defn check-property-anyOf [_property c2 p2 m2 v2]
@@ -1406,11 +1407,13 @@
         m1
         (co
          c1 p1 m1
-         "anyOf: document failed to conform to at least one sub-schema"
+         (fn [es] (let [matched (- m2-count (count es))]
+                    (str "anyOf: " matched " out of " m2-count " schemas matched; at least 1 must match")))
          (fn [es] (not (< (count es) m2-count))))))]))
 
 (defn check-property-allOf [_property c2 p2 m2 v2]
-  (let [[c2 co] (check-of c2 p2 m2 v2)]
+  (let [[c2 co] (check-of c2 p2 m2 v2)
+        m2-count (count v2)]
     [c2
      m2
      (fn [c1 p1 m1]
@@ -1418,12 +1421,14 @@
         m1
         (co
          c1 p1 m1
-         "allOf: document failed to conform to all sub-schemas"
+         (fn [es] (let [matched (- m2-count (count es))]
+                    (str "allOf: " matched " out of " m2-count " schemas matched; all must match")))
          seq)))]))
 
 (defn check-property-extends [_property c2 p2 m2 v2]
   (let [schemas (if (sequential? v2) v2 [v2])
-        [c2 co] (check-of c2 p2 m2 schemas)]
+        [c2 co] (check-of c2 p2 m2 schemas)
+        m2-count (count schemas)]
     [c2
      m2
      (fn [c1 p1 m1]
@@ -1431,7 +1436,8 @@
         m1
         (co
          c1 p1 m1
-         "extends: document failed to conform to all extended schemas"
+         (fn [es] (let [matched (- m2-count (count es))]
+                    (str "extends: " matched " out of " m2-count " schemas matched; all must match")))
          seq)))]))
 
 ;; TODO: share check-of
