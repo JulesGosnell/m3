@@ -13,17 +13,33 @@ Use it from **Clojure**, **Java**, **Kotlin**, **Scala**, **JavaScript**, or **N
 
 ### Installation
 
-**Leiningen/Boot:**
+<table>
+<tr>
+<td><b>Leiningen</b></td>
+<td><b>deps.edn</b></td>
+<td><b>Maven</b></td>
+<td><b>Gradle</b></td>
+<td><b>npm</b></td>
+</tr>
+<tr>
+<td>
+
 ```clojure
-[org.clojars.jules_gosnell/m3 "0.1.0-SNAPSHOT"]
+[org.clojars.jules_gosnell/m3
+ "0.1.0-SNAPSHOT"]
 ```
 
-**deps.edn:**
+</td>
+<td>
+
 ```clojure
-org.clojars.jules_gosnell/m3 {:mvn/version "0.1.0-SNAPSHOT"}
+org.clojars.jules_gosnell/m3
+{:mvn/version "0.1.0-SNAPSHOT"}
 ```
 
-**Maven:**
+</td>
+<td>
+
 ```xml
 <dependency>
   <groupId>org.clojars.jules_gosnell</groupId>
@@ -32,15 +48,24 @@ org.clojars.jules_gosnell/m3 {:mvn/version "0.1.0-SNAPSHOT"}
 </dependency>
 ```
 
-**Gradle:**
+</td>
+<td>
+
 ```groovy
-implementation 'org.clojars.jules_gosnell:m3:0.1.0-SNAPSHOT'
+implementation
+  'org.clojars.jules_gosnell:m3:0.1.0-SNAPSHOT'
 ```
 
-**npm:**
+</td>
+<td>
+
 ```bash
 npm install m3-json-schema
 ```
+
+</td>
+</tr>
+</table>
 
 ---
 
