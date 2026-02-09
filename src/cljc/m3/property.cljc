@@ -233,7 +233,14 @@
                                         :path->uri (:path->uri scope-c2))
                                  effective-c2)
                                effective-c2)
-               resolution (resolve-uri resolution-c2 schema-p2 ref-uri v2)]
+               ;; Cross-resource fallback: when the current root is a sub-schema
+               ;; (e.g. from $recursiveRef dynamic resolution), the uri->path stash
+               ;; may contain paths relative to the original root that don't exist
+               ;; in the current root. Retry against the cross-resource-root.
+               resolution (or (resolve-uri resolution-c2 schema-p2 ref-uri v2 true)
+                              (when-let [cr-root (:cross-resource-root resolution-c2)]
+                                (resolve-uri (assoc resolution-c2 :root cr-root)
+                                             schema-p2 ref-uri v2)))]
            (if resolution
              (let [[new-c _new-p resolved-m] resolution
                    melded (meld effective-c2 m2-no-ref resolved-m)
@@ -334,7 +341,13 @@
                      ;; Non-dynamic: graft resolved-m into the existing root
                      ;; at schema-p2 so sibling $refs still resolve.
                      resolved-c2 (if use-dynamic?
-                                   (assoc new-c :root resolved-m :original-root resolved-m)
+                                   (assoc new-c
+                                          :root resolved-m
+                                          :original-root resolved-m
+                                          ;; Preserve the true original root for cross-resource
+                                          ;; $ref resolution. The standalone root (resolved-m) may
+                                          ;; not contain sibling definitions from the original root.
+                                          :cross-resource-root (:original-root new-c))
                                    (if (and (= c2 new-c)
                                             (or (empty? schema-p2)
                                                 (some? (get-in (:root c2) schema-p2))))
@@ -440,7 +453,10 @@
                    ;; Use separate compilation (like $recursiveRef) to avoid
                    ;; the meld cascade that loses array-valued keywords.
                    resolved-c2 (if use-dynamic?
-                                 (assoc new-c :root resolved-m :original-root resolved-m)
+                                 (assoc new-c
+                                        :root resolved-m
+                                        :original-root resolved-m
+                                        :cross-resource-root (:original-root new-c))
                                  (if (and (= c2 new-c)
                                           (or (empty? schema-p2)
                                               (some? (get-in (:root c2) schema-p2))))

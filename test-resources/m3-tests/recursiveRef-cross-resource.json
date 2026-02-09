@@ -1,0 +1,114 @@
+[
+    {
+        "description": "$recursiveRef dynamic resolution with cross-resource $ref (draft2019-09)",
+        "comment": "Regression: when $recursiveRef dynamically resolves to a sub-schema and compiles it standalone, the standalone root doesn't contain sibling definitions. Cross-resource $ref inside the dynamically-resolved schema must fall back to the original root for resolution.",
+        "schema": {
+            "$schema": "https://json-schema.org/draft/2019-09/schema",
+            "$id": "https://test.m3/recursiveRef-cross/root.json",
+            "$defs": {
+                "inner": {
+                    "$id": "inner.json",
+                    "$recursiveAnchor": true,
+                    "title": "inner",
+                    "additionalProperties": {
+                        "$recursiveRef": "#"
+                    }
+                }
+            },
+            "if": {
+                "propertyNames": {
+                    "pattern": "^[a-m]"
+                }
+            },
+            "then": {
+                "title": "any type of node",
+                "$id": "anyLeafNode.json",
+                "$recursiveAnchor": true,
+                "$ref": "inner.json"
+            },
+            "else": {
+                "title": "integer node",
+                "$id": "integerNode.json",
+                "$recursiveAnchor": true,
+                "type": [ "object", "integer" ],
+                "$ref": "inner.json"
+            }
+        },
+        "tests": [
+            {
+                "description": "single level, then branch — valid (float allowed)",
+                "data": {"alpha": 1.1},
+                "valid": true
+            },
+            {
+                "description": "single level, else branch — invalid (float is not integer)",
+                "data": {"november": 1.1},
+                "valid": false
+            },
+            {
+                "description": "nested objects, then branch — valid (any leaves allowed)",
+                "data": {"alpha": {"beta": "hello"}},
+                "valid": true
+            },
+            {
+                "description": "nested objects, else branch — invalid (leaves must be integer)",
+                "data": {"november": {"oscar": 1.1}},
+                "valid": false
+            },
+            {
+                "description": "nested objects, else branch — valid (integer leaves)",
+                "data": {"november": {"oscar": 42}},
+                "valid": true
+            }
+        ]
+    },
+    {
+        "description": "$recursiveRef with cross-resource $ref via main.json#/$defs/inner (draft2019-09)",
+        "comment": "Regression: same cross-resource issue but with a fragment-based $ref. The $ref 'main.json#/$defs/inner' must resolve against the original root even when $recursiveRef compiles a sub-schema standalone.",
+        "schema": {
+            "$schema": "https://json-schema.org/draft/2019-09/schema",
+            "$id": "https://test.m3/recursiveRef-cross-frag/main.json",
+            "$defs": {
+                "inner": {
+                    "$id": "inner.json",
+                    "$recursiveAnchor": true,
+                    "title": "inner",
+                    "additionalProperties": {
+                        "$recursiveRef": "#"
+                    }
+                }
+            },
+            "if": { "propertyNames": { "pattern": "^[a-m]" } },
+            "then": {
+                "title": "any type of node",
+                "$id": "anyLeafNode.json",
+                "$recursiveAnchor": true,
+                "$ref": "main.json#/$defs/inner"
+            },
+            "else": {
+                "title": "integer node",
+                "$id": "integerNode.json",
+                "$recursiveAnchor": true,
+                "type": [ "object", "integer" ],
+                "$ref": "main.json#/$defs/inner"
+            }
+        },
+        "tests": [
+            {
+                "description": "single level, then branch — valid (any type allowed)",
+                "data": {"alpha": 1.1},
+                "valid": true
+            },
+            {
+                "description": "single level, else branch — invalid (float is not integer)",
+                "data": {"november": 1.1},
+                "valid": false
+            },
+            {
+                "description": "nested, else branch — valid (integer leaves)",
+                "data": {"november": {"oscar": 42}},
+                "valid": true
+            }
+        ]
+    }
+]
