@@ -28,7 +28,7 @@ Use it from **Clojure**, **Java**, **Kotlin**, **Scala**, **JavaScript**, or **N
 
 ```clojure
 [org.clojars.jules_gosnell/m3
- "0.1.0-SNAPSHOT"]
+ "1.0.0-beta1"]
 ```
 
 </td>
@@ -36,7 +36,7 @@ Use it from **Clojure**, **Java**, **Kotlin**, **Scala**, **JavaScript**, or **N
 
 ```clojure
 org.clojars.jules_gosnell/m3
-{:mvn/version "0.1.0-SNAPSHOT"}
+{:mvn/version "1.0.0-beta1"}
 ```
 
 </td>
@@ -46,7 +46,7 @@ org.clojars.jules_gosnell/m3
 <dependency>
   <groupId>org.clojars.jules_gosnell</groupId>
   <artifactId>m3</artifactId>
-  <version>0.1.0-SNAPSHOT</version>
+  <version>1.0.0-beta1</version>
 </dependency>
 ```
 
@@ -55,7 +55,7 @@ org.clojars.jules_gosnell/m3
 
 ```groovy
 implementation
-  'org.clojars.jules_gosnell:m3:0.1.0-SNAPSHOT'
+  'org.clojars.jules_gosnell:m3:1.0.0-beta1'
 ```
 
 </td>
@@ -68,6 +68,21 @@ npm install m3-json-schema
 </td>
 </tr>
 </table>
+
+> **Note for Maven/Gradle users:** M3 is hosted on [Clojars](https://clojars.org). Add the Clojars repository to your build configuration:
+>
+> **Maven** — add to `<repositories>` in `pom.xml`:
+> ```xml
+> <repository>
+>   <id>clojars</id>
+>   <url>https://repo.clojars.org</url>
+> </repository>
+> ```
+>
+> **Gradle** — add to `repositories` block:
+> ```groovy
+> maven { url 'https://repo.clojars.org' }
+> ```
 
 ---
 
