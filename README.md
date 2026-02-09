@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/JulesGosnell/m3/actions/workflows/ci.yml/badge.svg)](https://github.com/JulesGosnell/m3/actions/workflows/ci.yml)
 [![Clojars Project](https://img.shields.io/clojars/v/org.clojars.jules_gosnell/m3.svg)](https://clojars.org/org.clojars.jules_gosnell/m3)
+[![npm](https://img.shields.io/npm/v/m3-json-schema.svg)](https://www.npmjs.com/package/m3-json-schema)
 
 **Every draft. Every keyword. Every language.**
 
