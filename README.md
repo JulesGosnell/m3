@@ -6,7 +6,7 @@
 [![npm](https://img.shields.io/npm/v/m3-json-schema.svg)](https://www.npmjs.com/package/m3-json-schema)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-**Every draft. Every keyword. JVM and JavaScript.**
+**Every draft. Every keyword. JVM and browser.**
 
 M3 passes **every test**[^1] in the official [JSON Schema Test Suite][test-suite] across **every draft** from draft-03 through draft-next — **9,622 assertions** with zero failures. No other validator in any language covers all seven drafts completely, and M3 will use the same code to give you the same answer in both front and backend.
 
