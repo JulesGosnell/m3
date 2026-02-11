@@ -21,6 +21,7 @@
    [com.fasterxml.jackson.core/jackson-core ~jackson-version] ;; https://github.com/FasterXML/jackson-core
    [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
    [com.fasterxml.jackson.dataformat/jackson-dataformat-smile ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
+   [com.ibm.icu/icu4j "78.2"] ;; https://github.com/unicode-org/icu — IDNA2008 hostname validation
    ;; clj
    [org.clojure/clojure "1.12.4"] ;; https://clojure.org/releases/downloads
    [org.clojure/tools.logging "1.3.1"] ;; https://github.com/clojure/tools.logging
