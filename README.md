@@ -14,7 +14,7 @@ This includes full support for every keyword: `$ref`, `$dynamicRef`, `$recursive
 
 Use it from **Clojure**, **Java**, **Kotlin**, **Scala**, **JavaScript**, or **Node.js**.
 
-**Requires:** Java 17+ (JVM) | Node.js 18+ (JavaScript)
+**Requires:** Java 21+ (JVM) | Node.js 18+ (JavaScript)
 
 ### Installation
 
