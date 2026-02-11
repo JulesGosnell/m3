@@ -766,23 +766,23 @@
 
 (defn make-check-property-contentSchema [strict?]
   (fn [_property c2 p2 {cmt "contentMediaType" :as m2} v2]
-    (let [[c2 m2 checker] ((get-check-schema) c2 p2 v2)
+    (let [[c2 m2 f1] ((get-check-schema) c2 p2 v2)
           pp2 (butlast p2)]
       [c2
        m2
        (fn [c1 p1 m1]
          (let [old-m1 (or (get (get c1 :content) pp2) m1)
                old-m1 (if cmt old-m1 (json-decode old-m1))] ;; TODO: error handling
-           [c1
-            m1
-            (try
-              (let [[c1 m1 {es :errors :as v}] (checker c1 p1 old-m1)]
+           (try
+             (let [[c1 _m1 es] (f1 c1 p1 old-m1)]
+               [c1
+                m1
                 (when (seq es)
                   (if strict?
                     es
-                    (log/warn "contentSchema: failed validation - " (prn-str v)))))
-              (catch #?(:cljs js/Error :clj Exception) e
-                (:errors (ex-data e))))]))])))
+                    (do (log/warn "contentSchema: failed validation - " (pr-str es)) nil)))])
+             (catch #?(:cljs js/Error :clj Exception) e
+               [c1 m1 (:errors (ex-data e))]))))])))
 
 (defn check-property-dependencies [_property c2 p2 m2 v2]
   (let [[c2 property->checker]
@@ -1099,19 +1099,22 @@
   [c2
    m2
    (fn [c1 p1 m1]
-     [c1
-      m1
-      (when (json-object? m1)
-        (make-error-on-failure
-         "propertyNames: at least one property's name failed to conform to relevant schema"
-         p2 m2 p1 m1
-         (reduce-kv
-          (fn [acc k1 _v1]
-            (let [[c2 m2 f1] ((get-check-schema) c2 (conj p2 k1) v2)
-                  [_c1 _m1 es] (f1 c1 (conj p1 k1) k1)]
-              (concatv acc es)))
-          []
-          m1)))])])
+     (if (json-object? m1)
+       (let [[c1 all-es]
+             (reduce-kv
+              (fn [[c1 acc] k1 _v1]
+                (let [[_c2 _m2 f1] ((get-check-schema) c2 (conj p2 k1) v2)
+                      [c1 _m1 es] (f1 c1 (conj p1 k1) k1)]
+                  [c1 (concatv acc es)]))
+              [c1 []]
+              m1)]
+         [c1
+          m1
+          (make-error-on-failure
+           "propertyNames: at least one property's name failed to conform to relevant schema"
+           p2 m2 p1 m1
+           all-es)])
+       [c1 m1 nil]))])
 
 (defn check-property-required [_property c2 p2 m2 v2]
   [c2
