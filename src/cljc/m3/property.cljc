@@ -14,8 +14,7 @@
 
 (ns m3.property
   (:require
-   #?(:cljs [goog.string.format]
-      :cljs [cljs.core :as cljs])
+   #?(:cljs [goog.string.format])
    [clojure.string :refer [starts-with? replace] :rename {replace string-replace}]
    [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.platform :refer [pformat json-decode big-zero? big-mod pbigdec]]
@@ -203,7 +202,7 @@
        (log/info (str "$comment: " v2))
        [c1 m1 nil]))])
 
-;; $ref resolution logic - called from the $ref interceptor.
+;; $ref resolution logic.
 ;; Resolution is LAZY (inside f1) to handle recursive schemas.
 (defn make-check-property-$ref [{:keys [meld-fn ref-replaces-siblings? ref-scope-isolation?]}]
   (fn [_property {id-uri :id-uri :as c2} p2 m2 v2]
@@ -510,7 +509,7 @@
         [c1
          m1
          (when-not (p? v2 m1)
-           [(make-error (str "minimum" (when e? "(with exclusiveMinimum)") ": value to low") p2 m2 p1 m1)])]))]))
+           [(make-error (str "minimum" (when e? "(with exclusiveMinimum)") ": value too low") p2 m2 p1 m1)])]))]))
 
 (defn check-property-minimum-new [_property c2 p2 m2 v2]
   [c2
@@ -521,7 +520,7 @@
       [c1
        m1
        (when-not (<= v2 m1)
-         [(make-error "minimum: value to low" p2 m2 p1 m1)])]))])
+         [(make-error "minimum: value too low" p2 m2 p1 m1)])]))])
 
 (defn check-property-exclusiveMinimum-old [_property c2 _p2 {m "minimum" :as m2} _v2]
   [c2
@@ -539,7 +538,7 @@
       [c1
        m1
        (when-not (< v2 m1)
-         [(make-error "minimum: value to low" p2 m2 p1 m1)])]))])
+         [(make-error "exclusiveMinimum: value too low" p2 m2 p1 m1)])]))])
 
 (defn check-property-maximum-old [_property c2 p2 m2 v2]
   (let [e? (get m2 "exclusiveMaximum")

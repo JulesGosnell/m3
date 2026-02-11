@@ -49,8 +49,6 @@
 
 ;;------------------------------------------------------------------------------
 
-(def latest-$schema (draft->$schema :latest))
-
 ;;------------------------------------------------------------------------------
 
 ;; TODO: needs a lot of work !
@@ -350,7 +348,7 @@
                         :dialect (if $vocabulary (make-dialect draft $vocabulary) (draft->default-dialect draft))) ;; handle drafts that are too early to know about $vocabulary
               uri (parse-uri s) ;; duplicate work
               stash (uri->marker-stash uri)
-              _ (when-not stash (prn "NO STASH FOR:" s))
+              _ (when-not stash (log/warn "no stash for:" s))
               ;; initialise c2`
               ;; only a meta-schema defines a dialect;; this is inherited by its instances
               c2 (assoc
