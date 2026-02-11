@@ -577,8 +577,8 @@
   (into {}
     (map (fn [[uri required?]]
            [(clojure.string/replace uri "draft/next/vocab/" "draft/2020-12/vocab/")
-            required?])
-         v->b)))
+            required?]))
+    v->b))
 
 (defn make-dialect-2 [d v->b]
   (let [effective-v->b (if (= d :draft-next) (normalize-draft-next-vocab-uris v->b) v->b)
@@ -594,7 +594,7 @@
 (def draft->default-dialect
   (map-values
    (fn [k v]
-     (make-dialect k (into {} (map (fn [v] [v true]) (distinct (map first v))))))
+     (make-dialect k (into {} (map (fn [v] [v true])) (distinct (map first v)))))
    draft->vocab))
 
 

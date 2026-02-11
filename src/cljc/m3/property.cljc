@@ -978,8 +978,8 @@
                 (let [[c m new-es] (cs c (conj p1 k) sub-document)]
                   [c (concatv old-es new-es)]))
               [c1 []]
-              (map (fn [[k :as k-and-cs]] [k-and-cs (get m1 k)]) k-and-css))]
-         [(let [ks (map first k-and-css)]
+              (mapv (fn [[k :as k-and-cs]] [k-and-cs (get m1 k)]) k-and-css))]
+         [(let [ks (mapv first k-and-css)]
             (-> c1
            ;; TODO: only record matched if additonalProperties needed later ?
                 (update :matched update pp2 into-set ks)
@@ -1255,9 +1255,9 @@
       json-array?
       (fn [{p->eis :evaluated :as c1} p1 m1]
         (let [eis (or (get p->eis p1) #{})
-              index-and-items (filter (fn [[k]] (not (eis k))) (map-indexed (fn [i v] [i v]) m1))
-              i-and-css (mapv (fn [cs [i]] [i cs]) css index-and-items)] ;; TODO: item not used
-          (f1 c1 p1 (map second index-and-items) i-and-css "unevaluatedItems: at least one item did not conform to schema"))))]))
+              index-and-items (filterv (fn [[k]] (not (eis k))) (map-indexed vector m1))
+              i-and-css (mapv (fn [cs [i]] [i cs]) css index-and-items)]
+          (f1 c1 p1 (mapv second index-and-items) i-and-css "unevaluatedItems: at least one item did not conform to schema"))))]))
 
 (defn check-property-contains [_property c2 p2 {mn "minContains" :as m2} v2]
   (let [f2 (get-check-schema)

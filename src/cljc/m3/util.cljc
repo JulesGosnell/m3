@@ -36,7 +36,7 @@
 (def conj-set (fnil conj #{}))
 
 (defn concatv [a b]
-  (into a b))
+  (into (or a []) b))
 
 (defn seq-contains? [s p? v]
   (boolean (some (partial p? v) s)))

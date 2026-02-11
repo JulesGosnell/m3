@@ -347,7 +347,7 @@
                              (or (= :pvalid prop)
                                  (and (#{:contextj :contexto} prop)
                                       (check-context-rule (nth codepoints idx) codepoints idx))))
-                           (map-indexed vector (map get-derived-property codepoints)))))))))))
+                           (map-indexed vector (mapv get-derived-property codepoints)))))))))))
 
 (defn validate-label [label]
   (and (not (str/blank? label))
