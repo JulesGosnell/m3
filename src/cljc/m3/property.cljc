@@ -35,11 +35,11 @@
 
 (defn make-check-property-disallow [type->checker]
   (fn [_property c2 p2 m2 v2]
-    (let [[c2 m2 ct] (check-type type->checker v2 c2 p2 m2)]
+    (let [[c2 m2 f1] (check-type type->checker v2 c2 p2 m2)]
       [c2
        m2
        (fn [c1 p1 m1]
-         (let [[c1 m1 es] (ct c1 p1 m1)]
+         (let [[c1 m1 es] (f1 c1 p1 m1)]
            [c1
             m1
             (when (nil? es) [(make-error "disallow: type matched" p2 m2 p1 m1)])]))])))
