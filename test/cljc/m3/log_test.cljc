@@ -14,15 +14,52 @@
 
 (ns m3.log-test
   (:require
-   #?(:clj  [clojure.test :refer [deftest is]]
-      :cljs [cljs.test :refer-macros [deftest is]])
+   #?(:clj  [clojure.test :refer [deftest testing is]]
+      :cljs [cljs.test :refer-macros [deftest testing is]])
    [m3.log :as log]))
 
-;; for clj coverage - not actually to be used with clj
+(deftest test-log-returns-nil
+  (testing "all log functions return nil"
+    (is (nil? (log/trace "t")))
+    (is (nil? (log/info "i")))
+    (is (nil? (log/warn "w")))
+    (is (nil? (log/error "e")))))
 
-(deftest test-log
-  (is (nil? (log/trace)))
-  (is (nil? (log/info)))
-  (is (nil? (log/warn)))
-  (is (nil? (log/error))))
- 
+(deftest test-log-level-filtering
+  (testing "set-log-level! controls output"
+    (let [output (atom [])]
+      (with-redefs [println (fn [& args] (swap! output conj (first args)))]
+        (log/set-log-level! :warn)
+        (log/trace "t")
+        (log/info "i")
+        (log/warn "w")
+        (log/error "e")
+        (is (= ["WARN:" "ERROR:"] @output)
+            "only warn and error should print at :warn level")))
+    ;; restore default
+    (log/set-log-level! :warn)))
+
+(deftest test-log-level-off
+  (testing ":off suppresses all output"
+    (let [output (atom [])]
+      (with-redefs [println (fn [& args] (swap! output conj (first args)))]
+        (log/set-log-level! :off)
+        (log/trace "t")
+        (log/info "i")
+        (log/warn "w")
+        (log/error "e")
+        (is (empty? @output) "nothing should print at :off level")))
+    (log/set-log-level! :warn)))
+
+(deftest test-log-level-trace
+  (testing ":trace enables all output"
+    (let [output (atom [])]
+      (with-redefs [println (fn [& args] (swap! output conj (first args)))]
+        (log/set-log-level! :trace)
+        (log/trace "t")
+        (log/info "i")
+        (log/warn "w")
+        (log/error "e")
+        (is (= ["TRACE:" "INFO:" "WARN:" "ERROR:"] @output)
+            "all levels should print at :trace level")))
+    (log/set-log-level! :warn)))

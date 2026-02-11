@@ -14,14 +14,34 @@
 
 (ns m3.log)
 
+;; Level-filtered logging for CLJS (CLJ uses clojure.tools.logging).
+;; Levels: :trace < :info < :warn < :error < :off
+
+(def ^:private level->int
+  {:trace 0 :info 1 :warn 2 :error 3 :off 4})
+
+(defonce ^:private log-level (atom :warn))
+
+(defn set-log-level!
+  "Set the minimum log level. One of :trace :info :warn :error :off"
+  [level]
+  (reset! log-level level))
+
+(defn- log? [level]
+  (>= (level->int level) (level->int @log-level)))
+
 (defn trace [& args]
-  (apply println "TRACE:" (mapv pr-str args)))
+  (when (log? :trace)
+    (apply println "TRACE:" (mapv pr-str args))))
 
 (defn info [& args]
-  (apply println "INFO:" (mapv pr-str args)))
+  (when (log? :info)
+    (apply println "INFO:" (mapv pr-str args))))
 
 (defn warn [& args]
-  (apply println "WARN:" (mapv pr-str args)))
+  (when (log? :warn)
+    (apply println "WARN:" (mapv pr-str args))))
 
 (defn error [& args]
-  (apply println "ERROR:" (mapv pr-str args)))
+  (when (log? :error)
+    (apply println "ERROR:" (mapv pr-str args))))

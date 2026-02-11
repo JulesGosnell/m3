@@ -2,6 +2,7 @@
   "JavaScript entry point for M3 JSON Schema Validator.
    Exports validate function for use from Node.js/browser."
   (:require
+   [m3.log :as log]
    [m3.platform :refer [deep-js->clj]]
    [m3.validate :as v]))
 
@@ -119,3 +120,18 @@
        (let [document-clj (deep-js->clj document)
              result (v/reformat (f {} document-clj))]
          (convert-errors result))))))
+
+(def ^:private level-strings
+  {"trace" :trace "info" :info "warn" :warn "error" :error "off" :off})
+
+(defn ^:export setLogLevel
+  "Set the minimum log level. One of: 'trace', 'info', 'warn', 'error', 'off'.
+   Default is 'warn'.
+
+   Usage:
+     const {setLogLevel} = require('m3-json-schema');
+     setLogLevel('off');    // suppress all logging
+     setLogLevel('trace');  // enable all logging"
+  [level]
+  (when-let [kw (level-strings level)]
+    (log/set-log-level! kw)))
