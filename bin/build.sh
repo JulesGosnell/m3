@@ -2,4 +2,4 @@
 
 java -fullversion
 lein --version
-lein do cloverage, test-cljs
+lein do cloverage --codecov, test-cljs
