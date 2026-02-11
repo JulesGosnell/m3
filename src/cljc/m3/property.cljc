@@ -22,7 +22,7 @@
    [m3.ecma :refer [ecma-pattern ecma-match]]
    [m3.uri :refer [parse-uri inherit-uri]]
    [m3.ref :refer [resolve-uri try-path]]
-   [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker make-new-type-checker json-=]]
+   [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker json-=]]
    [m3.format :as format]))
 
 ;;------------------------------------------------------------------------------
@@ -501,7 +501,7 @@
         p? (if e? < <=)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-number?
       (fn [c1 p1 m1]
         [c1
@@ -512,7 +512,7 @@
 (defn check-property-minimum-new [_property c2 p2 m2 v2]
   [c2
    m2
-   (make-new-type-checker
+   (make-type-checker
     json-number?
     (fn [c1 p1 m1]
       [c1
@@ -530,7 +530,7 @@
 (defn check-property-exclusiveMinimum-new [_property c2 p2 m2 v2]
   [c2
    m2
-   (make-new-type-checker
+   (make-type-checker
     json-number?
     (fn [c1 p1 m1]
       [c1
@@ -543,7 +543,7 @@
         p? (if e? > >=)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-number?
       (fn [c1 p1 m1]
         [c1
@@ -565,7 +565,7 @@
 (defn check-property-exclusiveMaximum-old [_property c2 _p2 {m "maximum" :as m2} _v2]
   [c2
    m2
-   (make-new-type-checker
+   (make-type-checker
     json-number?
     (fn [c1 _p1 m1]
       (when-not m (log/warn "exclusiveMaximum: no maximum present to modify"))
@@ -574,7 +574,7 @@
 (defn check-property-exclusiveMaximum-new [_property c2 p2 m2 v2]
   [c2
    m2
-   (make-new-type-checker
+   (make-type-checker
     json-number?
     (fn [c1 p1 m1]
       [c1
@@ -586,7 +586,7 @@
   (let [v2-bd (pbigdec v2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-number?
       (fn [c1 p1 m1]
         [c1
@@ -598,7 +598,7 @@
   (let [v2-bd (pbigdec v2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-number?
       (fn [c1 p1 m1]
         [c1
@@ -630,7 +630,7 @@
   (let [ml2 (quot v2 2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-string?
       (fn [c1 p1 m1]
         [c1
@@ -644,7 +644,7 @@
   (let [ml2 (* v2 2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-string?
       (fn [c1 p1 m1]
         [c1
@@ -682,7 +682,7 @@
         (let [p (ecma-pattern v2)]
           [c2
            m2
-           (make-new-type-checker
+           (make-type-checker
             json-string?
             (fn [c1 p1 m1]
               [c1
@@ -717,7 +717,7 @@
           pp2 (butlast p2)]
       [c2
        m2
-       (make-new-type-checker
+       (make-type-checker
         json-string?
         (fn [c1 p1 old-m1]
           (let [[new-m1 es]
@@ -742,7 +742,7 @@
           pp2 (butlast p2)]
       [c2
        m2
-       (make-new-type-checker
+       (make-type-checker
         json-string?
         (fn [c1 p1 m1]
           (let [old-m1 (or (get (get c1 :content) pp2) m1)
@@ -801,7 +801,7 @@
          v2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-object?
       (fn [c1 p1 m1]
         (let [[c1 m1 es]
@@ -828,7 +828,7 @@
          v2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-object?
       (fn [c1 p1 m1]
         (let [[c1 m1 es]
@@ -861,7 +861,7 @@
         ks (keys v2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-object?
       (fn [c1 p1 m1]
         (reduce
@@ -887,7 +887,7 @@
          v2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-object?
       (fn [c1 p1 m1]
         [c1
@@ -1002,7 +1002,7 @@
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-object?
       (fn [c1 p1 m1]
         (let [k-and-css (filter (fn [[k]] (contains? m1 k)) k-and-css)]
@@ -1033,7 +1033,7 @@
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-object?
       (fn [c1 p1 m1]
         (let [k-and-css (filter (fn [[k]] (contains? m1 k)) k-and-css)
@@ -1058,7 +1058,7 @@
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-object?
       (fn [c1 p1 m1]
         (let [k-and-css (apply concat (keep (fn [[k]] (keep (fn [[cs p]] (when (ecma-match p k) [k cs])) cp-and-pattern-and-ks)) m1))]
@@ -1071,7 +1071,7 @@
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-object?
       (fn [c1 p1 m1]
         (let [mps (get (get c1 :matched) pp2 #{})
@@ -1085,7 +1085,7 @@
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-object?
       (fn [c1 p1 m1]
         (let [eps (get (get c1 :evaluated) p1 #{})
@@ -1117,7 +1117,7 @@
 (defn check-property-required [_property c2 p2 m2 v2]
   [c2
    m2
-   (make-new-type-checker
+   (make-type-checker
     json-object?
     (fn [c1 p1 m1]
       [c1
@@ -1128,7 +1128,7 @@
 (defn check-property-minProperties [_property c2 p2 m2 v2]
   [c2
    m2
-   (make-new-type-checker
+   (make-type-checker
     json-object?
     (fn [c1 p1 m1]
       [c1
@@ -1139,7 +1139,7 @@
 (defn check-property-maxProperties [_property c2 p2 m2 v2]
   [c2
    m2
-   (make-new-type-checker
+   (make-type-checker
     json-object?
     (fn [c1 p1 m1]
       [c1
@@ -1192,7 +1192,7 @@
         [c2 m2 f1] (check-items c2 p2 m2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-array?
       (fn [c1 p1 m1]
         (f1 c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")))]))
@@ -1216,7 +1216,7 @@
         [c2 m2 f1] (check-items c2 p2 m2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-array?
       (fn [c1 p1 m1]
         (let [items (drop n m1)
@@ -1232,7 +1232,7 @@
           [c2 m2 f1] (check-items c2 p2 m2)]
       [c2
        m2
-       (make-new-type-checker
+       (make-type-checker
         json-array?
         (fn [c1 p1 m1]
           (let [n (count is)
@@ -1251,7 +1251,7 @@
         [c2 m2 f1] (check-items c2 p2 m2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-array?
       (fn [{p->eis :evaluated :as c1} p1 m1]
         (let [eis (or (get p->eis p1) #{})
@@ -1266,7 +1266,7 @@
         [c2 _v2 f1] (check-items c2 p2 v2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-array?
       (fn [c1 p1 m1]
         (let [i-and-css (map (fn [i _] [i cs]) (range) m1)
@@ -1281,7 +1281,7 @@
   (let [pp2 (butlast p2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-array?
       (fn [{matched :matched :as c1} p1 m1]
         (if-let [matches (get matched pp2)]
@@ -1297,7 +1297,7 @@
   (let [pp2 (butlast p2)]
     [c2
      m2
-     (make-new-type-checker
+     (make-type-checker
       json-array?
       (fn [{matched :matched :as c1} p1 m1]
         (if-let [matches (get matched pp2)]
@@ -1310,7 +1310,7 @@
 (defn check-property-minItems [_property c2 p2 m2 v2]
   [c2
    m2
-   (make-new-type-checker
+   (make-type-checker
     json-array?
     (fn [c1 p1 m1]
       [c1
@@ -1321,7 +1321,7 @@
 (defn check-property-maxItems [_property c2 p2 m2 v2]
   [c2
    m2
-   (make-new-type-checker
+   (make-type-checker
     json-array?
     (fn [c1 p1 m1]
       [c1
@@ -1337,7 +1337,7 @@
   [c2
    m2
    (if v2
-     (make-new-type-checker
+     (make-type-checker
       json-array?
       (fn [c1 p1 m1]
         [c1
