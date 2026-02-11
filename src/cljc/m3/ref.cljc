@@ -119,8 +119,6 @@
 ;;------------------------------------------------------------------------------
 ;; expanding $refs
 
-(defmulti meld (fn [{d :draft} parent reffed] d))
-
 ;; adapted from merge-with to pass k as well as vals to f
 (defn meld-with
   [f & maps]
@@ -147,15 +145,6 @@
 
 (defn meld-replace    [ctx parent reffed] (if reffed reffed false))
 (defn meld-deep-over  [ctx parent reffed] (if (and (map? reffed)(map? parent)) (deep-meld ctx parent reffed) reffed))
-
-(defmethod meld :draft3         [ctx parent reffed] (meld-replace   ctx parent reffed))
-(defmethod meld :draft4         [ctx parent reffed] (meld-replace   ctx parent reffed))
-(defmethod meld :draft6         [ctx parent reffed] (meld-replace   ctx parent reffed))
-(defmethod meld :draft7         [ctx parent reffed] (meld-replace   ctx parent reffed))
-(defmethod meld :draft2019-09   [ctx parent reffed] (meld-deep-over ctx parent reffed))
-(defmethod meld :draft2020-12   [ctx parent reffed] (meld-deep-over ctx parent reffed))
-(defmethod meld :draft-next     [ctx parent reffed] (meld-deep-over ctx parent reffed))
-(defmethod meld :latest         [ctx parent reffed] (meld-deep-over ctx parent reffed))
 
 ;;------------------------------------------------------------------------------
 

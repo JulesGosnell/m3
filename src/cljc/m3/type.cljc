@@ -82,13 +82,13 @@
 ;;------------------------------------------------------------------------------
 
 (defn check-type [t c2 p2 m2]
-  (let [draft (or (:draft c2) :draft7)] ; Default to draft7 if not specified
+  (let [type->checker (or (:type->checker c2) (draft->type->checker (or (:draft c2) :draft7)))]
     [c2
      m2
      (cond
 
        (json-string? t)
-       (if-let [f2 (get-in draft->type->checker [draft t])]
+       (if-let [f2 (get type->checker t)]
          (f2 t c2 p2 m2)
          (fn [c1 p1 m1]
            [c1 m1 [(make-error (pformat "type: unrecognised name: %s" t) p2 m2 p1 m1)]]))

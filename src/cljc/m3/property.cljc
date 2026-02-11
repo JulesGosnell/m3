@@ -22,9 +22,9 @@
    [m3.util :refer [absent present? concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure get-check-schema third]]
    [m3.ecma :refer [ecma-pattern ecma-match]]
    [m3.uri :refer [parse-uri inherit-uri]]
-   [m3.ref :refer [resolve-uri meld try-path]]
+   [m3.ref :refer [resolve-uri try-path]]
    [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker make-new-type-checker json-=]]
-   [m3.format :as format :refer [draft->format->checker]]))
+   [m3.format :as format]))
 
 ;;------------------------------------------------------------------------------
 ;; standard common properties
@@ -203,18 +203,18 @@
 
 ;; $ref resolution logic - called from the $ref interceptor.
 ;; Resolution is LAZY (inside f1) to handle recursive schemas.
-(defn check-property-$ref [_property {id-uri :id-uri draft :draft :as c2} p2 m2 v2]
+(defn check-property-$ref [_property {id-uri :id-uri :as c2} p2 m2 v2]
   (let [schema-p2 (vec (butlast p2))
         ;; For draft <= draft7, $ref ignores sibling $id.
         ;; Use schema-parent-id-uri saved by compile-m2 at entry — this is
         ;; the id-uri BEFORE this schema's $id changed it.
-        effective-id-uri (if (#{:draft3 :draft4 :draft6 :draft7} draft)
+        effective-id-uri (if (:ref-replaces-siblings? c2)
                            (or (:schema-parent-id-uri c2) id-uri)
                            id-uri)
         ref-uri (inherit-uri effective-id-uri (parse-uri v2))
         m2-no-ref (dissoc m2 "$ref")
         effective-c2 (assoc c2 :id-uri effective-id-uri)]
-    [(if (#{:draft3 :draft4 :draft6 :draft7} draft)
+    [(if (:ref-replaces-siblings? c2)
        ;; For old drafts, $ref overrides siblings — tell compile-m2 to skip them
        (assoc c2 :skip-keys (set (keys m2-no-ref)))
        c2)
@@ -243,7 +243,7 @@
                                              schema-p2 ref-uri v2)))]
            (if resolution
              (let [[new-c _new-p resolved-m] resolution
-                   melded (meld effective-c2 m2-no-ref resolved-m)
+                   melded ((:meld-fn effective-c2) effective-c2 m2-no-ref resolved-m)
                    same-root? (identical? (:root effective-c2) (:root new-c))
                    ;; For draft2019+, $ref creates its own annotation scope.
                    ;; When unevaluated* keywords are involved (in either the
@@ -252,7 +252,7 @@
                    ;; Siblings are evaluated separately by compile-m2.
                    ;; For pre-2019 drafts, $ref replaces siblings — always meld.
                    needs-scope-isolation?
-                   (and (not (#{:draft3 :draft4 :draft6 :draft7} draft))
+                   (and (:ref-scope-isolation? effective-c2)
                         (or (and (map? resolved-m)
                                  (or (contains? resolved-m "unevaluatedProperties")
                                      (contains? resolved-m "unevaluatedItems")))
@@ -388,7 +388,7 @@
                       {:schema schema :scope-id root-sid}))))
               da)))))
 
-(defn check-property-$dynamicRef [_property {id-uri :id-uri draft :draft :as c2} p2 m2 v2]
+(defn check-property-$dynamicRef [_property {id-uri :id-uri :as c2} p2 m2 v2]
   (let [schema-p2 (vec (butlast p2))
         uri (inherit-uri id-uri (parse-uri v2))
         ;; Extract anchor name from fragment (for dynamic scope lookup).
@@ -399,7 +399,7 @@
                         f))
         ;; draft-next removed the bookending requirement for $dynamicRef.
         ;; In draft2020-12, the initial target must have a matching $dynamicAnchor.
-        needs-bookend? (not= draft :draft-next)]
+        needs-bookend? (:dynamic-ref-requires-bookend? c2)]
     [c2
      m2
      ;; f1: resolve LAZILY at runtime
@@ -655,20 +655,18 @@
                 (> (json-length m1) v2))
            [(make-error "maxLength: string too long" p2 m2 p1 m1)])]))]))
 
-;; TODO: entire draft->format->checker table should be picked up from c2
 (defn make-check-property-format [strict?]
-  (fn [_property {cfs :check-format :or {cfs {}} strict-format? :strict-format? draft :draft :as c2} p2 m2 v2]
+  (fn [_property {cfs :check-format :or {cfs {}} strict-format? :strict-format? :as c2} p2 m2 v2]
     (let [f (if (or strict? strict-format?)
               (fn [f2] (make-type-checker json-string? (fn [c p m] [c m (f2 c p m)])))
               (fn [f2] (make-type-checker json-string? (fn [c p m] (when-let [[{m :message}] (f2 c p m)] [c m (log/warn m)])))))]
       ;; we do this here so that user may override default format checkers...
-      ;; First check for custom override, then draft-specific checker, then fallback to multimethod
+      ;; First check for custom override, then draft-specific checker from c2 config
       [c2
        m2
        (if-let [checker (or (cfs v2)
-                            (get-in draft->format->checker [draft v2])
-                           ;; Fallback to multimethod for now
-                            (fn [_ _ _] (fn [_ _ _] (log/warn "format: not recognised:" draft (pr-str v2)))))]
+                            (get (:format->checker c2) v2)
+                            (fn [_ _ _] (fn [_ _ _] (log/warn "format: not recognised:" (:draft c2) (pr-str v2)))))]
          (f (checker c2 p2 m2))
         ;; Unknown format - return identity function
          (f (constantly nil)))])))
@@ -1195,26 +1193,19 @@
       (fn [c1 p1 m1]
         (f1 c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")))]))
 
-(defn check-property-items [_property {d :draft :as c2} p2 m2 v2]
+(defn check-property-items [_property c2 p2 m2 v2]
   (let [f2 (get-check-schema)
         parent-id-uri (:id-uri c2)
         n (count (get m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
         [c2 m css] (if (json-array? v2)
-                     (do
-                       (case d
-                         (:draft3 :draft4 :draft6 :draft7 :draft2019-09)
-                         nil
-                         (:draft2020-12 :draft-next)
-                         (log/info (str "prefixItems: was introduced in draft2020-12 to handle tuple version of items - you are using: " d))
-                         nil)
-                       (let [[c2 css]
+                     (let [[c2 css]
                              (reduce
                               (fn [[c2 acc] [i v]]
                                 (let [[c2 _m2 f1] (f2 (assoc c2 :id-uri parent-id-uri) (conj p2 i) v)]
                                   [c2 (conj acc f1)]))
                               [c2 []]
                               (map-indexed vector v2))]
-                         [c2 "respective " css]))
+                         [c2 "respective " css])
                      (let [[c2 _m2 f1] (f2 c2 p2 v2)]
                        [c2 "" (repeat f1)]))
         c2 (assoc c2 :id-uri parent-id-uri)

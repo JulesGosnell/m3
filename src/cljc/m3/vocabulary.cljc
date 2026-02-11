@@ -18,6 +18,12 @@
    [m3.util :refer [map-values topo-sort-by make-stable-sort-by third fourth]]
    [m3.uri :refer [parse-uri]]
    [m3.draft :refer [$schema-uri->draft]]
+   [m3.ref :refer [meld-replace meld-deep-over]]
+   [m3.type :refer [draft3-type->checker draft4-type->checker]]
+   [m3.format :refer [draft3-format->checker draft4-format->checker
+                       draft6-format->checker draft7-format->checker
+                       draft2019-09-format->checker draft2020-12-format->checker
+                       draft-next-format->checker]]
    [m3.property :refer
     [check-property-$anchor
      check-property-$comment
@@ -97,7 +103,7 @@
 ;; cannot require vocabulary.cljc (vocabulary requires property).
 ;; Forward-declared: the function bodies close over vars, resolved at call time.
 
-(declare make-dialect draft->default-dialect)
+(declare draft->config make-dialect draft->default-dialect)
 
 (defn check-property-$schema [_property c2 _p2 m2 v2]
   ;; Dialect switching: parse $schema to determine draft, load metaschema
@@ -117,9 +123,7 @@
         new-dialect (if vocab-map
                       (make-dialect draft vocab-map)
                       (draft->default-dialect draft))
-        new-c2 (assoc c2
-                      :dialect new-dialect
-                      :draft draft)]
+        new-c2 (merge c2 (draft->config draft) {:dialect new-dialect :draft draft})]
     [new-c2
      m2
      (fn [c1 _p1 m1]
@@ -134,6 +138,20 @@
      m2
      (fn [c1 _p1 m1]
        [c1 m1 nil])]))
+
+;;------------------------------------------------------------------------------
+
+(def draft->config
+  (let [old-draft {:meld-fn meld-replace   :ref-replaces-siblings? true  :ref-scope-isolation? false :dynamic-ref-requires-bookend? true}
+        new-draft {:meld-fn meld-deep-over :ref-replaces-siblings? false :ref-scope-isolation? true  :dynamic-ref-requires-bookend? true}]
+    {:draft3       (merge old-draft {:id-key "id"  :type->checker draft3-type->checker :format->checker draft3-format->checker})
+     :draft4       (merge old-draft {:id-key "id"  :type->checker draft4-type->checker :format->checker draft4-format->checker})
+     :draft6       (merge old-draft {:id-key "$id" :type->checker draft4-type->checker :format->checker draft6-format->checker})
+     :draft7       (merge old-draft {:id-key "$id" :type->checker draft4-type->checker :format->checker draft7-format->checker})
+     :draft2019-09 (merge new-draft {:id-key "$id" :type->checker draft4-type->checker :format->checker draft2019-09-format->checker})
+     :draft2020-12 (merge new-draft {:id-key "$id" :type->checker draft4-type->checker :format->checker draft2020-12-format->checker})
+     :draft-next   (merge new-draft {:id-key "$id" :type->checker draft4-type->checker :format->checker draft-next-format->checker
+                                     :dynamic-ref-requires-bookend? false})}))
 
 ;;------------------------------------------------------------------------------
 

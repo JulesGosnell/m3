@@ -22,7 +22,7 @@
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.type :refer [json-object?]]
    [m3.draft :refer [draft->$schema $schema->draft $schema-uri->draft]]
-   [m3.vocabulary :refer [draft->default-dialect make-dialect]]))
+   [m3.vocabulary :refer [draft->config draft->default-dialect make-dialect]]))
 
 ;; Architecture: Two-level currying (L2 compile → L1 validate)
 ;;
@@ -285,11 +285,11 @@
                         (when s ($schema-uri->draft (uri-base (parse-uri s))))
                         :draft2020-12)]
                 (if (= d :latest) :draft2020-12 d))
-        id-key (if (#{:draft3 :draft4} draft) "id" "$id")
+        config (draft->config draft)
+        id-key (:id-key config)
         sid (get m2 id-key)
         c2 (if-not u->s (assoc c2 :uri->schema (uri->continuation uri-base->dir)) c2) ;; TODO
-        c2 (assoc c2 :draft draft)
-        c2 (assoc c2 :id-key id-key)]
+        c2 (merge c2 config {:draft draft})]
     (assoc
      c2
      :id-uri (or (:id-uri c2) (when sid (parse-uri sid))) ;; should be receiver uri - but seems to default to id/$id - yeugh
@@ -314,7 +314,8 @@
                 :recursive-anchor []
                 :root document
                 :draft draft
-                :melder (:melder c2)
+                :meld-fn (:meld-fn c2)
+                :dynamic-ref-requires-bookend? (:dynamic-ref-requires-bookend? c2)
                 ;; Store root compilation scope-id for $dynamicRef resolution.
                 ;; Remote schemas' $dynamicRef can fall back to the root c2
                 ;; to find $dynamicAnchors that are in $defs (whose f1 is
