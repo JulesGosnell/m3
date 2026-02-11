@@ -22,11 +22,11 @@
    [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
    [com.fasterxml.jackson.dataformat/jackson-dataformat-smile ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
    ;; clj
-   [org.clojure/clojure "1.12.3"] ;; https://clojure.org/releases/downloads
-   [org.clojure/tools.logging "1.3.0"] ;; https://github.com/clojure/tools.logging
-   [org.clojure/data.json "2.5.1"] ;; https://github.com/clojure/data.json
+   [org.clojure/clojure "1.12.4"] ;; https://clojure.org/releases/downloads
+   [org.clojure/tools.logging "1.3.1"] ;; https://github.com/clojure/tools.logging
+   [org.clojure/data.json "2.5.2"] ;; https://github.com/clojure/data.json
    ;; cljs
-   [thheller/shadow-cljs "3.2.0"] ;; https://github.com/thheller/shadow-cljs
+   [thheller/shadow-cljs "3.3.5"] ;; https://github.com/thheller/shadow-cljs
    ;; cljc
    [com.widdindustries/cljc.java-time "0.1.21"] ;; https://github.com/henryw374/cljc.java-time
    ]
@@ -79,10 +79,10 @@
               :dependencies [[cider/piggieback "0.6.1"]
                              [binaryage/devtools "1.0.7"]
                              [prone "2021-04-23"]
-                             [nrepl "1.5.0"]
+                             [nrepl "1.5.2"]
                              [pjstadig/humane-test-output "0.11.0"]
                              [com.fasterxml.jackson.core/jackson-databind ~jackson-version]
-                             [com.google.code.gson/gson "2.12.1"]]
+                             [com.google.code.gson/gson "2.13.2"]]
 
               :plugins [[cider/cider-nrepl "0.57.0"]
                         [org.clojure/tools.namespace "1.5.0" :exclusions [org.clojure/tools.reader]]
