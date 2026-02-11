@@ -29,11 +29,9 @@
      check-property-$comment
      check-property-$defs
      check-property-$dynamicAnchor
-     check-property-$dynamicRef
      check-property-$id
      check-property-$recursiveAnchor
      check-property-$recursiveRef
-     check-property-$ref
      check-property-additionalItems
      check-property-additionalProperties
      check-property-allOf
@@ -47,7 +45,6 @@
      check-property-dependentSchemas
      check-property-deprecated
      check-property-description
-     check-property-disallow
      check-property-divisibleBy
      check-property-else
      check-property-enum
@@ -75,7 +72,6 @@
      check-property-multipleOf
      check-property-not
      check-property-oneOf
-     check-property-pattern
      check-property-patternProperties
      check-property-prefixItems
      check-property-properties
@@ -87,15 +83,19 @@
      check-property-required-draft3
      check-property-then
      check-property-title
-     check-property-type
      check-property-unevaluatedItems
      check-property-unevaluatedProperties
      check-property-uniqueItems
      check-property-writeOnly
+     check-property-$dynamicRef
+     make-check-property-$ref
      make-check-property-contentEncoding
      make-check-property-contentMediaType
      make-check-property-contentSchema
-     make-check-property-format]]))
+     make-check-property-disallow
+     make-check-property-format
+     make-check-property-pattern
+     make-check-property-type]]))
 
 ;;------------------------------------------------------------------------------
 ;; $schema and $vocabulary property checkers live here (not in property.cljc)
@@ -142,16 +142,44 @@
 ;;------------------------------------------------------------------------------
 
 (def draft->config
-  (let [old-draft {:meld-fn meld-replace   :ref-replaces-siblings? true  :ref-scope-isolation? false :dynamic-ref-requires-bookend? true}
-        new-draft {:meld-fn meld-deep-over :ref-replaces-siblings? false :ref-scope-isolation? true  :dynamic-ref-requires-bookend? true}]
-    {:draft3       (merge old-draft {:id-key "id"  :type->checker draft3-type->checker :format->checker draft3-format->checker})
-     :draft4       (merge old-draft {:id-key "id"  :type->checker draft4-type->checker :format->checker draft4-format->checker})
-     :draft6       (merge old-draft {:id-key "$id" :type->checker draft4-type->checker :format->checker draft6-format->checker})
-     :draft7       (merge old-draft {:id-key "$id" :type->checker draft4-type->checker :format->checker draft7-format->checker})
-     :draft2019-09 (merge new-draft {:id-key "$id" :type->checker draft4-type->checker :format->checker draft2019-09-format->checker})
-     :draft2020-12 (merge new-draft {:id-key "$id" :type->checker draft4-type->checker :format->checker draft2020-12-format->checker})
-     :draft-next   (merge new-draft {:id-key "$id" :type->checker draft4-type->checker :format->checker draft-next-format->checker
-                                     :dynamic-ref-requires-bookend? false})}))
+  {:draft3       {:id-key "id"   :dynamic-ref-requires-bookend? true}
+   :draft4       {:id-key "id"   :dynamic-ref-requires-bookend? true}
+   :draft6       {:id-key "$id"  :dynamic-ref-requires-bookend? true}
+   :draft7       {:id-key "$id"  :dynamic-ref-requires-bookend? true}
+   :draft2019-09 {:id-key "$id"  :dynamic-ref-requires-bookend? true}
+   :draft2020-12 {:id-key "$id"  :dynamic-ref-requires-bookend? true}
+   :draft-next   {:id-key "$id"  :dynamic-ref-requires-bookend? false}})
+
+;; Pre-built ref configs
+(def old-ref-config {:meld-fn meld-replace :ref-replaces-siblings? true :ref-scope-isolation? false})
+(def new-ref-config {:meld-fn meld-deep-over :ref-replaces-siblings? false :ref-scope-isolation? true})
+
+;; Instantiated property checkers with draft-specific config baked in
+(def check-property-$ref-old (make-check-property-$ref old-ref-config))
+(def check-property-$ref-new (make-check-property-$ref new-ref-config))
+
+(def check-property-type-draft3 (make-check-property-type draft3-type->checker))
+(def check-property-type-draft4 (make-check-property-type draft4-type->checker))
+
+(def check-property-disallow-draft3 (make-check-property-disallow draft3-type->checker))
+
+(def check-property-format-draft3 (make-check-property-format false draft3-format->checker))
+(def check-property-format-draft4 (make-check-property-format true draft4-format->checker))
+(def check-property-format-draft6 (make-check-property-format true draft6-format->checker))
+(def check-property-format-draft7 (make-check-property-format true draft7-format->checker))
+(def check-property-format-draft2019-09 (make-check-property-format true draft2019-09-format->checker))
+(def check-property-format-draft2020-12-annotation (make-check-property-format false draft2020-12-format->checker))
+(def check-property-format-draft2020-12-assertion (make-check-property-format true draft2020-12-format->checker))
+(def check-property-format-draft-next-annotation (make-check-property-format false draft-next-format->checker))
+(def check-property-format-draft-next-assertion (make-check-property-format true draft-next-format->checker))
+
+(def check-property-pattern-draft3 (make-check-property-pattern draft3-format->checker))
+(def check-property-pattern-draft4 (make-check-property-pattern draft4-format->checker))
+(def check-property-pattern-draft6 (make-check-property-pattern draft6-format->checker))
+(def check-property-pattern-draft7 (make-check-property-pattern draft7-format->checker))
+(def check-property-pattern-draft2019-09 (make-check-property-pattern draft2019-09-format->checker))
+(def check-property-pattern-draft2020-12 (make-check-property-pattern draft2020-12-format->checker))
+(def check-property-pattern-draft-next (make-check-property-pattern draft-next-format->checker))
 
 ;;------------------------------------------------------------------------------
 
@@ -173,7 +201,7 @@
      ["https://json-schema.org/draft-03/vocab/applicator"             "patternProperties"      check-property-patternProperties                         #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "properties"             check-property-properties-draft3                         #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/applicator"             "propertyDependencies"   check-property-propertyDependencies                      #{"$schema"}]
-     ["https://json-schema.org/draft-03/vocab/core"                   "$ref"                   check-property-$ref                                      #{"$schema" "id" "definitions"}]
+     ["https://json-schema.org/draft-03/vocab/core"                   "$ref"                   check-property-$ref-old                                  #{"$schema" "id" "definitions"}]
      ["https://json-schema.org/draft-03/vocab/core"                   "$schema"                check-property-$schema                                   #{"$ref"}]
      ["https://json-schema.org/draft-03/vocab/core"                   "definitions"            check-property-definitions                               #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/core"                   "id"                     check-property-id                                        #{"$schema"}]
@@ -181,12 +209,12 @@
      ["https://json-schema.org/draft-03/vocab/meta-data"              "deprecated"             check-property-deprecated                                #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/meta-data"              "description"            check-property-description                               #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/meta-data"              "title"                  check-property-title                                     #{"$schema"}]
-     ["https://json-schema.org/draft-03/vocab/validation"             "disallow"               check-property-disallow                                  #{"$schema"}]
+     ["https://json-schema.org/draft-03/vocab/validation"             "disallow"               check-property-disallow-draft3                           #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "divisibleBy"            check-property-divisibleBy                               #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "enum"                   check-property-enum                                      #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "exclusiveMaximum"       check-property-exclusiveMaximum-old                      #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "exclusiveMinimum"       check-property-exclusiveMinimum-old                      #{"$schema"}]
-     ["https://json-schema.org/draft-03/vocab/validation"             "format"                 (make-check-property-format false)                       #{"$schema"}]
+     ["https://json-schema.org/draft-03/vocab/validation"             "format"                 check-property-format-draft3                             #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "maxItems"               check-property-maxItems                                  #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "maxLength"              check-property-maxLength                                 #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "maxProperties"          check-property-maxProperties                             #{"$schema"}]
@@ -196,9 +224,9 @@
      ["https://json-schema.org/draft-03/vocab/validation"             "minProperties"          check-property-minProperties                             #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "minimum"                check-property-minimum-old                               #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "multipleOf"             check-property-multipleOf                                #{"$schema"}]
-     ["https://json-schema.org/draft-03/vocab/validation"             "pattern"                check-property-pattern                                   #{"$schema"}]
+     ["https://json-schema.org/draft-03/vocab/validation"             "pattern"                check-property-pattern-draft3                            #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "required"               check-property-required-draft3                           #{"$schema"}]
-     ["https://json-schema.org/draft-03/vocab/validation"             "type"                   check-property-type                                      #{"$schema"}]
+     ["https://json-schema.org/draft-03/vocab/validation"             "type"                   check-property-type-draft3                               #{"$schema"}]
      ["https://json-schema.org/draft-03/vocab/validation"             "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]])
    :draft4
    (sort-vocab
@@ -213,7 +241,7 @@
      ["https://json-schema.org/draft-04/vocab/applicator"             "patternProperties"      check-property-patternProperties                         #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/applicator"             "properties"             check-property-properties                                #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/applicator"             "propertyDependencies"   check-property-propertyDependencies                      #{"$schema"}]
-     ["https://json-schema.org/draft-04/vocab/core"                   "$ref"                   check-property-$ref                                      #{"$schema" "id" "definitions"}]
+     ["https://json-schema.org/draft-04/vocab/core"                   "$ref"                   check-property-$ref-old                                  #{"$schema" "id" "definitions"}]
      ["https://json-schema.org/draft-04/vocab/core"                   "$schema"                check-property-$schema                                   #{"$ref"}]
      ["https://json-schema.org/draft-04/vocab/core"                   "definitions"            check-property-definitions                               #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/core"                   "id"                     check-property-id                                        #{"$schema"}]
@@ -224,7 +252,7 @@
      ["https://json-schema.org/draft-04/vocab/validation"             "enum"                   check-property-enum                                      #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/validation"             "exclusiveMaximum"       check-property-exclusiveMaximum-old                      #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/validation"             "exclusiveMinimum"       check-property-exclusiveMinimum-old                      #{"$schema"}]
-     ["https://json-schema.org/draft-04/vocab/validation"             "format"                 (make-check-property-format true)                        #{"$schema"}]
+     ["https://json-schema.org/draft-04/vocab/validation"             "format"                 check-property-format-draft4                             #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/validation"             "maxItems"               check-property-maxItems                                  #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/validation"             "maxLength"              check-property-maxLength                                 #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/validation"             "maxProperties"          check-property-maxProperties                             #{"$schema"}]
@@ -234,10 +262,10 @@
      ["https://json-schema.org/draft-04/vocab/validation"             "minProperties"          check-property-minProperties                             #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/validation"             "minimum"                check-property-minimum-old                               #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/validation"             "multipleOf"             check-property-multipleOf                                #{"$schema"}]
-     ["https://json-schema.org/draft-04/vocab/validation"             "pattern"                check-property-pattern                                   #{"$schema"}]
+     ["https://json-schema.org/draft-04/vocab/validation"             "pattern"                check-property-pattern-draft4                            #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/validation"             "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft-04/vocab/validation"             "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
-     ["https://json-schema.org/draft-04/vocab/validation"             "type"                   check-property-type                                      #{"$schema"}]])
+     ["https://json-schema.org/draft-04/vocab/validation"             "type"                   check-property-type-draft4                               #{"$schema"}]])
    :draft6
    (sort-vocab
     [["https://json-schema.org/draft-06/vocab/applicator"             "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
@@ -254,7 +282,7 @@
      ["https://json-schema.org/draft-06/vocab/applicator"             "propertyDependencies"   check-property-propertyDependencies                      #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/applicator"             "propertyNames"          check-property-propertyNames                             #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/core"                   "$id"                    check-property-$id                                       #{"$schema"}]
-     ["https://json-schema.org/draft-06/vocab/core"                   "$ref"                   check-property-$ref                                      #{"$schema" "id" "$id" "definitions"}]
+     ["https://json-schema.org/draft-06/vocab/core"                   "$ref"                   check-property-$ref-old                                  #{"$schema" "id" "$id" "definitions"}]
      ["https://json-schema.org/draft-06/vocab/core"                   "$schema"                check-property-$schema                                   #{"$ref"}]
      ["https://json-schema.org/draft-06/vocab/core"                   "definitions"            check-property-definitions                               #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/core"                   "id"                     check-property-id                                        #{"$schema"}]
@@ -266,7 +294,7 @@
      ["https://json-schema.org/draft-06/vocab/validation"             "enum"                   check-property-enum                                      #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "exclusiveMaximum"       check-property-exclusiveMaximum-new                      #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "exclusiveMinimum"       check-property-exclusiveMinimum-new                      #{"$schema"}]
-     ["https://json-schema.org/draft-06/vocab/validation"             "format"                 (make-check-property-format true)                        #{"$schema"}]
+     ["https://json-schema.org/draft-06/vocab/validation"             "format"                 check-property-format-draft6                             #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "maxContains"            check-property-maxContains                               #{"$schema" "contains"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "maxItems"               check-property-maxItems                                  #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "maxLength"              check-property-maxLength                                 #{"$schema"}]
@@ -278,10 +306,10 @@
      ["https://json-schema.org/draft-06/vocab/validation"             "minProperties"          check-property-minProperties                             #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "minimum"                check-property-minimum-new                               #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "multipleOf"             check-property-multipleOf                                #{"$schema"}]
-     ["https://json-schema.org/draft-06/vocab/validation"             "pattern"                check-property-pattern                                   #{"$schema"}]
+     ["https://json-schema.org/draft-06/vocab/validation"             "pattern"                check-property-pattern-draft6                            #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
-     ["https://json-schema.org/draft-06/vocab/validation"             "type"                   check-property-type                                      #{"$schema"}]])
+     ["https://json-schema.org/draft-06/vocab/validation"             "type"                   check-property-type-draft4                               #{"$schema"}]])
    :draft7
    (sort-vocab
     [["https://json-schema.org/draft-07/vocab/applicator"             "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
@@ -305,7 +333,7 @@
      ["https://json-schema.org/draft-07/vocab/content"                "contentSchema"          (make-check-property-contentSchema true)                 #{"$schema" "contentEncoding" "contentMediaType"}]
      ["https://json-schema.org/draft-07/vocab/core"                   "$comment"               check-property-$comment                                  #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/core"                   "$id"                    check-property-$id                                       #{"$schema"}]
-     ["https://json-schema.org/draft-07/vocab/core"                   "$ref"                   check-property-$ref                                      #{"$schema" "id" "$id" "definitions"}]
+     ["https://json-schema.org/draft-07/vocab/core"                   "$ref"                   check-property-$ref-old                                  #{"$schema" "id" "$id" "definitions"}]
      ["https://json-schema.org/draft-07/vocab/core"                   "$schema"                check-property-$schema                                   #{"$ref"}]
      ["https://json-schema.org/draft-07/vocab/core"                   "definitions"            check-property-definitions                               #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/core"                   "id"                     check-property-id                                        #{"$schema"}]
@@ -320,7 +348,7 @@
      ["https://json-schema.org/draft-07/vocab/validation"             "enum"                   check-property-enum                                      #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "exclusiveMaximum"       check-property-exclusiveMaximum-new                      #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "exclusiveMinimum"       check-property-exclusiveMinimum-new                      #{"$schema"}]
-     ["https://json-schema.org/draft-07/vocab/validation"             "format"                 (make-check-property-format true)                        #{"$schema"}]
+     ["https://json-schema.org/draft-07/vocab/validation"             "format"                 check-property-format-draft7                             #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "maxContains"            check-property-maxContains                               #{"$schema" "contains"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "maxItems"               check-property-maxItems                                  #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "maxLength"              check-property-maxLength                                 #{"$schema"}]
@@ -332,10 +360,10 @@
      ["https://json-schema.org/draft-07/vocab/validation"             "minProperties"          check-property-minProperties                             #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "minimum"                check-property-minimum-new                               #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "multipleOf"             check-property-multipleOf                                #{"$schema"}]
-     ["https://json-schema.org/draft-07/vocab/validation"             "pattern"                check-property-pattern                                   #{"$schema"}]
+     ["https://json-schema.org/draft-07/vocab/validation"             "pattern"                check-property-pattern-draft7                            #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
-     ["https://json-schema.org/draft-07/vocab/validation"             "type"                   check-property-type                                      #{"$schema"}]])
+     ["https://json-schema.org/draft-07/vocab/validation"             "type"                   check-property-type-draft4                               #{"$schema"}]])
    :draft2019-09
    (sort-vocab
     [["https://json-schema.org/draft/2019-09/vocab/applicator"        "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
@@ -366,7 +394,7 @@
      ["https://json-schema.org/draft/2019-09/vocab/core"              "$id"                    check-property-$id                                       #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/core"              "$recursiveAnchor"       check-property-$recursiveAnchor                          #{"$schema" "id" "$id"}]
      ["https://json-schema.org/draft/2019-09/vocab/core"              "$recursiveRef"          check-property-$recursiveRef                             #{"$schema" "$recursiveAnchor"}]
-     ["https://json-schema.org/draft/2019-09/vocab/core"              "$ref"                   check-property-$ref                                      #{"$schema" "id" "$id" "$anchor" "$defs" "$recursiveAnchor" "$dynamicAnchor"}]
+     ["https://json-schema.org/draft/2019-09/vocab/core"              "$ref"                   check-property-$ref-new                                  #{"$schema" "id" "$id" "$anchor" "$defs" "$recursiveAnchor" "$dynamicAnchor"}]
      ["https://json-schema.org/draft/2019-09/vocab/core"              "$schema"                check-property-$schema                                   #{"$ref"}]
      ["https://json-schema.org/draft/2019-09/vocab/core"              "$vocabulary"            check-property-$vocabulary                               #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/meta-data"         "default"                check-property-default                                   #{"$schema"}]
@@ -381,7 +409,7 @@
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "enum"                   check-property-enum                                      #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "exclusiveMaximum"       check-property-exclusiveMaximum-new                      #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "exclusiveMinimum"       check-property-exclusiveMinimum-new                      #{"$schema"}]
-     ["https://json-schema.org/draft/2019-09/vocab/validation"        "format"                 (make-check-property-format true)                        #{"$schema"}]
+     ["https://json-schema.org/draft/2019-09/vocab/validation"        "format"                 check-property-format-draft2019-09                       #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "maxContains"            check-property-maxContains                               #{"$schema" "contains"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "maxItems"               check-property-maxItems                                  #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "maxLength"              check-property-maxLength                                 #{"$schema"}]
@@ -393,10 +421,10 @@
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "minProperties"          check-property-minProperties                             #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "minimum"                check-property-minimum-new                               #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "multipleOf"             check-property-multipleOf                                #{"$schema"}]
-     ["https://json-schema.org/draft/2019-09/vocab/validation"        "pattern"                check-property-pattern                                   #{"$schema"}]
+     ["https://json-schema.org/draft/2019-09/vocab/validation"        "pattern"                check-property-pattern-draft2019-09                      #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
-     ["https://json-schema.org/draft/2019-09/vocab/validation"        "type"                   check-property-type                                      #{"$schema"}]])
+     ["https://json-schema.org/draft/2019-09/vocab/validation"        "type"                   check-property-type-draft4                               #{"$schema"}]])
    :draft2020-12
    (sort-vocab
     [["https://json-schema.org/draft/2020-12/vocab/applicator"        "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
@@ -428,11 +456,11 @@
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$id"                    check-property-$id                                       #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$recursiveAnchor"       check-property-$recursiveAnchor                          #{"$schema" "id" "$id"}]
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$recursiveRef"          check-property-$recursiveRef                             #{"$schema" "$recursiveAnchor"}]
-     ["https://json-schema.org/draft/2020-12/vocab/core"              "$ref"                   check-property-$ref                                      #{"$schema" "id" "$id" "$anchor" "$defs" "$recursiveAnchor" "$dynamicAnchor"}]
+     ["https://json-schema.org/draft/2020-12/vocab/core"              "$ref"                   check-property-$ref-new                                  #{"$schema" "id" "$id" "$anchor" "$defs" "$recursiveAnchor" "$dynamicAnchor"}]
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$schema"                check-property-$schema                                   #{"$ref"}]
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$vocabulary"            check-property-$vocabulary                               #{"$schema"}]
-     ["https://json-schema.org/draft/2020-12/vocab/format-annotation" "format"                 (make-check-property-format false)                       #{"$schema"}]
-     ["https://json-schema.org/draft/2020-12/vocab/format-assertion"  "format"                 (make-check-property-format true)                        #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/format-annotation" "format"                 check-property-format-draft2020-12-annotation            #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/format-assertion"  "format"                 check-property-format-draft2020-12-assertion             #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/meta-data"         "default"                check-property-default                                   #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/meta-data"         "deprecated"             check-property-deprecated                                #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/meta-data"         "description"            check-property-description                               #{"$schema"}]
@@ -458,10 +486,10 @@
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "minProperties"          check-property-minProperties                             #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "minimum"                check-property-minimum-new                               #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "multipleOf"             check-property-multipleOf                                #{"$schema"}]
-     ["https://json-schema.org/draft/2020-12/vocab/validation"        "pattern"                check-property-pattern                                   #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "pattern"                check-property-pattern-draft2020-12                      #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
-     ["https://json-schema.org/draft/2020-12/vocab/validation"        "type"                   check-property-type                                      #{"$schema"}]])
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "type"                   check-property-type-draft4                               #{"$schema"}]])
    :draft-next
    (sort-vocab
     [["https://json-schema.org/draft/next/vocab/applicator"           "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
@@ -493,11 +521,11 @@
      ["https://json-schema.org/draft/next/vocab/core"                 "$id"                    check-property-$id                                       #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/core"                 "$recursiveAnchor"       check-property-$recursiveAnchor                          #{"$schema" "id" "$id"}]
      ["https://json-schema.org/draft/next/vocab/core"                 "$recursiveRef"          check-property-$recursiveRef                             #{"$schema" "$recursiveAnchor"}]
-     ["https://json-schema.org/draft/next/vocab/core"                 "$ref"                   check-property-$ref                                      #{"$schema" "id" "$id" "$anchor" "$defs" "$recursiveAnchor" "$dynamicAnchor"}]
+     ["https://json-schema.org/draft/next/vocab/core"                 "$ref"                   check-property-$ref-new                                  #{"$schema" "id" "$id" "$anchor" "$defs" "$recursiveAnchor" "$dynamicAnchor"}]
      ["https://json-schema.org/draft/next/vocab/core"                 "$schema"                check-property-$schema                                   #{"$ref"}]
      ["https://json-schema.org/draft/next/vocab/core"                 "$vocabulary"            check-property-$vocabulary                               #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/format-annotation"    "format"                 (make-check-property-format false)                       #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/format-assertion"     "format"                 (make-check-property-format true)                        #{"$schema"}]
+     ["https://json-schema.org/draft/next/vocab/format-annotation"    "format"                 check-property-format-draft-next-annotation              #{"$schema"}]
+     ["https://json-schema.org/draft/next/vocab/format-assertion"     "format"                 check-property-format-draft-next-assertion               #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/meta-data"            "default"                check-property-default                                   #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/meta-data"            "deprecated"             check-property-deprecated                                #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/meta-data"            "description"            check-property-description                               #{"$schema"}]
@@ -523,10 +551,10 @@
      ["https://json-schema.org/draft/next/vocab/validation"           "minProperties"          check-property-minProperties                             #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/validation"           "minimum"                check-property-minimum-new                               #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/validation"           "multipleOf"             check-property-multipleOf                                #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "pattern"                check-property-pattern                                   #{"$schema"}]
+     ["https://json-schema.org/draft/next/vocab/validation"           "pattern"                check-property-pattern-draft-next                        #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/validation"           "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft/next/vocab/validation"           "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "type"                   check-property-type                                      #{"$schema"}]])})
+     ["https://json-schema.org/draft/next/vocab/validation"           "type"                   check-property-type-draft4                               #{"$schema"}]])})
 
 ;; lets define a dialect as a function that given an m2 will return
 ;; you a correctly ordered sequence of pairs of m2-kv and
@@ -539,7 +567,7 @@
     second
     (filter
      (comp (into #{} (keys v->b)) first)
-     ;; TEMPORARY: draft-next is not yet finalized. During the transition period,
+     ;; draft-next is not yet finalized. During the transition period,
      ;; some schemas may use draft-next $schema but reference draft2020-12 vocabulary URIs.
      ;; This concat allows both sets of URIs to work. Remove once draft-next is stable.
      (if (= d :draft-next)

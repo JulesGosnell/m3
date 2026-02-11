@@ -314,8 +314,6 @@
                 :recursive-anchor []
                 :root document
                 :draft draft
-                :meld-fn (:meld-fn c2)
-                :dynamic-ref-requires-bookend? (:dynamic-ref-requires-bookend? c2)
                 ;; Store root compilation scope-id for $dynamicRef resolution.
                 ;; Remote schemas' $dynamicRef can fall back to the root c2
                 ;; to find $dynamicAnchors that are in $defs (whose f1 is

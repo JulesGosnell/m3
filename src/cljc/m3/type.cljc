@@ -81,38 +81,37 @@
 
 ;;------------------------------------------------------------------------------
 
-(defn check-type [t c2 p2 m2]
-  (let [type->checker (or (:type->checker c2) (draft->type->checker (or (:draft c2) :draft7)))]
-    [c2
-     m2
-     (cond
+(defn check-type [type->checker t c2 p2 m2]
+  [c2
+   m2
+   (cond
 
-       (json-string? t)
-       (if-let [f2 (get type->checker t)]
-         (f2 t c2 p2 m2)
-         (fn [c1 p1 m1]
-           [c1 m1 [(make-error (pformat "type: unrecognised name: %s" t) p2 m2 p1 m1)]]))
-
-       (json-array? t)
-       (let [f1s (map-indexed (fn [i t] (third (check-type t c2 (conj p2 i) m2))) t)]
-         (fn [c1 p1 m1]
-           [c1
-            m1
-            (make-error-on
-             (pformat "type: none matched: %s" t)
-             p2 m2 p1 m1
-             (fn [es] (not (some nil? es)))
-             (mapv (fn [f1] (third (f1 c1 p1 m1))) f1s))]))
-
-       (json-object? t)
-       (let [[c2 m2 f1] ((get-check-schema) c2 p2 t)]
-         (fn [c1 p1 m1]
-           (let [[c1 m1 es] (f1 c1 p1 m1)]
-             [c1 m1 es])))
-
-       :else
+     (json-string? t)
+     (if-let [f2 (get type->checker t)]
+       (f2 t c2 p2 m2)
        (fn [c1 p1 m1]
-         [c1 m1 [(make-error (pformat "type: unrecognised description: %s" t) p2 m2 p1 m1)]]))]))
+         [c1 m1 [(make-error (pformat "type: unrecognised name: %s" t) p2 m2 p1 m1)]]))
+
+     (json-array? t)
+     (let [f1s (map-indexed (fn [i t] (third (check-type type->checker t c2 (conj p2 i) m2))) t)]
+       (fn [c1 p1 m1]
+         [c1
+          m1
+          (make-error-on
+           (pformat "type: none matched: %s" t)
+           p2 m2 p1 m1
+           (fn [es] (not (some nil? es)))
+           (mapv (fn [f1] (third (f1 c1 p1 m1))) f1s))]))
+
+     (json-object? t)
+     (let [[c2 m2 f1] ((get-check-schema) c2 p2 t)]
+       (fn [c1 p1 m1]
+         (let [[c1 m1 es] (f1 c1 p1 m1)]
+           [c1 m1 es])))
+
+     :else
+     (fn [c1 p1 m1]
+       [c1 m1 [(make-error (pformat "type: unrecognised description: %s" t) p2 m2 p1 m1)]]))])
 
 ;;------------------------------------------------------------------------------
 
