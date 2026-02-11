@@ -266,12 +266,3 @@
 (def draft2020-12-format->checker draft2019-09-format->checker)
 
 (def draft-next-format->checker draft2019-09-format->checker)
-
-(def draft->format->checker
-  {:draft3        draft3-format->checker
-   :draft4        draft4-format->checker
-   :draft6        draft6-format->checker
-   :draft7        draft7-format->checker
-   :draft2019-09  draft2019-09-format->checker
-   :draft2020-12  draft2020-12-format->checker
-   :draft-next    draft-next-format->checker})

@@ -70,15 +70,6 @@
 (def draft4-type->checker
   (dissoc draft3-type->checker "any"))
 
-(def draft->type->checker
-  {:draft3        draft3-type->checker
-   :draft4        draft4-type->checker
-   :draft6        draft4-type->checker
-   :draft7        draft4-type->checker
-   :draft2019-09  draft4-type->checker
-   :draft2020-12  draft4-type->checker
-   :draft-next    draft4-type->checker})
-
 ;;------------------------------------------------------------------------------
 
 (defn check-type [type->checker t c2 p2 m2]
