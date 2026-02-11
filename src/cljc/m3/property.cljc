@@ -1061,7 +1061,7 @@
      (make-type-checker
       json-object?
       (fn [c1 p1 m1]
-        (let [k-and-css (apply concat (keep (fn [[k]] (keep (fn [[cs p]] (when (ecma-match p k) [k cs])) cp-and-pattern-and-ks)) m1))]
+        (let [k-and-css (into [] cat (keep (fn [[k]] (keep (fn [[cs p]] (when (ecma-match p k) [k cs])) cp-and-pattern-and-ks)) m1))]
           (f1 c1 p1 m1 k-and-css "patternProperties: at least one property did not conform to respective schema"))))]))
 
 (defn check-property-additionalProperties [_property c2 p2 m2 v2]

@@ -35,8 +35,8 @@
 (def into-set (fnil into #{}))
 (def conj-set (fnil conj #{}))
 
-(defn concatv [& args]
-  (vec (apply concat args)))
+(defn concatv [a b]
+  (into a b))
 
 (defn seq-contains? [s p? v]
   (boolean (some (partial p? v) s)))
