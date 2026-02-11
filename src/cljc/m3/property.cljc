@@ -26,6 +26,25 @@
    [m3.format :as format]))
 
 ;;------------------------------------------------------------------------------
+;; shared compilation helper
+
+(defn- compile-sub-schemas
+  "Compile sub-schemas into [c2 [[key f1] ...]].
+   entries is a seq of [key sub-schema] pairs.
+   Returns [c2 k-and-checkers] with id-uri restored to parent scope."
+  [c2 p2 entries]
+  (let [f2 (get-check-schema)
+        parent-id-uri (:id-uri c2)
+        [c2 acc]
+        (reduce
+         (fn [[c2 acc] [k v]]
+           (let [[c2 _m2 f1] (f2 (assoc c2 :id-uri parent-id-uri) (conj p2 k) v)]
+             [c2 (conj acc [k f1])]))
+         [c2 []]
+         entries)]
+    [(assoc c2 :id-uri parent-id-uri) acc]))
+
+;;------------------------------------------------------------------------------
 ;; standard common properties
 
 (defn- noop-checker [_property c2 _p2 m2 _v2] [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
@@ -929,25 +948,11 @@
 ;; m3/m2 time - validate structure of content
 ;; m2/m1 time - hmmm...
 (defn check-property-definitions [_property c2 p2 m2 v2]
-  (let [f2 (get-check-schema)
-        parent-id-uri (:id-uri c2)
-        c2 (reduce (fn [c2 [k sub-schema]]
-                     (let [[c2 _m2 _f1] (f2 (assoc c2 :id-uri parent-id-uri) (conj p2 k) sub-schema)]
-                       c2))
-                   c2
-                   v2)
-        c2 (assoc c2 :id-uri parent-id-uri)]
+  (let [[c2 _] (compile-sub-schemas c2 p2 v2)]
     [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])]))
 
 (defn check-property-$defs [_property c2 p2 m2 v2]
-  (let [f2 (get-check-schema)
-        parent-id-uri (:id-uri c2)
-        c2 (reduce (fn [c2 [k sub-schema]]
-                     (let [[c2 _m2 _f1] (f2 (assoc c2 :id-uri parent-id-uri) (conj p2 k) sub-schema)]
-                       c2))
-                   c2
-                   v2)
-        c2 (assoc c2 :id-uri parent-id-uri)]
+  (let [[c2 _] (compile-sub-schemas c2 p2 v2)]
     [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])]))
 
 ;; bifurcate upwards to reduce amount of work done to just what it required...
@@ -973,16 +978,7 @@
           (make-error-on-failure message p2 m2 p1 m1 es)]))]))
 
 (defn check-property-properties [_property c2 p2 m2 ps]
-  (let [f2 (get-check-schema)
-        parent-id-uri (:id-uri c2)
-        [c2 k-and-css]
-        (reduce
-         (fn [[c2 acc] [k v]]
-           (let [[c2 _m2 f1] (f2 (assoc c2 :id-uri parent-id-uri) (conj p2 k) v)]
-             [c2 (conj acc [k f1])]))
-         [c2 []]
-         ps)
-        c2 (assoc c2 :id-uri parent-id-uri)
+  (let [[c2 k-and-css] (compile-sub-schemas c2 p2 ps)
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
@@ -1003,16 +999,7 @@
 ;; Required keys could be gathered during M3/M2 validation pass instead of
 ;; scanning sub-schemas here.
 (defn check-property-properties-draft3 [_property c2 p2 m2 ps]
-  (let [f2 (get-check-schema)
-        parent-id-uri (:id-uri c2)
-        [c2 k-and-css]
-        (reduce
-         (fn [[c2 acc] [k v]]
-           (let [[c2 _m2 f1] (f2 (assoc c2 :id-uri parent-id-uri) (conj p2 k) v)]
-             [c2 (conj acc [k f1])]))
-         [c2 []]
-         ps)
-        c2 (assoc c2 :id-uri parent-id-uri)
+  (let [[c2 k-and-css] (compile-sub-schemas c2 p2 ps)
         required-keys (vec (keep (fn [[k v]] (when (true? (get v "required")) k)) ps))
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
@@ -1029,16 +1016,8 @@
 ;; what is opposite of "additional" - "matched" - used by spec to refer to properties matched by "properties" or "patternProperties"
 
 (defn check-property-patternProperties [_property c2 p2 m2 pps]
-  (let [f2 (get-check-schema)
-        parent-id-uri (:id-uri c2)
-        [c2 cp-and-pattern-and-ks]
-        (reduce
-         (fn [[c2 acc] [k v]]
-           (let [[c2 _m2 f1] (f2 (assoc c2 :id-uri parent-id-uri) (conj p2 k) v)]
-             [c2 (conj acc [f1 (ecma-pattern k) k])]))
-         [c2 []]
-         pps)
-        c2 (assoc c2 :id-uri parent-id-uri)
+  (let [[c2 k-and-css] (compile-sub-schemas c2 p2 pps)
+        cp-and-pattern-and-ks (mapv (fn [[k f1]] [f1 (ecma-pattern k) k]) k-and-css)
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
@@ -1163,16 +1142,7 @@
   [c1 m1 es])
 
 (defn check-property-prefixItems [_property c2 p2 m2 v2]
-  (let [f2 (get-check-schema)
-        parent-id-uri (:id-uri c2)
-        [c2 i-and-css]
-        (reduce
-         (fn [[c2 acc] [i sub-schema]]
-           (let [[c2 _m2 f1] (f2 (assoc c2 :id-uri parent-id-uri) (conj p2 i) sub-schema)]
-             [c2 (conj acc [i f1])]))
-         [c2 []]
-         (map-indexed vector v2))
-        c2 (assoc c2 :id-uri parent-id-uri)
+  (let [[c2 i-and-css] (compile-sub-schemas c2 p2 (map-indexed vector v2))
         [c2 m2 f1] (check-items c2 p2 m2)]
     [c2
      m2
@@ -1182,21 +1152,12 @@
         (f1 c1 p1 m1 i-and-css "prefixItems: at least one item did not conform to respective schema")))]))
 
 (defn check-property-items [_property c2 p2 m2 v2]
-  (let [f2 (get-check-schema)
-        parent-id-uri (:id-uri c2)
-        n (count (get m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
+  (let [n (count (get m2 "prefixItems")) ;; TODO: achieve this by looking at c1 ?
         [c2 m css] (if (json-array? v2)
-                     (let [[c2 css]
-                             (reduce
-                              (fn [[c2 acc] [i v]]
-                                (let [[c2 _m2 f1] (f2 (assoc c2 :id-uri parent-id-uri) (conj p2 i) v)]
-                                  [c2 (conj acc f1)]))
-                              [c2 []]
-                              (map-indexed vector v2))]
-                         [c2 "respective " css])
-                     (let [[c2 _m2 f1] (f2 c2 p2 v2)]
+                     (let [[c2 i-and-css] (compile-sub-schemas c2 p2 (map-indexed vector v2))]
+                       [c2 "respective " (mapv second i-and-css)])
+                     (let [[c2 _m2 f1] ((get-check-schema) c2 p2 v2)]
                        [c2 "" (repeat f1)]))
-        c2 (assoc c2 :id-uri parent-id-uri)
         [c2 m2 f1] (check-items c2 p2 m2)]
     [c2
      m2
@@ -1333,16 +1294,7 @@
 
 ;; TODO: merge code with check-items...
 (defn check-of [c2 p2 m2 v2]
-  (let [f2 (get-check-schema)
-        parent-id-uri (:id-uri c2)
-        [c2 i-and-css]
-        (reduce
-         (fn [[c2 acc] [i sub-schema]]
-           (let [[c2 _m2 f1] (f2 (assoc c2 :id-uri parent-id-uri) (conj p2 i) sub-schema)]
-             [c2 (conj acc [i f1])]))
-         [c2 []]
-         (map-indexed vector v2))
-        c2 (assoc c2 :id-uri parent-id-uri)]
+  (let [[c2 i-and-css] (compile-sub-schemas c2 p2 (map-indexed vector v2))]
     [c2
      (fn [c1 p1 m1 message failed?]
        (let [old-local-c1 (update c1 :evaluated dissoc p1)
