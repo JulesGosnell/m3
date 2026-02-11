@@ -87,7 +87,7 @@
      check-property-unevaluatedProperties
      check-property-uniqueItems
      check-property-writeOnly
-     check-property-$dynamicRef
+     make-check-property-$dynamicRef
      make-check-property-$ref
      make-check-property-contentEncoding
      make-check-property-contentMediaType
@@ -142,13 +142,13 @@
 ;;------------------------------------------------------------------------------
 
 (def draft->config
-  {:draft3       {:id-key "id"   :dynamic-ref-requires-bookend? true}
-   :draft4       {:id-key "id"   :dynamic-ref-requires-bookend? true}
-   :draft6       {:id-key "$id"  :dynamic-ref-requires-bookend? true}
-   :draft7       {:id-key "$id"  :dynamic-ref-requires-bookend? true}
-   :draft2019-09 {:id-key "$id"  :dynamic-ref-requires-bookend? true}
-   :draft2020-12 {:id-key "$id"  :dynamic-ref-requires-bookend? true}
-   :draft-next   {:id-key "$id"  :dynamic-ref-requires-bookend? false}})
+  {:draft3       {:id-key "id"}
+   :draft4       {:id-key "id"}
+   :draft6       {:id-key "$id"}
+   :draft7       {:id-key "$id"}
+   :draft2019-09 {:id-key "$id"}
+   :draft2020-12 {:id-key "$id"}
+   :draft-next   {:id-key "$id"}})
 
 ;; Pre-built ref configs
 (def old-ref-config {:meld-fn meld-replace :ref-replaces-siblings? true :ref-scope-isolation? false})
@@ -157,6 +157,9 @@
 ;; Instantiated property checkers with draft-specific config baked in
 (def check-property-$ref-old (make-check-property-$ref old-ref-config))
 (def check-property-$ref-new (make-check-property-$ref new-ref-config))
+
+(def check-property-$dynamicRef-bookend (make-check-property-$dynamicRef true))
+(def check-property-$dynamicRef-no-bookend (make-check-property-$dynamicRef false))
 
 (def check-property-type-draft3 (make-check-property-type draft3-type->checker))
 (def check-property-type-draft4 (make-check-property-type draft4-type->checker))
@@ -452,7 +455,7 @@
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$comment"               check-property-$comment                                  #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$defs"                  check-property-$defs                                     #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$dynamicAnchor"         check-property-$dynamicAnchor                            #{"$schema" "id" "$id"}]
-     ["https://json-schema.org/draft/2020-12/vocab/core"              "$dynamicRef"            check-property-$dynamicRef                               #{"$schema" "$dynamicAnchor"}]
+     ["https://json-schema.org/draft/2020-12/vocab/core"              "$dynamicRef"            check-property-$dynamicRef-bookend                       #{"$schema" "$dynamicAnchor"}]
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$id"                    check-property-$id                                       #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$recursiveAnchor"       check-property-$recursiveAnchor                          #{"$schema" "id" "$id"}]
      ["https://json-schema.org/draft/2020-12/vocab/core"              "$recursiveRef"          check-property-$recursiveRef                             #{"$schema" "$recursiveAnchor"}]
@@ -490,91 +493,101 @@
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "type"                   check-property-type-draft4                               #{"$schema"}]])
+   ;; draft-next reuses draft2020-12 vocabulary URIs because the draft-next
+   ;; metaschema's $vocabulary declares 2020-12 URIs (the spec isn't finalized).
+   ;; Where draft-next behavior differs (e.g. $dynamicRef bookending), the
+   ;; checker instances are draft-next-specific.
    :draft-next
    (sort-vocab
-    [["https://json-schema.org/draft/next/vocab/applicator"           "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "additionalProperties"   check-property-additionalProperties                      #{"$schema" "properties" "patternProperties"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "allOf"                  check-property-allOf                                     #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "anyOf"                  check-property-anyOf                                     #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "contains"               check-property-contains                                  #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "dependencies"           check-property-dependencies                              #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "dependentSchemas"       check-property-dependentSchemas                          #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "else"                   check-property-else                                      #{"$schema" "if"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "if"                     check-property-if                                        #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "items"                  check-property-items                                     #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "not"                    check-property-not                                       #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "oneOf"                  check-property-oneOf                                     #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "patternProperties"      check-property-patternProperties                         #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "prefixItems"            check-property-prefixItems                               #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "properties"             check-property-properties                                #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "propertyDependencies"   check-property-propertyDependencies                      #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "propertyNames"          check-property-propertyNames                             #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/applicator"           "then"                   check-property-then                                      #{"$schema" "if"}]
-     ["https://json-schema.org/draft/next/vocab/content"              "contentEncoding"        (make-check-property-contentEncoding false)              #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/content"              "contentMediaType"       (make-check-property-contentMediaType false)             #{"$schema" "contentEncoding"}]
-     ["https://json-schema.org/draft/next/vocab/content"              "contentSchema"          (make-check-property-contentSchema false)                #{"$schema" "contentEncoding" "contentMediaType"}]
-     ["https://json-schema.org/draft/next/vocab/core"                 "$anchor"                check-property-$anchor                                   #{"$schema" "id" "$id"}]
-     ["https://json-schema.org/draft/next/vocab/core"                 "$comment"               check-property-$comment                                  #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/core"                 "$defs"                  check-property-$defs                                     #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/core"                 "$dynamicAnchor"         check-property-$dynamicAnchor                            #{"$schema" "id" "$id"}]
-     ["https://json-schema.org/draft/next/vocab/core"                 "$dynamicRef"            check-property-$dynamicRef                               #{"$schema" "$dynamicAnchor"}]
-     ["https://json-schema.org/draft/next/vocab/core"                 "$id"                    check-property-$id                                       #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/core"                 "$recursiveAnchor"       check-property-$recursiveAnchor                          #{"$schema" "id" "$id"}]
-     ["https://json-schema.org/draft/next/vocab/core"                 "$recursiveRef"          check-property-$recursiveRef                             #{"$schema" "$recursiveAnchor"}]
-     ["https://json-schema.org/draft/next/vocab/core"                 "$ref"                   check-property-$ref-new                                  #{"$schema" "id" "$id" "$anchor" "$defs" "$recursiveAnchor" "$dynamicAnchor"}]
-     ["https://json-schema.org/draft/next/vocab/core"                 "$schema"                check-property-$schema                                   #{"$ref"}]
-     ["https://json-schema.org/draft/next/vocab/core"                 "$vocabulary"            check-property-$vocabulary                               #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/format-annotation"    "format"                 check-property-format-draft-next-annotation              #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/format-assertion"     "format"                 check-property-format-draft-next-assertion               #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/meta-data"            "default"                check-property-default                                   #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/meta-data"            "deprecated"             check-property-deprecated                                #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/meta-data"            "description"            check-property-description                               #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/meta-data"            "examples"               check-property-examples                                  #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/meta-data"            "readOnly"               check-property-readOnly                                  #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/meta-data"            "title"                  check-property-title                                     #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/meta-data"            "writeOnly"              check-property-writeOnly                                 #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/unevaluated"          "unevaluatedItems"       check-property-unevaluatedItems                          #{"$schema" "additionalItems" "uniqueItems" "oneOf" "anyOf" "allOf" "not" "if" "then" "else"}]
-     ["https://json-schema.org/draft/next/vocab/unevaluated"          "unevaluatedProperties"  check-property-unevaluatedProperties                     #{"$schema" "additionalProperties" "oneOf" "anyOf" "allOf" "not" "if" "then" "else"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "const"                  check-property-const                                     #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "dependentRequired"      check-property-dependentRequired                         #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "enum"                   check-property-enum                                      #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "exclusiveMaximum"       check-property-exclusiveMaximum-new                      #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "exclusiveMinimum"       check-property-exclusiveMinimum-new                      #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "maxContains"            check-property-maxContains                               #{"$schema" "contains"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "maxItems"               check-property-maxItems                                  #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "maxLength"              check-property-maxLength                                 #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "maxProperties"          check-property-maxProperties                             #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "maximum"                check-property-maximum-new                               #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "minContains"            check-property-minContains                               #{"$schema" "contains"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "minItems"               check-property-minItems                                  #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "minLength"              check-property-minLength                                 #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "minProperties"          check-property-minProperties                             #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "minimum"                check-property-minimum-new                               #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "multipleOf"             check-property-multipleOf                                #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "pattern"                check-property-pattern-draft-next                        #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "required"               check-property-required                                  #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
-     ["https://json-schema.org/draft/next/vocab/validation"           "type"                   check-property-type-draft4                               #{"$schema"}]])})
+    [["https://json-schema.org/draft/2020-12/vocab/applicator"        "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "additionalProperties"   check-property-additionalProperties                      #{"$schema" "properties" "patternProperties"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "allOf"                  check-property-allOf                                     #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "anyOf"                  check-property-anyOf                                     #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "contains"               check-property-contains                                  #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "dependencies"           check-property-dependencies                              #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "dependentSchemas"       check-property-dependentSchemas                          #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "else"                   check-property-else                                      #{"$schema" "if"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "if"                     check-property-if                                        #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "items"                  check-property-items                                     #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "not"                    check-property-not                                       #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "oneOf"                  check-property-oneOf                                     #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "patternProperties"      check-property-patternProperties                         #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "prefixItems"            check-property-prefixItems                               #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "properties"             check-property-properties                                #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "propertyDependencies"   check-property-propertyDependencies                      #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "propertyNames"          check-property-propertyNames                             #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/applicator"        "then"                   check-property-then                                      #{"$schema" "if"}]
+     ["https://json-schema.org/draft/2020-12/vocab/content"           "contentEncoding"        (make-check-property-contentEncoding false)              #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/content"           "contentMediaType"       (make-check-property-contentMediaType false)             #{"$schema" "contentEncoding"}]
+     ["https://json-schema.org/draft/2020-12/vocab/content"           "contentSchema"          (make-check-property-contentSchema false)                #{"$schema" "contentEncoding" "contentMediaType"}]
+     ["https://json-schema.org/draft/2020-12/vocab/core"              "$anchor"                check-property-$anchor                                   #{"$schema" "id" "$id"}]
+     ["https://json-schema.org/draft/2020-12/vocab/core"              "$comment"               check-property-$comment                                  #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/core"              "$defs"                  check-property-$defs                                     #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/core"              "$dynamicAnchor"         check-property-$dynamicAnchor                            #{"$schema" "id" "$id"}]
+     ["https://json-schema.org/draft/2020-12/vocab/core"              "$dynamicRef"            check-property-$dynamicRef-no-bookend                    #{"$schema" "$dynamicAnchor"}]
+     ["https://json-schema.org/draft/2020-12/vocab/core"              "$id"                    check-property-$id                                       #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/core"              "$recursiveAnchor"       check-property-$recursiveAnchor                          #{"$schema" "id" "$id"}]
+     ["https://json-schema.org/draft/2020-12/vocab/core"              "$recursiveRef"          check-property-$recursiveRef                             #{"$schema" "$recursiveAnchor"}]
+     ["https://json-schema.org/draft/2020-12/vocab/core"              "$ref"                   check-property-$ref-new                                  #{"$schema" "id" "$id" "$anchor" "$defs" "$recursiveAnchor" "$dynamicAnchor"}]
+     ["https://json-schema.org/draft/2020-12/vocab/core"              "$schema"                check-property-$schema                                   #{"$ref"}]
+     ["https://json-schema.org/draft/2020-12/vocab/core"              "$vocabulary"            check-property-$vocabulary                               #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/format-annotation" "format"                 check-property-format-draft-next-annotation              #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/format-assertion"  "format"                 check-property-format-draft-next-assertion               #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/meta-data"         "default"                check-property-default                                   #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/meta-data"         "deprecated"             check-property-deprecated                                #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/meta-data"         "description"            check-property-description                               #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/meta-data"         "examples"               check-property-examples                                  #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/meta-data"         "readOnly"               check-property-readOnly                                  #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/meta-data"         "title"                  check-property-title                                     #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/meta-data"         "writeOnly"              check-property-writeOnly                                 #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/unevaluated"       "unevaluatedItems"       check-property-unevaluatedItems                          #{"$schema" "additionalItems" "uniqueItems" "oneOf" "anyOf" "allOf" "not" "if" "then" "else"}]
+     ["https://json-schema.org/draft/2020-12/vocab/unevaluated"       "unevaluatedProperties"  check-property-unevaluatedProperties                     #{"$schema" "additionalProperties" "oneOf" "anyOf" "allOf" "not" "if" "then" "else"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "const"                  check-property-const                                     #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "dependentRequired"      check-property-dependentRequired                         #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "enum"                   check-property-enum                                      #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "exclusiveMaximum"       check-property-exclusiveMaximum-new                      #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "exclusiveMinimum"       check-property-exclusiveMinimum-new                      #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "maxContains"            check-property-maxContains                               #{"$schema" "contains"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "maxItems"               check-property-maxItems                                  #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "maxLength"              check-property-maxLength                                 #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "maxProperties"          check-property-maxProperties                             #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "maximum"                check-property-maximum-new                               #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "minContains"            check-property-minContains                               #{"$schema" "contains"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "minItems"               check-property-minItems                                  #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "minLength"              check-property-minLength                                 #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "minProperties"          check-property-minProperties                             #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "minimum"                check-property-minimum-new                               #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "multipleOf"             check-property-multipleOf                                #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "pattern"                check-property-pattern-draft-next                        #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "required"               check-property-required                                  #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "type"                   check-property-type-draft4                               #{"$schema"}]])})
 
 ;; lets define a dialect as a function that given an m2 will return
 ;; you a correctly ordered sequence of pairs of m2-kv and
 ;; property-checker
 
 ;; should really convert strings to uris...
+;; draft-next vocab URI aliasing: the draft-next metaschema's $vocabulary
+;; declares 2020-12 URIs, but the JSON-Schema-Test-Suite's custom draft-next
+;; metaschemas declare draft/next/ URIs. Both must work. Our draft-next vocab
+;; table uses 2020-12 URIs (matching the real metaschema), so we normalize any
+;; draft/next/ URIs in v->b to 2020-12 before filtering.
+(defn- normalize-draft-next-vocab-uris [v->b]
+  (into {}
+    (map (fn [[uri required?]]
+           [(clojure.string/replace uri "draft/next/vocab/" "draft/2020-12/vocab/")
+            required?])
+         v->b)))
+
 (defn make-dialect-2 [d v->b]
-  (partial
-   (make-stable-sort-by
-    second
-    (filter
-     (comp (into #{} (keys v->b)) first)
-     ;; draft-next is not yet finalized. During the transition period,
-     ;; some schemas may use draft-next $schema but reference draft2020-12 vocabulary URIs.
-     ;; This concat allows both sets of URIs to work. Remove once draft-next is stable.
-     (if (= d :draft-next)
-       (concat (draft->vocab d) (draft->vocab :draft2020-12))
-       (draft->vocab d))))
-   first
-   (juxt first (comp third second))))
+  (let [effective-v->b (if (= d :draft-next) (normalize-draft-next-vocab-uris v->b) v->b)
+        uri-set (into #{} (keys effective-v->b))
+        entries (filter (comp uri-set first) (draft->vocab d))]
+    (partial
+     (make-stable-sort-by second entries)
+     first
+     (juxt first (comp third second)))))
 
 (def make-dialect (memoize make-dialect-2))
 

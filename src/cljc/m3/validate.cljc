@@ -367,13 +367,22 @@
                       :dialect (or (and $vocabulary (make-dialect draft $vocabulary)) (c2 :dialect)))
                m1))
             (constantly r)))
-        ;; keep going - c1 from meta-schema validation becomes c2 for next level
-        (let [[{vs :dialect u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)]
+        ;; keep going - validate schema against its metaschema, then compile schema
+        ;; Build the dialect from the schema's own draft and the metaschema's $vocabulary.
+        ;; We can't use the dialect from the metaschema's runtime context (c1) because
+        ;; make-dialect selects checker instances from the draft's vocab table — using
+        ;; the metaschema's draft (e.g. :draft2020-12) would pick the wrong instances
+        ;; for a schema whose draft differs (e.g. :draft-next).
+        (let [[{u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)
+              schema-draft (or ($schema->draft s) draft)
+              dialect (if $vocabulary
+                        (make-dialect schema-draft $vocabulary)
+                        (draft->default-dialect schema-draft))]
           (if (empty? es)
             (validate* (assoc c2
                                :uri->path (or u->p {})
                                :path->uri (or p->u {})
-                               :dialect vs) m1)
+                               :dialect dialect) m1)
             (constantly r))))
       (constantly [c2 [(str "could not resolve $schema: " s)]]))))
 

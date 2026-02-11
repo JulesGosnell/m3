@@ -391,18 +391,19 @@
                       {:schema schema :scope-id root-sid}))))
               da)))))
 
-(defn check-property-$dynamicRef [_property {id-uri :id-uri dynamic-ref-requires-bookend? :dynamic-ref-requires-bookend? :as c2} p2 m2 v2]
-  (let [schema-p2 (vec (butlast p2))
-        uri (inherit-uri id-uri (parse-uri v2))
-        ;; Extract anchor name from fragment (for dynamic scope lookup).
-        ;; Only plain-name fragments are anchors; JSON pointers (starting
-        ;; with "/") are NOT dynamic anchors.
-        anchor-name (let [f (:fragment (parse-uri v2))]
-                      (when (and f (not (starts-with? f "/")))
-                        f))
-        needs-bookend? dynamic-ref-requires-bookend?]
-    [c2
-     m2
+(defn make-check-property-$dynamicRef [dynamic-ref-requires-bookend?]
+  (fn [_property {id-uri :id-uri :as c2} p2 m2 v2]
+    (let [schema-p2 (vec (butlast p2))
+          uri (inherit-uri id-uri (parse-uri v2))
+          ;; Extract anchor name from fragment (for dynamic scope lookup).
+          ;; Only plain-name fragments are anchors; JSON pointers (starting
+          ;; with "/") are NOT dynamic anchors.
+          anchor-name (let [f (:fragment (parse-uri v2))]
+                        (when (and f (not (starts-with? f "/")))
+                          f))
+          needs-bookend? dynamic-ref-requires-bookend?]
+      [c2
+       m2
      ;; f1: resolve LAZILY at runtime
      (fn [c1 p1 m1]
        (if (present? m1)
@@ -477,7 +478,7 @@
                [c1b m1 (concatv es-a es-b)])
              (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc c2 :scope-id) schema-p2 m2-no-ref)]
                (compiled-f1 c1 p1 m1))))
-         [c1 m1 nil]))]))
+         [c1 m1 nil]))])))
 
 (def check-property-description noop-checker)
 (def check-property-readOnly    noop-checker)
