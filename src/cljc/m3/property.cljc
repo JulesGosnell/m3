@@ -71,47 +71,31 @@
       (when-not (seq-contains? v2 json-= m1)
         [(make-error "enum: does not contain value" p2 m2 p1 m1)])])])
 
-(defn check-property-id [_property c2 p2 m2 v2]
-  (let [schema-p2 (vec (butlast p2))
-        old-id-uri (:id-uri c2)
-        new-id-uri (inherit-uri old-id-uri (parse-uri v2))
-        c2 (-> c2
-               (assoc :id-uri new-id-uri)
-               (update :uri->path assoc new-id-uri schema-p2)
-               (update :path->uri assoc schema-p2 new-id-uri))]
-    [c2
-     m2
-     (fn [{old-id-uri :id-uri :as c1} p1 {id "id" :as m1}]
-       [(if-let [new-id-uri (and id (inherit-uri old-id-uri (parse-uri id)))]
-          (-> c1
-              (update :path->uri assoc p1 new-id-uri)
-              (update :uri->path assoc new-id-uri p1)
-              (assoc :id-uri new-id-uri))
-          (-> c1
-              (update :path->uri assoc p1 old-id-uri)))
-        m1
-        nil])]))
+(defn- make-check-property-id [id-key]
+  (fn [_property c2 p2 m2 v2]
+    (let [schema-p2 (vec (butlast p2))
+          old-id-uri (:id-uri c2)
+          new-id-uri (inherit-uri old-id-uri (parse-uri v2))
+          c2 (-> c2
+                 (assoc :id-uri new-id-uri)
+                 (update :uri->path assoc new-id-uri schema-p2)
+                 (update :path->uri assoc schema-p2 new-id-uri))]
+      [c2
+       m2
+       (fn [{old-id-uri :id-uri :as c1} p1 m1]
+         (let [id (get m1 id-key)]
+           [(if-let [new-id-uri (and id (inherit-uri old-id-uri (parse-uri id)))]
+              (-> c1
+                  (update :path->uri assoc p1 new-id-uri)
+                  (update :uri->path assoc new-id-uri p1)
+                  (assoc :id-uri new-id-uri))
+              (-> c1
+                  (update :path->uri assoc p1 old-id-uri)))
+            m1
+            nil]))])))
 
-(defn check-property-$id [_property c2 p2 m2 v2]
-  (let [schema-p2 (vec (butlast p2))
-        old-id-uri (:id-uri c2)
-        new-id-uri (inherit-uri old-id-uri (parse-uri v2))
-        c2 (-> c2
-               (assoc :id-uri new-id-uri)
-               (update :uri->path assoc new-id-uri schema-p2)
-               (update :path->uri assoc schema-p2 new-id-uri))]
-    [c2
-     m2
-     (fn [{old-id-uri :id-uri :as c1} p1 {id "$id" :as m1}]
-       [(if-let [new-id-uri (and id (inherit-uri old-id-uri (parse-uri id)))]
-          (-> c1
-              (update :path->uri assoc p1 new-id-uri)
-              (update :uri->path assoc new-id-uri p1)
-              (assoc :id-uri new-id-uri))
-          (-> c1
-              (update :path->uri assoc p1 old-id-uri)))
-        m1
-        nil])]))
+(def check-property-id (make-check-property-id "id"))
+(def check-property-$id (make-check-property-id "$id"))
 
 (defn check-property-$anchor [_property c2 p2 m2 v2]
   (let [schema-p2 (vec (butlast p2))
@@ -1122,7 +1106,7 @@
     (fn [c1 p1 m1]
       [c1
        m1
-       (when-let [missing (seq (reduce (fn [acc k] (if (contains? m1 k) acc (conj acc k))) [] v2))]
+       (when-let [missing (seq (filterv #(not (contains? m1 %)) v2))]
          [(make-error ["required: missing properties (at least):" missing] p2 m2 p1 m1)])]))])
 
 (defn check-property-minProperties [_property c2 p2 m2 v2]

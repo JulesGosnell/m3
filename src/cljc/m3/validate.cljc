@@ -211,8 +211,8 @@
                       c1)
                  [new-c1 m1 es]
                  (reduce
-                  (fn [[c1 m1 acc] [new-p2 cp]]
-                    (let [[c1 m1 [{m :message} :as es]] (cp c1 p1 m1)]
+                  (fn [[c1 m1 acc] [_new-p2 cp]]
+                    (let [[c1 m1 es] (cp c1 p1 m1)]
                       [c1 m1 (concatv acc es)]))
                   [c1 m1 []]
                   checkers)]
