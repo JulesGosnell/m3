@@ -16,6 +16,7 @@
   (:require
    #?(:clj  [clojure.test :refer [deftest testing is]]
       :cljs [cljs.test :refer-macros [deftest testing is]])
+   [clojure.string :as str]
    [m3.util :refer [map-values topo-sort-by make-stable-sort-by
                      convert-output make-error make-error-on make-error-on-failure
                      absent absent? present? concatv seq-contains? assoc-when
@@ -141,7 +142,7 @@
     (is (= 42 (:document e)))
     (is (= {"type" "string"} (:schema e)))
     (is (string? (:message e)))
-    (is (.contains ^String (:message e) "42"))))
+    (is (str/includes? (:message e) "42"))))
 
 ;;------------------------------------------------------------------------------
 ;; make-error-on / make-error-on-failure
@@ -156,7 +157,7 @@
       (is (= sub-errors (:errors (first result))))))
   (testing "message can be a function"
     (let [result (make-error-on (fn [_] "dynamic") ["x"] {} [] "doc" seq [{:m "e"}])]
-      (is (.contains ^String (:message (first result)) "dynamic")))))
+      (is (str/includes? (:message (first result)) "dynamic")))))
 
 (deftest test-make-error-on-failure
   (testing "delegates to make-error-on with seq as failed?"

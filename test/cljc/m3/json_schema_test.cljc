@@ -83,9 +83,11 @@
 (deftest test-validate-strict-integer
   (testing "1.0 passes as integer by default"
     (is (:valid? (m3/validate {"type" "integer"} 1.0))))
-  (testing "strict-integer? rejects 1.0"
-    (is (not (:valid? (m3/validate {"type" "integer"} 1.0
-                                   {:strict-integer? true}))))))
+  ;; JS has no integer/float distinction — 1.0 === 1 — so this is CLJ-only
+  #?(:clj
+     (testing "strict-integer? rejects 1.0"
+       (is (not (:valid? (m3/validate {"type" "integer"} 1.0
+                                      {:strict-integer? true})))))))
 
 ;;------------------------------------------------------------------------------
 ;; validate — error shape
