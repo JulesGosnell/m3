@@ -17,9 +17,9 @@
    "draft-next"   :draft-next})
 
 ;; Resolve schema resource paths relative to the npm package root.
-;; __dirname is the npm-dist directory; schemas are in ../resources/schemas/
+;; __dirname is the npm-dist directory; schemas are bundled in npm-dist/schemas/
 (def ^:private schemas-dir
-  (.resolve path js/__dirname ".." "resources" "schemas"))
+  (.resolve path js/__dirname "schemas"))
 
 ;; Override the global uri-base->dir so $schema resolution uses absolute paths.
 ;; This makes the npm module work regardless of the user's cwd.

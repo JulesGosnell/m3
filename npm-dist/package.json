@@ -4,6 +4,7 @@
   "description": "The most complete JSON Schema validator. All drafts (3, 4, 6, 7, 2019-09, 2020-12, draft-next). Format validation, $ref, $dynamicRef, unevaluatedProperties, unevaluatedItems.",
   "main": "m3.js.js",
   "types": "index.d.ts",
+  "files": ["*.js", "*.js.map", "index.d.ts", "schemas/"],
   "keywords": [
     "json-schema",
     "validator",

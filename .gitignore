@@ -30,3 +30,4 @@ build.xml
 npm-dist/*.js
 npm-dist/*.js.map
 npm-dist/cljs_env.js
+npm-dist/schemas/
