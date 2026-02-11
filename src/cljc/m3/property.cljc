@@ -124,7 +124,6 @@
          [(update c1 :uri->path assoc anchor-uri p1) m1 nil]))]))
 
 (defn check-property-$recursiveAnchor [_property c2 p2 m2 v2]
-  ;; Stash into c2 for compile-time ref resolution (replaces interceptor)
   (let [schema-p2 (vec (butlast p2))
         ;; Capture compile-time context for runtime dynamic scope.
         ;; When $recursiveRef resolves at runtime, it needs the schema and
@@ -164,7 +163,6 @@
          [c1 m1 nil]))]))
 
 (defn check-property-$dynamicAnchor [_property c2 p2 m2 v2]
-  ;; Stash into c2 for compile-time ref resolution (replaces interceptor)
   ;; $dynamicAnchor also acts as a regular $anchor for $ref resolution
   ;; (dynamic behavior only applies to $dynamicRef)
   (let [schema-p2 (vec (butlast p2))
@@ -1018,8 +1016,8 @@
 
 ;; draft3: variant of check-property-properties that also enforces "required": true
 ;; in property sub-schemas. Extracts required keys at compile time.
-;; TODO: review when context-stashing (json-walk removal) work solidifies - required keys
-;; could be gathered during M3/M2 validation pass instead of scanning sub-schemas here.
+;; Required keys could be gathered during M3/M2 validation pass instead of
+;; scanning sub-schemas here.
 (defn check-property-properties-draft3 [_property c2 p2 m2 ps]
   (let [f2 (get-check-schema)
         parent-id-uri (:id-uri c2)
@@ -1237,11 +1235,7 @@
        (make-new-type-checker
         json-array?
         (fn [c1 p1 m1]
-          (let [;; this is how it should be done, but cheaper to just look at items (must be array for additionalItems to be meaningful) in m2 time
-                 ;;mis (get (get c1 :matched) pp2 #{})
-                 ;;ais  (remove (fn [[k]] (contains? mis k)) (map-indexed vector m1))
-                 ;;i-and-css (mapv (fn [[k]] [k cs]) ais) ; TODO: feels inefficient
-                n (count is)
+          (let [n (count is)
                 ais (drop n m1)
                 i-and-css (mapv (fn [i cs _] [(+ i n) cs]) (range) (repeat cs) ais)]
             (f1 c1 p1 ais i-and-css "additionalItems: at least one item did not conform to schema"))))])

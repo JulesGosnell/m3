@@ -57,8 +57,6 @@
 
 ;;------------------------------------------------------------------------------
 
-;;------------------------------------------------------------------------------
-
 ;; Hand-built marker stashes for the builtin meta-schemas.
 ;;
 ;; At the top of the JSON Schema hierarchy, a meta-schema validates itself
