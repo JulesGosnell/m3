@@ -989,18 +989,21 @@
           (f1 c1 p1 m1 k-and-css "properties: at least one property did not conform to respective schema"))))]))
 
 ;; draft3: "required" is a boolean inside each property sub-schema, not an array on the object.
-;; At the sub-schema level this is a no-op, since the checker only fires for present properties.
-;; The actual required check is done by check-property-properties-draft3 below.
-(defn check-property-required-draft3 [_property c2 _p2 m2 _v2]
-  [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])])
+;; Stashes the property key into c2 so check-property-properties-draft3 can read it.
+(defn check-property-required-draft3 [_property c2 p2 m2 v2]
+  (let [c2 (if (true? v2)
+             (let [prop-key (peek (pop p2))
+                   props-path (pop (pop p2))]
+               (update-in c2 [:draft3-required-keys props-path] (fnil conj []) prop-key))
+             c2)]
+    [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])]))
 
 ;; draft3: variant of check-property-properties that also enforces "required": true
-;; in property sub-schemas. Extracts required keys at compile time.
-;; Required keys could be gathered during M3/M2 validation pass instead of
-;; scanning sub-schemas here.
+;; in property sub-schemas. Required keys are stashed into c2 by check-property-required-draft3
+;; during sub-schema compilation.
 (defn check-property-properties-draft3 [_property c2 p2 m2 ps]
   (let [[c2 k-and-css] (compile-sub-schemas c2 p2 ps)
-        required-keys (vec (keep (fn [[k v]] (when (true? (get v "required")) k)) ps))
+        required-keys (get-in c2 [:draft3-required-keys p2] [])
         [c2 m2 f1] (check-properties c2 p2 m2)]
     [c2
      m2
