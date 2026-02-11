@@ -14,7 +14,8 @@
    "draft7"       :draft7
    "draft2019-09" :draft2019-09
    "draft2020-12" :draft2020-12
-   "draft-next"   :draft-next})
+   "draft-next"   :draft-next
+   "latest"       :latest})
 
 ;; Resolve schema resource paths relative to the npm package root.
 ;; __dirname is the npm-dist directory; schemas are bundled in npm-dist/schemas/
@@ -66,7 +67,7 @@
 (defn- js-opts->clj-opts [opts]
   (when opts
     (let [opts-clj (deep-js->clj opts)]
-      (cond-> {:draft (or (draft-strings (get opts-clj "draft")) :draft2020-12)}
+      (cond-> {:draft (or (draft-strings (get opts-clj "draft")) :latest)}
         (get opts-clj "strictFormat")  (assoc :strict-format? true)
         (get opts-clj "strictInteger") (assoc :strict-integer? true)))))
 
@@ -84,7 +85,7 @@
    (let [schema-clj  (deep-js->clj schema)
          document-clj (deep-js->clj document)
          clj-opts (or (js-opts->clj-opts opts)
-                      {:draft :draft2020-12})
+                      {:draft :latest})
          c2 (cond-> {:quiet? true
                       :draft (:draft clj-opts)
                       :uri->schema npm-uri->schema}
@@ -107,7 +108,7 @@
   ([schema opts]
    (let [schema-clj (deep-js->clj schema)
          clj-opts (or (js-opts->clj-opts opts)
-                      {:draft :draft2020-12})
+                      {:draft :latest})
          c2 (cond-> {:quiet? true
                       :draft (:draft clj-opts)
                       :uri->schema npm-uri->schema}

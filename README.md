@@ -103,7 +103,7 @@ npm install m3-json-schema
 
 No other JSON Schema validator supports all seven drafts. Most support only one or two. M3 is the only implementation listed for draft-next.
 
-Default draft: `draft2020-12`
+Default draft: `latest` (currently `draft2020-12`)
 
 ---
 

@@ -98,7 +98,7 @@
       :path->uri {[] draft2020-12}}}))
 
 (defn compile-m2 [{dialect :dialect draft :draft :as c2} old-p2 m2]
-  (let [effective-draft (or draft :draft2020-12)
+  (let [effective-draft (or draft :latest)
         initial-dialect (or dialect (draft->default-dialect effective-draft))
         ;; Save the id-uri at entry — this is the parent schema's scope.
         ;; Old-draft $ref uses this to ignore sibling $id.
@@ -277,10 +277,9 @@
           [ctx [] m])))))
 
 (defn make-context [{draft :draft u->s :uri->schema :as c2} {s "$schema" :as m2}]
-  (let [draft (let [d (or draft
-                        (when s ($schema-uri->draft (uri-base (parse-uri s))))
-                        :draft2020-12)]
-                (if (= d :latest) :draft2020-12 d))
+  (let [draft (or draft
+                  (when s ($schema-uri->draft (uri-base (parse-uri s))))
+                  :latest)
         config (draft->config draft)
         id-key (:id-key config)
         sid (get m2 id-key)

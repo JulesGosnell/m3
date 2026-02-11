@@ -33,8 +33,8 @@
        (v {}))          ;; => {:valid? false, :errors [...]}
 
    Supported drafts: :draft3, :draft4, :draft6, :draft7,
-                     :draft2019-09, :draft2020-12, :draft-next
-   Default: :draft2020-12
+                     :draft2019-09, :draft2020-12, :draft-next, :latest
+   Default: :latest (currently :draft2020-12)
 
    Error shape:
      {:schema-path   [\"type\"]        ;; path into the schema that failed
@@ -48,7 +48,7 @@
    [m3.validate :as v]))
 
 (defn- opts->c2 [{:keys [draft strict-format? strict-integer? quiet?]}]
-  (cond-> {:quiet? true :draft (or draft :draft2020-12)}
+  (cond-> {:quiet? true :draft (or draft :latest)}
     strict-format?  (assoc :strict-format? true)
     strict-integer? (assoc :strict-integer? true)
     (some? quiet?)  (assoc :quiet? quiet?)))
@@ -64,7 +64,7 @@
      (validate {\"type\" \"string\"} \"hello\")
 
    opts - optional map:
-     :draft            - :draft3, :draft4, :draft6, :draft7, :draft2019-09, :draft2020-12, :draft-next
+     :draft            - :draft3, :draft4, :draft6, :draft7, :draft2019-09, :draft2020-12, :draft-next, :latest
      :strict-format?   - true to treat format as assertion (default: annotation-only)
      :strict-integer?  - true to require actual integers (not 1.0 for integer type)
      :quiet?           - false to enable logging (default: true)"

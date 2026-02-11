@@ -148,7 +148,8 @@
    :draft7       {:id-key "$id"}
    :draft2019-09 {:id-key "$id"}
    :draft2020-12 {:id-key "$id"}
-   :draft-next   {:id-key "$id"}})
+   :draft-next   {:id-key "$id"}
+   :latest       {:id-key "$id"}})
 
 ;; Pre-built ref configs
 (def old-ref-config {:meld-fn meld-replace :ref-replaces-siblings? true :ref-scope-isolation? false})
@@ -562,6 +563,10 @@
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "type"                   check-property-type-draft4                               #{"$schema"}]])})
+
+;; :latest aliases the current default draft
+(def draft->vocab
+  (assoc draft->vocab :latest (:draft2020-12 draft->vocab)))
 
 ;; lets define a dialect as a function that given an m2 will return
 ;; you a correctly ordered sequence of pairs of m2-kv and
