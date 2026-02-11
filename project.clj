@@ -24,7 +24,7 @@
    ;; clj
    [org.clojure/clojure "1.12.3"] ;; https://clojure.org/releases/downloads
    [org.clojure/tools.logging "1.3.0"] ;; https://github.com/clojure/tools.logging
-   [cheshire/cheshire "6.1.0"] ;; https://github.com/dakrone/cheshire
+   [org.clojure/data.json "2.5.1"] ;; https://github.com/clojure/data.json
    ;; cljs
    [thheller/shadow-cljs "3.2.0"] ;; https://github.com/thheller/shadow-cljs
    ;; cljc

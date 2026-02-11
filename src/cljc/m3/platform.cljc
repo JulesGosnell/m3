@@ -14,7 +14,7 @@
 
 (ns m3.platform
   (:require
-   #?(:clj [cheshire.core :as cheshire]
+   #?(:clj [clojure.data.json :as json]
       :cljs [cljs.core :as cljs])
    #?(:cljs [goog.string :as gstring])
    #?(:cljs [goog.string.format])
@@ -37,7 +37,7 @@
        :else x)))
 
 (defn json-decode [s]
-  #?(:clj (cheshire/decode s)
+  #?(:clj (json/read-str s)
      :cljs (deep-js->clj (js/JSON.parse s))))
 
 (def big-zero?
