@@ -110,7 +110,6 @@
                       {:draft :draft2020-12})
          c2 (cond-> {:quiet? true
                       :draft (:draft clj-opts)
-                      :m2? true
                       :uri->schema npm-uri->schema}
               (:strict-format? clj-opts)  (assoc :strict-format? true)
               (:strict-integer? clj-opts) (assoc :strict-integer? true))

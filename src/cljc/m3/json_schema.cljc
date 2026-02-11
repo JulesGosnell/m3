@@ -92,6 +92,6 @@
   ([schema opts]
    (let [schema (if (string? schema) (json-decode schema) schema)
          c2     (opts->c2 (or opts {}))
-         f      (v/validate-m2 (assoc c2 :m2? true) schema)]
+         f      (v/validate-m2 c2 schema)]
      (fn [document]
        (v/reformat (f {} document))))))

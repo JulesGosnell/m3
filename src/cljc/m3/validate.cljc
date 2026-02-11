@@ -392,4 +392,4 @@
 
 (defn validate
   ([c2 m2 c1 m1]
-   (reformat ((validate-m2 (assoc c2 :m2? true) m2) c1 m1))))
+   (reformat ((validate-m2 c2 m2) c1 m1))))
