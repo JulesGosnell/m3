@@ -1,4 +1,4 @@
-# M3 — The most complete JSON Schema validator
+# M3 — JSON Schema validator for JVM and browser
 
 [![CI](https://github.com/JulesGosnell/m3/actions/workflows/ci.yml/badge.svg)](https://github.com/JulesGosnell/m3/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/JulesGosnell/m3/branch/main/graph/badge.svg)](https://codecov.io/gh/JulesGosnell/m3)
@@ -6,13 +6,13 @@
 [![npm](https://img.shields.io/npm/v/m3-json-schema.svg)](https://www.npmjs.com/package/m3-json-schema)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-**Every draft. Every keyword. JVM and browser.**
+**Every draft. Every keyword. Same code, same answers — backend and frontend.**
 
-M3 passes **every test**[^1] in the official [JSON Schema Test Suite][test-suite] across **every draft** from draft-03 through draft-next — **9,622 assertions** with zero failures. No other validator in any language covers all seven drafts completely, and M3 will use the same code to give you the same answer in both front and backend.
+M3 passes **every test**[^1] in the official [JSON Schema Test Suite][test-suite] across **every draft** from draft-03 through draft-next — **9,968 assertions** with zero failures.
 
-This includes full support for every keyword: `$ref`, `$dynamicRef`, `$recursiveRef`, `unevaluatedProperties`, `unevaluatedItems`, `$vocabulary`, `$anchor`, `$dynamicAnchor`, `if`/`then`/`else`, `dependentSchemas`, `prefixItems`, `contentMediaType`, `contentEncoding`, ...and all format validators.
+Written in Clojure/ClojureScript, M3 compiles to both JVM bytecode and JavaScript from a single codebase — the only JSON Schema validator that delivers identical results on the server and in the browser across all drafts. Use it from **Clojure**, **Java**, **Kotlin**, **Scala**, **JavaScript**, or **Node.js**.
 
-Use it from **Clojure**, **Java**, **Kotlin**, **Scala**, **JavaScript**, or **Node.js**.
+Full support for every keyword: `$ref`, `$dynamicRef`, `$recursiveRef`, `unevaluatedProperties`, `unevaluatedItems`, `$vocabulary`, `$anchor`, `$dynamicAnchor`, `if`/`then`/`else`, `dependentSchemas`, `prefixItems`, `contentMediaType`, `contentEncoding`, and all format validators.
 
 **Requires:** Java 21+ (JVM) | Node.js 18+ (JavaScript)
 
@@ -31,7 +31,7 @@ Use it from **Clojure**, **Java**, **Kotlin**, **Scala**, **JavaScript**, or **N
 
 ```clojure
 [org.clojars.jules_gosnell/m3
- "1.0.0-beta1"]
+ "1.0.0-beta2"]
 ```
 
 </td>
@@ -39,7 +39,7 @@ Use it from **Clojure**, **Java**, **Kotlin**, **Scala**, **JavaScript**, or **N
 
 ```clojure
 org.clojars.jules_gosnell/m3
-{:mvn/version "1.0.0-beta1"}
+{:mvn/version "1.0.0-beta2"}
 ```
 
 </td>
@@ -49,7 +49,7 @@ org.clojars.jules_gosnell/m3
 <dependency>
   <groupId>org.clojars.jules_gosnell</groupId>
   <artifactId>m3</artifactId>
-  <version>1.0.0-beta1</version>
+  <version>1.0.0-beta2</version>
 </dependency>
 ```
 
@@ -58,7 +58,7 @@ org.clojars.jules_gosnell/m3
 
 ```groovy
 implementation
-  'org.clojars.jules_gosnell:m3:1.0.0-beta1'
+  'org.clojars.jules_gosnell:m3:1.0.0-beta2'
 ```
 
 </td>
@@ -101,7 +101,7 @@ npm install m3-json-schema
 | draft 2020-12 | All tests passing | All tests passing |
 | draft-next | All tests passing | All tests passing[^1] |
 
-No other JSON Schema validator supports all seven drafts. Most support only one or two. M3 is the only implementation listed for draft-next.
+A handful of validators cover drafts 3 through 2020-12 (notably Python's `jsonschema` and .NET's `Newtonsoft.Json.Schema`), and several JavaScript validators (Ajv, Hyperjump) run in both Node.js and the browser — but none of them do both. M3 is the only validator that covers all drafts **and** runs portably on backend and frontend from a single codebase.
 
 Default draft: `latest` (currently `draft2020-12`)
 
@@ -265,7 +265,7 @@ Internally, two context maps thread through validation:
 git clone --recursive git@github.com:JulesGosnell/m3.git
 cd m3
 
-# Run Clojure tests (9,622 test-suite assertions)
+# Run Clojure tests (9,968 test-suite assertions)
 lein test
 
 # Run ClojureScript tests
@@ -287,6 +287,6 @@ Copyright 2025 Julian Gosnell. [Apache License, Version 2.0](https://www.apache.
 
 ---
 
-[^1]: One test is excluded on JavaScript: `zeroTerminatedFloats.json` — "a float is not an integer even without fractional part". JavaScript has no integer/float distinction (`JSON.parse("1.0") === JSON.parse("1")`), making this test impossible to pass at the language level. On the JVM, all 9,622 test-suite assertions pass without exception.
+[^1]: One test is excluded on JavaScript: `zeroTerminatedFloats.json` — "a float is not an integer even without fractional part". JavaScript has no integer/float distinction (`JSON.parse("1.0") === JSON.parse("1")`), making this test impossible to pass at the language level. On the JVM, all 9,968 test-suite assertions pass without exception.
 
 [test-suite]: https://github.com/json-schema-org/JSON-Schema-Test-Suite
