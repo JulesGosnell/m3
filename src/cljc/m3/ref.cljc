@@ -14,8 +14,7 @@
 
 (ns m3.ref
   (:require
-   [clojure.string :refer [split replace] :rename {replace string-replace}] 
-   [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
+   [clojure.string :refer [split replace] :rename {replace string-replace}]
    [m3.util :refer [present? absent]]
    [m3.uri :refer [uri-base uri-fragment inherit-uri]]))
 
@@ -113,8 +112,7 @@
     (when-let [[c p _m] (and uri->schema (uri->schema ctx path uri))]
       (resolve-uri c p (uri-fragment uri) (str "#" (:fragment uri)) quiet?))
 
-    (when-not quiet?
-      (log/warn "$ref: could not resolve:" (pr-str $ref) (pr-str uri))))))
+    )))
 
 ;;------------------------------------------------------------------------------
 ;; expanding $refs

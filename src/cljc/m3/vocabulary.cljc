@@ -14,8 +14,7 @@
 
 (ns m3.vocabulary
   (:require
-   [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
-   [m3.util :refer [map-values topo-sort-by make-stable-sort-by third fourth]]
+   [m3.util :refer [map-values topo-sort-by make-stable-sort-by third fourth add-warning]]
    [m3.uri :refer [parse-uri]]
    [m3.draft :refer [$schema-uri->draft]]
    [m3.ref :refer [meld-replace meld-deep-over]]
@@ -105,20 +104,20 @@
 
 (declare draft->config make-dialect draft->default-dialect)
 
-(defn check-property-$schema [_property c2 _p2 m2 v2]
+(defn check-property-$schema [_property c2 p2 m2 v2]
   ;; Dialect switching: parse $schema to determine draft, load metaschema
   ;; for $vocabulary, build dialect, return updated c2 for compile-m2's loop.
   (let [uri (parse-uri v2)
         draft (or ($schema-uri->draft uri)
                   (:draft c2))
         uri->schema (:uri->schema c2)
-        metaschema (when uri->schema
-                     (try
-                       (let [[_ _ ms] (uri->schema c2 [] uri)]
-                         ms)
-                       (catch #?(:clj Exception :cljs js/Error) e
-                         (log/info (str "Could not load metaschema: " v2 " - " #?(:clj (.getMessage e) :cljs (.-message e))))
-                         nil)))
+        [metaschema c2] (if uri->schema
+                          (try
+                            (let [[_ _ ms] (uri->schema c2 [] uri)]
+                              [ms c2])
+                            (catch #?(:clj Exception :cljs js/Error) e
+                              [nil (add-warning c2 p2 (str "Could not load metaschema: " v2 " - " #?(:clj (.getMessage e) :cljs (.-message e))) m2)]))
+                          [nil c2])
         vocab-map (get metaschema "$vocabulary")
         new-dialect (if vocab-map
                       (make-dialect draft vocab-map)

@@ -83,6 +83,26 @@
 
 ;;------------------------------------------------------------------------------
 
+(defn- add-message [k ctx schema-path message schema]
+  (update ctx k (fnil conj [])
+          {:schema-path schema-path :message message :document-path [] :document nil :schema schema}))
+
+(defn- add-message-with-doc [k ctx schema-path message schema document-path document]
+  (update ctx k (fnil conj [])
+          {:schema-path schema-path :message (str message " - " (pr-str document)) :document-path document-path :document document :schema schema}))
+
+(defn add-warning
+  ([ctx schema-path message schema]
+   (add-message :warnings ctx schema-path message schema))
+  ([ctx schema-path message schema document-path document]
+   (add-message-with-doc :warnings ctx schema-path message schema document-path document)))
+
+(defn add-info
+  ([ctx schema-path message schema]
+   (add-message :infos ctx schema-path message schema))
+  ([ctx schema-path message schema document-path document]
+   (add-message-with-doc :infos ctx schema-path message schema document-path document)))
+
 (defn make-error [message schema-path schema document-path document]
   {:schema-path schema-path :message (str message " - " (pr-str document)) :document-path document-path :document document :schema schema})
 
@@ -107,7 +127,10 @@
    :document      "document"
    :schema        "schema"
    :errors        "errors"
-   :valid?        "valid"})
+   :valid?        "valid"
+   :warnings      "warnings"
+   :infos         "infos"
+})
 
 (defn convert-output
   "Recursively convert a Clojure result/error tree using the given output fns.

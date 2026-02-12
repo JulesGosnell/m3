@@ -2,7 +2,6 @@
   "JavaScript entry point for M3 JSON Schema Validator.
    Exports validate function for use from Node.js/browser."
   (:require
-   [m3.log :as log]
    [m3.platform :refer [deep-js->clj]]
    [m3.validate :as v]))
 
@@ -50,6 +49,8 @@
                        :schema        "schema"
                        :errors        "errors"
                        :valid?        "valid"
+                       :warnings      "warnings"
+                       :infos         "infos"
                        (if (keyword? k) (name k) (str k)))]
           (aset obj js-key (convert-errors val))))
       obj)
@@ -68,9 +69,7 @@
 (defn- js-opts->clj-opts [opts]
   (when opts
     (let [opts-clj (deep-js->clj opts)]
-      (cond-> {:draft (or (draft-strings (get opts-clj "draft")) :latest)}
-        (get opts-clj "strictFormat")  (assoc :strict-format? true)
-        (get opts-clj "strictInteger") (assoc :strict-integer? true)))))
+      {:draft (or (draft-strings (get opts-clj "draft")) :latest)})))
 
 (defn ^:export validate
   "Validate a JSON document against a JSON Schema.
@@ -87,11 +86,9 @@
          document-clj (deep-js->clj document)
          clj-opts (or (js-opts->clj-opts opts)
                       {:draft :latest})
-         c2 (cond-> {:quiet? true
-                      :draft (:draft clj-opts)
-                      :uri->schema npm-uri->schema}
-              (:strict-format? clj-opts)  (assoc :strict-format? true)
-              (:strict-integer? clj-opts) (assoc :strict-integer? true))
+         c2 {:quiet? true
+             :draft (:draft clj-opts)
+             :uri->schema npm-uri->schema}
          result (v/validate c2 schema-clj {} document-clj)]
      (convert-errors result))))
 
@@ -110,28 +107,12 @@
    (let [schema-clj (deep-js->clj schema)
          clj-opts (or (js-opts->clj-opts opts)
                       {:draft :latest})
-         c2 (cond-> {:quiet? true
-                      :draft (:draft clj-opts)
-                      :uri->schema npm-uri->schema}
-              (:strict-format? clj-opts)  (assoc :strict-format? true)
-              (:strict-integer? clj-opts) (assoc :strict-integer? true))
+         c2 {:quiet? true
+             :draft (:draft clj-opts)
+             :uri->schema npm-uri->schema}
          f (v/validate-m2 c2 schema-clj)]
      (fn [document]
        (let [document-clj (deep-js->clj document)
              result (v/reformat (f {} document-clj))]
          (convert-errors result))))))
 
-(def ^:private level-strings
-  {"trace" :trace "info" :info "warn" :warn "error" :error "off" :off})
-
-(defn ^:export setLogLevel
-  "Set the minimum log level. One of: 'trace', 'info', 'warn', 'error', 'off'.
-   Default is 'warn'.
-
-   Usage:
-     const {setLogLevel} = require('m3-json-schema');
-     setLogLevel('off');    // suppress all logging
-     setLogLevel('trace');  // enable all logging"
-  [level]
-  (when-let [kw (level-strings level)]
-    (log/set-log-level! kw)))

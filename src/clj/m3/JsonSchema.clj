@@ -48,9 +48,7 @@
 (defn- java-opts->clj-opts [^java.util.Map opts]
   (when opts
     (cond-> {}
-      (.get opts "draft")          (assoc :draft (keyword (.get opts "draft")))
-      (.get opts "strictFormat")   (assoc :strict-format? true)
-      (.get opts "strictInteger")  (assoc :strict-integer? true))))
+      (.get opts "draft") (assoc :draft (keyword (.get opts "draft"))))))
 
 (defn- result->java [result]
   (convert-output java-output-fns result))

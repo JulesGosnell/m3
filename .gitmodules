@@ -1,3 +1,9 @@
 [submodule "test-resources/JSON-Schema-Test-Suite"]
 	path = test-resources/JSON-Schema-Test-Suite
 	url = git@github.com:json-schema-org/JSON-Schema-Test-Suite.git
+[submodule "test-resources/schemastore"]
+	path = test-resources/schemastore
+	url = https://github.com/SchemaStore/schemastore.git
+[submodule "test-resources/json-schema-corpus"]
+	path = test-resources/json-schema-corpus
+	url = https://github.com/sdbs-uni-p/json-schema-corpus.git

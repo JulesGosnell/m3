@@ -42,7 +42,14 @@
       :message       \"...\"           ;; human-readable description
       :document      ...              ;; the failing document fragment
       :schema        ...              ;; the relevant schema fragment
-      :errors        [...]            ;; nested sub-errors (if applicable)}"
+      :errors        [...]            ;; nested sub-errors (if applicable)}
+
+   Warning/info shape (when present):
+     {:schema-path   [\"format\"]       ;; path into the schema
+      :document-path [\"email\"]       ;; path into the document
+      :message       \"...\"            ;; human-readable description
+      :document      \"not-email\"      ;; the failing value
+      :schema        {...}}             ;; the relevant schema"
   (:require
    [m3.platform :refer [json-decode]]
    [m3.uri :refer [parse-uri uri-base]]
@@ -65,16 +72,15 @@
           [c2 [] schema])
         (default c p uri)))))
 
-(defn- opts->c2 [{:keys [draft strict-format? strict-integer? quiet? registry]}]
+(defn- opts->c2 [{:keys [draft quiet? registry]}]
   (cond-> {:quiet? true :draft (or draft :latest)}
-    strict-format?  (assoc :strict-format? true)
-    strict-integer? (assoc :strict-integer? true)
     (some? quiet?)  (assoc :quiet? quiet?)
     registry        (assoc :uri->schema (registry->uri->schema registry))))
 
 (defn validate
   "Validate a document against a JSON Schema.
-   Returns {:valid? bool, :errors [...]}
+   Returns {:valid? bool, :errors [...], :warnings [...]}
+   (:warnings is only present when there are warnings)
 
    Both-strings form: schema and document are both JSON strings.
      (validate \"{\\\"type\\\":\\\"string\\\"}\" \"\\\"hello\\\"\")
@@ -83,11 +89,9 @@
      (validate {\"type\" \"string\"} \"hello\")
 
    opts - optional map:
-     :draft            - :draft3, :draft4, :draft6, :draft7, :draft2019-09, :draft2020-12, :draft-next, :latest
-     :strict-format?   - true to treat format as assertion (default: annotation-only)
-     :strict-integer?  - true to require actual integers (not 1.0 for integer type)
-     :quiet?           - false to enable logging (default: true)
-     :registry         - map of URI string to schema, for $ref resolution"
+     :draft    - :draft3, :draft4, :draft6, :draft7, :draft2019-09, :draft2020-12, :draft-next, :latest
+     :quiet?   - false to enable $comment printing (default: true)
+     :registry - map of URI string to schema, for $ref resolution"
   ([schema document]
    (validate schema document nil))
   ([schema document opts]
@@ -110,7 +114,8 @@
 (defn validator
   "Compile a schema, return a reusable validation function.
    The returned function takes a document (any value) and
-   returns {:valid? bool, :errors [...]}.
+   returns {:valid? bool, :errors [...], :warnings [...]}.
+   (:warnings is only present when there are warnings)
    More efficient for validating many documents against one schema.
 
    schema - map (parsed schema) or JSON string

@@ -149,7 +149,7 @@ Map result = JsonSchema.validate(schema, document);
 
 // With options
 Map result = JsonSchema.validate(schema, document,
-    Map.of("draft", "draft2020-12", "strictFormat", true));
+    Map.of("draft", "draft2020-12"));
 ```
 
 ### Kotlin
@@ -167,7 +167,7 @@ val result = JsonSchema.validate(schema, doc)
 
 // With options
 val result = JsonSchema.validate(schema, doc,
-    mapOf("draft" to "draft2020-12", "strictFormat" to true))
+    mapOf("draft" to "draft2020-12"))
 ```
 
 ### Scala
@@ -216,8 +216,7 @@ All JVM languages accept `java.util.Map` and `java.util.List` directly — docum
 | Option | Clojure | Java/JS | Description |
 |--------|---------|---------|-------------|
 | Draft | `:draft :draft7` | `"draft": "draft7"` | JSON Schema draft version |
-| Strict format | `:strict-format? true` | `"strictFormat": true` | Treat `format` as assertion (default: annotation-only) |
-| Strict integer | `:strict-integer? true` | `"strictInteger": true` | Require actual integers (reject `1.0` for `"type": "integer"`) |
+| Registry | `:registry {uri schema}` | `"registry": {uri: schema}` | Map of URI to schema for `$ref` resolution |
 
 Supported draft values: `draft3`, `draft4`, `draft6`, `draft7`, `draft2019-09`, `draft2020-12`, `draft-next`, `latest`.
 
@@ -225,9 +224,28 @@ Use `latest` (`:latest` in Clojure) as an alias for the most recent stable draft
 
 ---
 
-## Error Shape
+## Validation Results
 
-Errors are nested trees mirroring the schema structure:
+M3 returns three levels of feedback: **errors**, **warnings**, and **infos**.
+
+```clojure
+(m3/validate {"type" "string"} 42)
+;; => {:valid? false, :errors [{:schema-path ["type"], :message "...", ...}]}
+
+(m3/validate {"type" "string" "format" "email"} "not-an-email")
+;; => {:valid? true, :errors nil, :warnings [{:schema-path ["format"], :message "...", ...}]}
+
+(m3/validate {"type" "string" "$comment" "a note"} "hello")
+;; => {:valid? true, :errors nil, :infos [{:schema-path ["$comment"], :message "...", ...}]}
+```
+
+| Level | When | Effect on `:valid?` |
+|-------|------|---------------------|
+| **Errors** | Validation failures — `type`, `required`, `pattern`, etc. | `false` |
+| **Warnings** | Schema is valid but something noteworthy — `format` annotation failures, `contentEncoding` decode failures, `deprecated` properties, unrecognised `format` values | `true` (does not affect validity) |
+| **Infos** | Informational annotations — `$comment` values | `true` (does not affect validity) |
+
+`:warnings` and `:infos` are only present in the result when non-empty. All three levels share the same shape:
 
 ```
 {:schema-path   ["properties" "age" "type"]   ;; path into the schema
@@ -235,10 +253,13 @@ Errors are nested trees mirroring the schema structure:
  :message       "type: not a[n] integer - \"old\""
  :document      "old"                          ;; the failing value
  :schema        {"type" "integer"}             ;; the relevant schema
- :errors        [...]                          ;; nested sub-errors
 ```
 
-Java/JS output uses camelCase string keys: `schemaPath`, `documentPath`, `message`, `document`, `schema`, `errors`.
+Errors may additionally contain an `:errors` key with nested sub-errors for compound keywords like `allOf`, `oneOf`, etc.
+
+Java/JS output uses camelCase string keys: `schemaPath`, `documentPath`, `message`, `document`, `schema`, `errors`, `warnings`, `infos`.
+
+This makes M3 well-suited for building UIs that display not just pass/fail, but rich diagnostic feedback — warnings for deprecated fields, info annotations from `$comment`, and detailed error trees for complex schemas.
 
 ---
 

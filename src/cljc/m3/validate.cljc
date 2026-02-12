@@ -16,9 +16,8 @@
   (:require
    [clojure.string :refer [ends-with? starts-with?]]
    #?(:clj [clojure.java.io :as io])
-   [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.platform :refer [json-decode]]
-   [m3.util :refer [present? concatv make-error make-error-on-failure]]
+   [m3.util :refer [present? concatv make-error make-error-on-failure add-warning]]
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.type :refer [json-object?]]
    [m3.draft :refer [draft->$schema $schema->draft $schema-uri->draft]]
@@ -294,16 +293,19 @@
      :id-uri (or (:id-uri c2) (when sid (parse-uri sid))) ;; should be receiver uri - but seems to default to id/$id - yeugh
      :uri->path (or (:uri->path c2) {})
      :path->uri (or (:path->uri c2) {})
+     :warnings (or (:warnings c2) [])
+     :infos (or (:infos c2) [])
      :original-root m2
      :recursive-anchor []
      :root m2
-     :strict-integer? (let [f? (get c2 :strict-integer?)] (if (nil? f?) false f?)) ;; pull this out into some default fn
      )))
 
 ;; TODO: rename :root to ?:expanded?
 (defn validate* [c2 schema]
   (let [{draft :draft id-key :id-key :as c2} (make-context c2 schema)
-        [c2 m2 cs] (check-schema c2 [] schema)]
+        [c2 m2 cs] (check-schema c2 [] schema)
+        compile-warnings (:warnings c2)
+        compile-infos (:infos c2)]
     (fn [c1 {did id-key _dsid "$schema" :as document}]
       (let [c1 (assoc
                 c1
@@ -313,6 +315,9 @@
                 :recursive-anchor []
                 :root document
                 :draft draft
+                ;; Inject compile-time warnings/infos into c1 so they surface in results.
+                :warnings (or compile-warnings [])
+                :infos (or compile-infos [])
                 ;; Store root compilation scope-id for $dynamicRef resolution.
                 ;; Remote schemas' $dynamicRef can fall back to the root c2
                 ;; to find $dynamicAnchors that are in $defs (whose f1 is
@@ -349,7 +354,7 @@
                         :dialect (if $vocabulary (make-dialect draft $vocabulary) (draft->default-dialect draft))) ;; handle drafts that are too early to know about $vocabulary
               uri (parse-uri s) ;; duplicate work
               stash (uri->marker-stash uri)
-              _ (when-not stash (log/warn "no stash for:" s))
+              c2 (if stash c2 (add-warning c2 [] (str "no stash for: " s) m2))
               ;; initialise c2`
               ;; only a meta-schema defines a dialect;; this is inherited by its instances
               c2 (assoc
@@ -390,8 +395,10 @@
 ;; Replace with LRU cache if memory pressure is observed in long-running processes.
 (def validate-m2 (memoize validate-m2-impl))
 
-(defn reformat [[_ es]]
-  {:valid? (empty? es) :errors es})
+(defn reformat [[c1 es]]
+  (cond-> {:valid? (empty? es) :errors es}
+    (seq (:warnings c1)) (assoc :warnings (:warnings c1))
+    (seq (:infos c1)) (assoc :infos (:infos c1))))
 
 (defn validate
   ([c2 m2 c1 m1]

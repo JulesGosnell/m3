@@ -68,26 +68,13 @@
           (str "should validate with " draft)))))
 
 ;;------------------------------------------------------------------------------
-;; validate — strict-format?
+;; validate — format is annotation-only in draft2020-12 by default
 
-(deftest test-validate-strict-format
-  (testing "format is annotation-only by default"
+(deftest test-validate-format-annotation
+  (testing "format is annotation-only by default (draft2020-12)"
     (is (:valid? (m3/validate {"type" "string" "format" "email"} "not-an-email"))))
-  (testing "strict-format? makes format an assertion"
-    (is (not (:valid? (m3/validate {"type" "string" "format" "email"} "not-an-email"
-                                   {:strict-format? true}))))))
-
-;;------------------------------------------------------------------------------
-;; validate — strict-integer?
-
-(deftest test-validate-strict-integer
-  (testing "1.0 passes as integer by default"
-    (is (:valid? (m3/validate {"type" "integer"} 1.0))))
-  ;; JS has no integer/float distinction — 1.0 === 1 — so this is CLJ-only
-  #?(:clj
-     (testing "strict-integer? rejects 1.0"
-       (is (not (:valid? (m3/validate {"type" "integer"} 1.0
-                                      {:strict-integer? true})))))))
+  (testing "1.0 passes as integer (JSON has no integer/float distinction)"
+    (is (:valid? (m3/validate {"type" "integer"} 1.0)))))
 
 ;;------------------------------------------------------------------------------
 ;; validate — error shape
@@ -183,3 +170,113 @@
     (let [v (m3/validator "{\"type\":\"string\",\"minLength\":1}")]
       (is (:valid? (v "hello")))
       (is (not (:valid? (v "")))))))
+
+;;------------------------------------------------------------------------------
+;; Warnings system (#52)
+
+(deftest test-warnings-format-annotation
+  (testing "format annotation produces warning, not error"
+    (let [result (m3/validate {"type" "string" "format" "email"} "not-an-email")]
+      (is (:valid? result))
+      (is (nil? (:errors result)))
+      (is (seq (:warnings result)))
+      (let [w (first (:warnings result))]
+        (is (contains? w :schema-path))
+        (is (contains? w :document-path))
+        (is (contains? w :message))
+        (is (contains? w :document))
+        (is (contains? w :schema))
+        (is (string? (:message w))))))
+  (testing "valid format produces no warning"
+    (let [result (m3/validate {"type" "string" "format" "email"} "alice@example.com")]
+      (is (:valid? result))
+      (is (nil? (:warnings result))))))
+
+(deftest test-warnings-deprecated
+  (testing "deprecated schema produces runtime warning"
+    (let [result (m3/validate {"type" "string" "deprecated" true} "hello")]
+      (is (:valid? result))
+      (is (seq (:warnings result)))
+      (let [w (first (:warnings result))]
+        (is (contains? w :schema-path))
+        (is (contains? w :document-path))
+        (is (contains? w :message))
+        (is (contains? w :document))
+        (is (contains? w :schema))
+        (is (string? (:message w))))))
+  (testing "deprecated warning persists across validator calls"
+    (let [v (m3/validator {"type" "string" "deprecated" true})]
+      (is (seq (:warnings (v "hello"))))
+      (is (seq (:warnings (v "world")))))))
+
+(deftest test-warnings-unknown-format
+  (testing "unknown format produces compile-time warning"
+    (let [result (m3/validate {"type" "string" "format" "foobar"} "hello")]
+      (is (:valid? result))
+      (is (seq (:warnings result)))
+      (let [w (first (:warnings result))]
+        (is (contains? w :schema-path))
+        (is (contains? w :message))
+        (is (string? (:message w)))))))
+
+(deftest test-warnings-absent-when-clean
+  (testing "no :warnings key when no warnings"
+    (let [result (m3/validate {"type" "string"} "hello")]
+      (is (:valid? result))
+      (is (not (contains? result :warnings)))))
+  (testing "no :warnings key on validation failure without warnings"
+    (let [result (m3/validate {"type" "string"} 42)]
+      (is (not (:valid? result)))
+      (is (not (contains? result :warnings))))))
+
+(deftest test-warnings-content-annotation
+  (testing "contentEncoding failure in non-strict mode produces warning"
+    (let [result (m3/validate {"type" "string" "contentEncoding" "base64"} "!!!")]
+      (is (:valid? result))
+      (is (seq (:warnings result)))
+      (let [w (first (:warnings result))]
+        (is (contains? w :schema-path))
+        (is (contains? w :message))
+        (is (string? (:message w)))))))
+
+(deftest test-infos-$comment
+  (testing "$comment produces compile-time info"
+    (let [result (m3/validate {"type" "string" "$comment" "this is a note"} "hello")]
+      (is (:valid? result))
+      (is (not (contains? result :warnings)))
+      (is (seq (:infos result)))
+      (let [i (first (:infos result))]
+        (is (contains? i :schema-path))
+        (is (contains? i :message))
+        (is (string? (:message i)))
+        (is (re-find #"this is a note" (:message i))))))
+  (testing "$comment info persists across validator calls"
+    (let [v (m3/validator {"type" "string" "$comment" "a note"})]
+      (is (seq (:infos (v "hello"))))
+      (is (seq (:infos (v "world"))))))
+  (testing "no :infos key when no $comment"
+    (let [result (m3/validate {"type" "string"} "hello")]
+      (is (not (contains? result :infos))))))
+
+(deftest test-warnings-format-invalid-and-valid-doc
+  (testing "format warning on invalid doc (doc has errors AND warnings)"
+    (let [result (m3/validate {"type" "string" "format" "email" "minLength" 100} "not-an-email")]
+      (is (not (:valid? result)))
+      (is (seq (:errors result)))
+      (is (seq (:warnings result)))))
+  (testing "format warning only for annotation drafts, not assertion drafts"
+    (let [result (m3/validate {"type" "string" "format" "email"} "not-an-email" {:draft :draft7})]
+      ;; draft7 treats format as assertion — produces error, not warning
+      (is (not (:valid? result)))
+      (is (seq (:errors result)))
+      (is (not (contains? result :warnings))))))
+
+(deftest test-warnings-same-shape-as-errors
+  (testing "warnings have same base keys as errors"
+    (let [result (m3/validate {"type" "string" "format" "email"} "not-an-email")
+          w (first (:warnings result))
+          err-result (m3/validate {"type" "string"} 42)
+          e (first (:errors err-result))
+          base-keys #{:schema-path :document-path :message :document :schema}]
+      (is (= base-keys (set (keys w))))
+      (is (every? (set (keys e)) base-keys)))))

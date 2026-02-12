@@ -54,8 +54,8 @@
 
 ;;------------------------------------------------------------------------------
 
-(defn check-type-integer [t {si? :strict-integer? :as c2} p2 m2]
-  (check-type-2 (if si? integer? json-integer?) t c2 p2 m2))
+(defn check-type-integer [t c2 p2 m2]
+  (check-type-2 json-integer? t c2 p2 m2))
 
 (def draft3-type->checker
   {"any"     (constantly (fn [c1 _p1 m1] [c1 m1 nil]))
