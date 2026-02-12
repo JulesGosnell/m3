@@ -143,6 +143,23 @@
                 {})))))
 
 ;;------------------------------------------------------------------------------
+;; Regression: recursive $ref in applicator keywords must not StackOverflow (#49)
+
+(deftest test-recursive-ref-in-allOf
+  (testing "allOf with $ref to root returns error, doesn't crash"
+    (let [schema {"allOf" [{"$ref" "#"}]
+                  "properties" {"name" {"type" "string"}}
+                  "type" "object"}
+          result (m3/validate schema {"name" "Alice"})]
+      (is (not (:valid? result)))
+      (is (seq (:errors result)))))
+  (testing "recursive $ref in properties still works (not a cycle)"
+    (let [schema {"type" "object"
+                  "properties" {"child" {"$ref" "#"}}}]
+      (is (:valid? (m3/validate schema {"child" {"child" {}}})))
+      (is (not (:valid? (m3/validate schema {"child" "not-object"})))))))
+
+;;------------------------------------------------------------------------------
 ;; validator — JSON string schema
 
 (deftest test-validator-json-string

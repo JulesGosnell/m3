@@ -77,7 +77,15 @@
          schema   (if json-strings? (json-decode schema) schema)
          document (if json-strings? (json-decode document) document)
          c2       (opts->c2 (or opts {}))]
-     (v/validate c2 schema {} document))))
+     (try
+       (v/validate c2 schema {} document)
+       (catch #?(:clj StackOverflowError :cljs :default) _
+         {:valid? false
+          :errors [{:message "StackOverflow: schema contains infinite $ref cycle"
+                    :schema-path []
+                    :document-path []
+                    :document document
+                    :schema schema}]})))))
 
 (defn validator
   "Compile a schema, return a reusable validation function.
@@ -94,4 +102,12 @@
          c2     (opts->c2 (or opts {}))
          f      (v/validate-m2 c2 schema)]
      (fn [document]
-       (v/reformat (f {} document))))))
+       (try
+         (v/reformat (f {} document))
+         (catch #?(:clj StackOverflowError :cljs :default) _
+           {:valid? false
+            :errors [{:message "StackOverflow: schema contains infinite $ref cycle"
+                      :schema-path []
+                      :document-path []
+                      :document document
+                      :schema schema}]}))))))
