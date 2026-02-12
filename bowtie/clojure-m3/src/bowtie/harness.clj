@@ -22,7 +22,7 @@
    "implementation"
    {"language"         "clojure"
     "name"             "m3"
-    "version"          (or (System/getProperty "m3.version") "1.0.0-beta2")
+    "version"          (or (System/getProperty "m3.version") "1.0.0-beta3")
     "homepage"         "https://github.com/JulesGosnell/m3"
     "issues"           "https://github.com/JulesGosnell/m3/issues"
     "source"           "https://github.com/JulesGosnell/m3"

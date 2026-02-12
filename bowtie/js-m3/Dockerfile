@@ -2,7 +2,7 @@ FROM node:22-alpine AS builder
 RUN apk add --no-cache openjdk21-jre git
 
 WORKDIR /usr/src
-RUN git clone --recursive https://github.com/JulesGosnell/m3.git
+RUN git clone https://github.com/JulesGosnell/m3.git
 
 WORKDIR /usr/src/m3
 RUN npm install
@@ -24,4 +24,5 @@ FROM node:22-alpine
 WORKDIR /usr/src/app
 COPY --from=builder /usr/src/m3/target/bowtie/bowtie-m3.js .
 COPY --from=builder /usr/src/m3/node_modules ./node_modules
+COPY --from=builder /usr/src/m3/resources/schemas ./resources/schemas
 CMD ["node", "bowtie-m3.js"]
