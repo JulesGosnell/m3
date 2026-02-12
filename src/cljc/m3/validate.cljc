@@ -395,7 +395,12 @@
                                :path->uri (or p->u {})
                                :dialect dialect) m1)
             (constantly r))))
-      (constantly [c2 [(str "could not resolve $schema: " s)]]))))
+      ;; Meta-schema not available (e.g. browser without filesystem).
+      ;; Fall back to compiling with the default dialect for the draft.
+      ;; This skips meta-schema validation but allows the schema to work.
+      (let [schema-draft (or ($schema->draft s) draft)
+            dialect (draft->default-dialect schema-draft)]
+        (validate* (assoc c2 :dialect dialect) m1)))))
 
 ;; Unbounded memoization: cache grows with distinct [c2, schema] pairs.
 ;; In practice bounded by the number of unique schemas validated (not documents).
