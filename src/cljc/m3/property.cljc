@@ -92,26 +92,29 @@
 
 (defn- make-check-property-id [id-key]
   (fn [_property c2 p2 m2 v2]
-    (let [schema-p2 (vec (butlast p2))
-          old-id-uri (:id-uri c2)
-          new-id-uri (inherit-uri old-id-uri (parse-uri v2))
-          c2 (-> c2
-                 (assoc :id-uri new-id-uri)
-                 (update :uri->path assoc new-id-uri schema-p2)
-                 (update :path->uri assoc schema-p2 new-id-uri))]
-      [c2
-       m2
-       (fn [{old-id-uri :id-uri :as c1} p1 m1]
-         (let [id (get m1 id-key)]
-           [(if-let [new-id-uri (and id (inherit-uri old-id-uri (parse-uri id)))]
-              (-> c1
-                  (update :path->uri assoc p1 new-id-uri)
-                  (update :uri->path assoc new-id-uri p1)
-                  (assoc :id-uri new-id-uri))
-              (-> c1
-                  (update :path->uri assoc p1 old-id-uri)))
-            m1
-            nil]))])))
+    (if-not (string? v2)
+      ;; id/$id must be a string; non-string values are invalid but shouldn't crash
+      [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])]
+      (let [schema-p2 (vec (butlast p2))
+            old-id-uri (:id-uri c2)
+            new-id-uri (inherit-uri old-id-uri (parse-uri v2))
+            c2 (-> c2
+                   (assoc :id-uri new-id-uri)
+                   (update :uri->path assoc new-id-uri schema-p2)
+                   (update :path->uri assoc schema-p2 new-id-uri))]
+        [c2
+         m2
+         (fn [{old-id-uri :id-uri :as c1} p1 m1]
+           (let [id (get m1 id-key)]
+             [(if-let [new-id-uri (and (string? id) (inherit-uri old-id-uri (parse-uri id)))]
+                (-> c1
+                    (update :path->uri assoc p1 new-id-uri)
+                    (update :uri->path assoc new-id-uri p1)
+                    (assoc :id-uri new-id-uri))
+                (-> c1
+                    (update :path->uri assoc p1 old-id-uri)))
+              m1
+              nil]))]))))
 
 (def check-property-id (make-check-property-id "id"))
 (def check-property-$id (make-check-property-id "$id"))
@@ -990,8 +993,10 @@
 
 ;; draft3: "required" is a boolean inside each property sub-schema, not an array on the object.
 ;; Stashes the property key into c2 so check-property-properties-draft3 can read it.
+;; p2 must be at least 2 deep (e.g. ["properties" "name"]) for the stash to make sense;
+;; top-level "required": true is meaningless and should be ignored.
 (defn check-property-required-draft3 [_property c2 p2 m2 v2]
-  (let [c2 (if (true? v2)
+  (let [c2 (if (and (true? v2) (>= (count p2) 2))
              (let [prop-key (peek (pop p2))
                    props-path (pop (pop p2))]
                (update-in c2 [:draft3-required-keys props-path] (fnil conj []) prop-key))

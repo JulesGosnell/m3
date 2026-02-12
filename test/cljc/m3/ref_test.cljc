@@ -16,7 +16,8 @@
   (:require 
    #?(:clj  [clojure.test :refer [deftest testing is]]
       :cljs [cljs.test :refer-macros [deftest testing is]])
-   [m3.ref :refer [resolve-uri deep-meld]]))
+   [m3.ref :refer [resolve-uri deep-meld ->int-or-string]]
+   [m3.json-schema :as m3]))
 
 ;;------------------------------------------------------------------------------
 
@@ -38,6 +39,51 @@
          [(merge ctx {:id-uri parent-uri}) path c]
          (resolve-uri ctx path uri :ref)))))
   )
+
+;;------------------------------------------------------------------------------
+
+;;------------------------------------------------------------------------------
+;; ->int-or-string — regression: must not choke on non-numeric strings that
+;; start with a digit (e.g. hex hashes "9bffe", version strings "1.0")
+
+(deftest test-int-or-string
+  (testing "pure digits become integers"
+    (is (= 0 (->int-or-string "0")))
+    (is (= 42 (->int-or-string "42"))))
+  (testing "non-numeric strings stay strings"
+    (is (= "foo" (->int-or-string "foo")))
+    (is (= "" (->int-or-string ""))))
+  (testing "digit-prefixed non-numeric strings stay strings"
+    (is (= "9bffe" (->int-or-string "9bffe")))
+    (is (= "1.0" (->int-or-string "1.0")))
+    (is (= "0ea16" (->int-or-string "0ea16")))
+    (is (= "1edb" (->int-or-string "1edb")))))
+
+;;------------------------------------------------------------------------------
+;; Regression: schemas with non-numeric definition keys (hex hashes, version
+;; strings) must compile and resolve $refs correctly.
+
+(deftest test-non-numeric-definition-keys
+  (testing "hex hash definition key with $ref"
+    (is (:valid? (m3/validate
+                  {"$schema" "http://json-schema.org/draft-07/schema#"
+                   "definitions" {"9bffe" {"type" "object"
+                                           "properties" {"name" {"type" "string"}}}}
+                   "$ref" "#/definitions/9bffe"}
+                  {"name" "test"}))))
+  (testing "version string definition key with $ref"
+    (is (:valid? (m3/validate
+                  {"$schema" "http://json-schema.org/draft-07/schema#"
+                   "definitions" {"1.0" {"type" "object"
+                                         "properties" {"v" {"type" "string"}}}}
+                   "$ref" "#/definitions/1.0"}
+                  {"v" "hello"}))))
+  (testing "invalid data against hex-keyed definition"
+    (is (not (:valid? (m3/validate
+                       {"$schema" "http://json-schema.org/draft-07/schema#"
+                        "definitions" {"9bffe" {"type" "string"}}
+                        "$ref" "#/definitions/9bffe"}
+                       42))))))
 
 ;;------------------------------------------------------------------------------
 

@@ -164,6 +164,10 @@
               (when (present? m1)
                 [(make-error "schema is false: nothing will match" p2 m2 p1 m1)])])]
 
+    (not (map? m2))
+    ;; Non-map, non-boolean schemas are invalid; treat as no-op to avoid crashes
+    [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])]
+
     :else
     (let [scope-id (or (:scope-id c2) (gensym "scope-"))
           c2 (assoc c2 :scope-id scope-id)

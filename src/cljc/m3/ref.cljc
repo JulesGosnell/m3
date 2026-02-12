@@ -25,7 +25,7 @@
      :cljs (js/parseInt s)))
 
 (defn ->int-or-string [s]
-  (if (re-matches #"[0-9].*" s)
+  (if (re-matches #"[0-9]+" s)
     (parse-int s)
     s))
 

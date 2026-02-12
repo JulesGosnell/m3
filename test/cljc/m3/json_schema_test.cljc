@@ -114,6 +114,35 @@
       (is (not (:valid? (v "hello")))))))
 
 ;;------------------------------------------------------------------------------
+;; Regression: malformed schemas must not crash (corpus stress-test bugs)
+
+(deftest test-malformed-schemas-no-crash
+  (testing "draft-03 top-level required:true doesn't crash"
+    (is (some? (m3/validate
+                {"$schema" "http://json-schema.org/draft-03/schema"
+                 "type" "object" "required" true
+                 "properties" {"name" {"type" "string" "required" true}}}
+                {"name" "test"}))))
+  (testing "boolean id value doesn't crash"
+    (is (some? (m3/validate
+                {"$schema" "http://json-schema.org/draft-04/schema#"
+                 "properties" {"id" {"type" "string" "id" true}}}
+                {"id" "test"}))))
+  (testing "string where sub-schema expected doesn't crash"
+    (is (some? (m3/validate
+                {"$schema" "http://json-schema.org/draft-04/schema#"
+                 "type" "object"
+                 "properties" {"x" {"type" "object"
+                                    "properties" {"$ref" "#/definitions/Foo"}}}}
+                {}))))
+  (testing "non-map schema values don't crash"
+    (is (some? (m3/validate
+                {"$schema" "http://json-schema.org/draft-04/schema#"
+                 "type" "object"
+                 "properties" {"x" "not-a-schema"}}
+                {})))))
+
+;;------------------------------------------------------------------------------
 ;; validator — JSON string schema
 
 (deftest test-validator-json-string
