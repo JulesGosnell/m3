@@ -160,6 +160,22 @@
       (is (not (:valid? (m3/validate schema {"child" "not-object"})))))))
 
 ;;------------------------------------------------------------------------------
+;; validate/validator — :registry option for $ref resolution
+
+(deftest test-registry-option
+  (testing "$ref resolved from registry"
+    (let [schema   {"$ref" "http://example.com/defs/name"}
+          registry {"http://example.com/defs/name" {"type" "string" "minLength" 1}}]
+      (is (:valid? (m3/validate schema "Alice" {:registry registry})))
+      (is (not (:valid? (m3/validate schema "" {:registry registry}))))
+      (is (not (:valid? (m3/validate schema 42 {:registry registry}))))))
+  (testing "validator with registry"
+    (let [v (m3/validator {"$ref" "http://example.com/int"}
+                          {:registry {"http://example.com/int" {"type" "integer"}}})]
+      (is (:valid? (v 42)))
+      (is (not (:valid? (v "hello")))))))
+
+;;------------------------------------------------------------------------------
 ;; validator — JSON string schema
 
 (deftest test-validator-json-string
