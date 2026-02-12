@@ -18,6 +18,7 @@
       :cljs [cljs.core :as cljs])
    #?(:cljs [goog.string :as gstring])
    #?(:cljs [goog.string.format])
+   #?(:cljs ["big.js" :as Big])
    ))
 
 ;;------------------------------------------------------------------------------
@@ -43,9 +44,6 @@
 (def big-zero?
   #?(:cljs (fn [^js/Big b] (.eq b 0))
      :clj zero?))
-
-#?(:cljs
-   (def Big (js/require "big.js")))
 
 #?(:cljs
    (defn pbigdec [x]

@@ -43,10 +43,10 @@
 ;; its context, accumulating state as compilation/validation progresses.
 
 ;; Use js* to avoid shadow-cljs compile-time module resolution.
-;; In Node.js, require('fs') works normally.
-;; In browser, require is undefined or fs is unavailable — returns nil.
+;; In Node.js (no window), require('fs') works normally.
+;; In browser (has window), skip entirely — returns null.
 #?(:cljs (def ^:private fs
-  (js* "(function(){try{return require('fs')}catch(e){return null}})()")))
+  (js* "(function(){if(typeof window!=='undefined')return null;try{return require('fs')}catch(e){return null}})()")))
 
 #?(:cljs (defn slurp [path]
   (if fs
