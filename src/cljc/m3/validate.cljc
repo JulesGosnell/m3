@@ -42,9 +42,16 @@
 ;; Both contexts are threaded functionally — each checker receives and returns
 ;; its context, accumulating state as compilation/validation progresses.
 
-#?(:cljs (def fs (js/require "fs")))
+;; Use js* to avoid shadow-cljs compile-time module resolution.
+;; In Node.js, require('fs') works normally.
+;; In browser, require is undefined or fs is unavailable — returns nil.
+#?(:cljs (def ^:private fs
+  (js* "(function(){try{return require('fs')}catch(e){return null}})()")))
 
-#?(:cljs (defn slurp [path] (.readFileSync fs path "utf8")))
+#?(:cljs (defn slurp [path]
+  (if fs
+    (.readFileSync fs path "utf8")
+    (throw (js/Error. (str "File system not available: " path))))))
 
 ;;------------------------------------------------------------------------------
 
