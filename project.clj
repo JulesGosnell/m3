@@ -1,7 +1,7 @@
 (def polyglot-version "24.2.2")
 (def jackson-version "2.20.0")
 
-(defproject org.clojars.jules_gosnell/m3 "1.0.0-beta2-SNAPSHOT"
+(defproject org.clojars.jules_gosnell/m3 "1.0.0-beta2"
   :description "A pure Clojure/ClojureScript JSON validator"
   :url "https://github.com/JulesGosnell/m3"
   :license {:name "Apache License, Version 2.0"
