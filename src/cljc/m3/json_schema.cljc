@@ -57,19 +57,39 @@
 
 (defn- registry->uri->schema*
   "Build a :uri->schema function from a registry map {uri-string -> schema}.
-   Falls back to the default file-based resolution."
+   Falls back to the default file-based resolution.
+
+   We can't just return the schema bare — its inner $id / $anchor /
+   $dynamicAnchor entries need to be registered in uri->path / path->uri
+   first, otherwise the eventual $ref/$dynamicRef into them resolves to
+   nothing.  So we compile the remote schema in a fresh scope, just like
+   uri->continuation does for file-resolved remote schemas."
   [registry]
-  (let [;; Pre-parse registry URIs for fast lookup
-        parsed (reduce-kv
+  (let [parsed (reduce-kv
                 (fn [m uri-str schema]
-                  (let [uri (uri-base (parse-uri uri-str))]
-                    (assoc m uri schema)))
+                  (assoc m (uri-base (parse-uri uri-str)) schema))
                 {} registry)
         default (v/uri->continuation v/uri-base->dir)]
     (fn [c p uri]
       (if-let [schema (parsed (uri-base uri))]
-        (let [c2 (v/make-context (select-keys c [:uri->schema :draft :id-key :quiet?]) schema)]
-          [c2 [] schema])
+        (let [base (uri-base uri)
+              compiling (or (:compiling c) #{})
+              ctx (-> (v/make-context
+                       (-> c
+                           (select-keys [:uri->schema :draft :id-key :quiet?])
+                           (assoc :id-uri base :compiling compiling))
+                       schema)
+                      (assoc :id-uri base)
+                      (update :uri->path assoc base [])
+                      (update :path->uri assoc [] base))
+              ctx (if (contains? compiling base)
+                    ctx
+                    (let [compile-ctx (update ctx :compiling conj base)
+                          [compiled-ctx _ _] (v/check-schema compile-ctx [] schema)]
+                      (assoc ctx
+                             :uri->path (:uri->path compiled-ctx)
+                             :path->uri (:path->uri compiled-ctx))))]
+          [ctx [] schema])
         (default c p uri)))))
 
 ;; Memoize so that structurally equal registry maps produce the same

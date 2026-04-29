@@ -66,10 +66,12 @@
 ;; https://github.com/json-schema-org/JSON-Schema-Test-Suite
 
 (def exclude-test?
-  ;; JSON has no integer/float distinction — 1.0 is a valid integer.
-  ;; This optional test tests language-specific integer semantics, and
-  ;; both CLJ and (especially) CLJS treat 1.0 as a valid integer.
-  #{["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]})
+  ;; CLJS-only: JavaScript has a single Number type, so JSON.parse("1.0")
+  ;; and JSON.parse("1") return the same value — there is no language-
+  ;; level integer/float distinction we can check.  On CLJ Java's parsers
+  ;; preserve the distinction and this test passes.
+  #?(:clj  #{}
+     :cljs #{["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]}))
 
 ;; Drafts where format is annotation-only by vocabulary.
 ;; draft3: metaschema uses "format":"uri" on $ref — relative refs fail assertion.

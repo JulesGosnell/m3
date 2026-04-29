@@ -18,7 +18,7 @@
    [m3.uri :refer [parse-uri]]
    [m3.draft :refer [$schema-uri->draft]]
    [m3.ref :refer [meld-replace meld-deep-over]]
-   [m3.type :refer [draft3-type->checker draft4-type->checker]]
+   [m3.type :refer [draft3-type->checker draft4-type->checker draft6-type->checker]]
    [m3.format :refer [draft3-format->checker draft4-format->checker
                        draft6-format->checker draft7-format->checker
                        draft2019-09-format->checker draft2020-12-format->checker
@@ -163,6 +163,7 @@
 
 (def check-property-type-draft3 (make-check-property-type draft3-type->checker))
 (def check-property-type-draft4 (make-check-property-type draft4-type->checker))
+(def check-property-type-draft6 (make-check-property-type draft6-type->checker))
 
 (def check-property-disallow-draft3 (make-check-property-disallow draft3-type->checker))
 
@@ -312,7 +313,7 @@
      ["https://json-schema.org/draft-06/vocab/validation"             "pattern"                check-property-pattern-draft6                            #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft-06/vocab/validation"             "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
-     ["https://json-schema.org/draft-06/vocab/validation"             "type"                   check-property-type-draft4                               #{"$schema"}]])
+     ["https://json-schema.org/draft-06/vocab/validation"             "type"                   check-property-type-draft6                               #{"$schema"}]])
    :draft7
    (sort-vocab
     [["https://json-schema.org/draft-07/vocab/applicator"             "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
@@ -366,7 +367,7 @@
      ["https://json-schema.org/draft-07/vocab/validation"             "pattern"                check-property-pattern-draft7                            #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft-07/vocab/validation"             "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
-     ["https://json-schema.org/draft-07/vocab/validation"             "type"                   check-property-type-draft4                               #{"$schema"}]])
+     ["https://json-schema.org/draft-07/vocab/validation"             "type"                   check-property-type-draft6                               #{"$schema"}]])
    :draft2019-09
    (sort-vocab
     [["https://json-schema.org/draft/2019-09/vocab/applicator"        "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
@@ -427,7 +428,7 @@
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "pattern"                check-property-pattern-draft2019-09                      #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft/2019-09/vocab/validation"        "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
-     ["https://json-schema.org/draft/2019-09/vocab/validation"        "type"                   check-property-type-draft4                               #{"$schema"}]])
+     ["https://json-schema.org/draft/2019-09/vocab/validation"        "type"                   check-property-type-draft6                               #{"$schema"}]])
    :draft2020-12
    (sort-vocab
     [["https://json-schema.org/draft/2020-12/vocab/applicator"        "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
@@ -492,7 +493,7 @@
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "pattern"                check-property-pattern-draft2020-12                      #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
-     ["https://json-schema.org/draft/2020-12/vocab/validation"        "type"                   check-property-type-draft4                               #{"$schema"}]])
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "type"                   check-property-type-draft6                               #{"$schema"}]])
    ;; draft-next reuses draft2020-12 vocabulary URIs because the draft-next
    ;; metaschema's $vocabulary declares 2020-12 URIs (the spec isn't finalized).
    ;; Where draft-next behavior differs (e.g. $dynamicRef bookending), the
@@ -561,7 +562,7 @@
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "pattern"                check-property-pattern-draft-next                        #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "required"               check-property-required                                  #{"$schema"}]
      ["https://json-schema.org/draft/2020-12/vocab/validation"        "uniqueItems"            check-property-uniqueItems                               #{"$schema"}]
-     ["https://json-schema.org/draft/2020-12/vocab/validation"        "type"                   check-property-type-draft4                               #{"$schema"}]])})
+     ["https://json-schema.org/draft/2020-12/vocab/validation"        "type"                   check-property-type-draft6                               #{"$schema"}]])})
 
 ;; :latest aliases the current default draft
 (def draft->vocab

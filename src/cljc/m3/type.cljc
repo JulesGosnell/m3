@@ -20,10 +20,26 @@
 ;;------------------------------------------------------------------------------
 
 (defn json-integer? [i]
-  (or
-   (integer? i)
-   (and (number? i)
-        (zero? (mod i 1)))))
+  ;; Draft-06+ definition of integer: any number with a zero fractional
+  ;; part counts (so e.g. 2.0 satisfies type:integer).  This is the
+  ;; behaviour the test suite asserts in those drafts and what other
+  ;; spec-conforming validators (NetworkNt, SchemaFriend, …) do.
+  (or (integer? i)
+      (and (number? i)
+           (zero? (mod i 1)))))
+
+(defn json-integer-strict? [i]
+  ;; Draft-03 / draft-04 definition: only language-level integers count.
+  ;; The optional/zeroTerminatedFloats test in those drafts asserts that
+  ;; 1.0 (a JSON number with a fractional point) is NOT an integer.
+  ;; On CLJS we can't tell — JavaScript has a single Number type, so
+  ;; JSON.parse(\"1.0\") and JSON.parse(\"1\") both return the same value
+  ;; — fall back to the draft-06+ behaviour and document the test as
+  ;; an exclusion.
+  #?(:clj  (integer? i)
+     :cljs (or (integer? i)
+               (and (number? i)
+                    (zero? (mod i 1))))))
 
 (defn json-number? [n]
   (number? n))
@@ -57,18 +73,28 @@
 (defn check-type-integer [t c2 p2 m2]
   (check-type-2 json-integer? t c2 p2 m2))
 
+(defn check-type-integer-strict [t c2 p2 m2]
+  (check-type-2 json-integer-strict? t c2 p2 m2))
+
 (def draft3-type->checker
+  ;; Draft-03 used the strict integer definition (1.0 is NOT an integer);
+  ;; draft-06 redefined integer to include any zero-fraction number.
   {"any"     (constantly (fn [c1 _p1 m1] [c1 m1 nil]))
    "array"   (partial check-type-2 json-array?)
    "boolean" (partial check-type-2 boolean?)
-   "integer" check-type-integer
+   "integer" check-type-integer-strict
    "null"    (partial check-type-2 nil?)
    "number"  (partial check-type-2 json-number?)
    "object"  (partial check-type-2 json-object?)
    "string"  (partial check-type-2 json-string?)})
 
 (def draft4-type->checker
+  ;; Draft-04: same strict integer rule as draft-03, no "any" type.
   (dissoc draft3-type->checker "any"))
+
+(def draft6-type->checker
+  ;; Draft-06 onwards: integer accepts any zero-fraction number.
+  (assoc draft4-type->checker "integer" check-type-integer))
 
 ;;------------------------------------------------------------------------------
 
