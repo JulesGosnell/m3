@@ -648,9 +648,14 @@
                 (> (json-length m1) v2))
            [(make-error "maxLength: string too long" p2 m2 p1 m1)])]))]))
 
-(defn make-check-property-format [strict? format->checker]
-  (fn [_property {cfs :check-format :or {cfs {}} :as c2} p2 m2 v2]
-    (let [f (if strict?
+(defn make-check-property-format [default-strict? format->checker]
+  (fn [_property {cfs :check-format force-strict? :format-assertion? :or {cfs {}} :as c2} p2 m2 v2]
+    ;; default-strict? is what the dialect/vocabulary chose at registration
+    ;; time (annotation vs assertion vocab).  c2's :format-assertion?, if
+    ;; set, overrides — used by the JSON-Schema-Test-Suite runner for tests
+    ;; under optional/format/, per the suite README.
+    (let [strict? (if (some? force-strict?) force-strict? default-strict?)
+          f (if strict?
               (fn [f2] (make-type-checker json-string? (fn [c1 p1 m1] [c1 m1 (f2 c1 p1 m1)])))
               (fn [f2] (make-type-checker json-string?
                          (fn [c1 p1 m1]
