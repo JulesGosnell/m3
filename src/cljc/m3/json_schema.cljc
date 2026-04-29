@@ -14,7 +14,7 @@
 
 (ns m3.json-schema
   "M3 JSON Schema Validator — public API.
-   The most complete JSON Schema validator. All drafts 3 through draft-next.
+   The most complete JSON Schema validator. All drafts 3 through draft-v1.
 
    Quick start:
 
@@ -108,10 +108,18 @@
      (validate {\"type\" \"string\"} \"hello\")
 
    opts - optional map:
-     :draft        - :draft3, :draft4, :draft6, :draft7, :draft2019-09, :draft2020-12, :draft-v1, :latest
-     :quiet?       - false to enable $comment printing (default: true)
-     :registry     - map of URI string to schema, for $ref resolution
-     :marker-stash - marker stash for custom self-referential meta-schemas (see make-marker-stash)"
+     :draft             - :draft3, :draft4, :draft6, :draft7, :draft2019-09,
+                          :draft2020-12, :draft-v1, :latest
+     :quiet?            - false to enable $comment printing (default: true)
+     :registry          - map of URI string to schema, for $ref resolution
+     :marker-stash      - marker stash for custom self-referential meta-schemas
+                          (see make-marker-stash)
+     :format-assertion? - true to force format violations to be errors even on
+                          drafts where format is annotation-only (2020-12+).
+                          Per JSON-Schema-Test-Suite README, this is what test
+                          runners are expected to set for optional/format/ tests.
+     :check-format      - map of {format-name -> custom checker fn} merged with
+                          built-ins for that draft."
   ([schema document]
    (validate schema document nil))
   ([schema document opts]

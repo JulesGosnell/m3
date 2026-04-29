@@ -8,7 +8,7 @@
 
 **Every draft. Every keyword. Same code, same answers — backend and frontend.**
 
-M3 passes **every test**[^1] in the official [JSON Schema Test Suite][test-suite] across **every draft** from draft-03 through draft-next — **9,968 assertions** with zero failures.
+M3 passes **every test**[^1] in the official [JSON Schema Test Suite][test-suite] across **every draft** from draft-03 through draft-v1 (formerly draft-next) — **10,780 assertions** with zero failures.
 
 Written in Clojure/ClojureScript, M3 compiles to both JVM bytecode and JavaScript from a single codebase — the only JSON Schema validator that delivers identical results on the server and in the browser across all drafts. Use it from **Clojure**, **Java**, **Kotlin**, **Scala**, **JavaScript**, or **Node.js**.
 
@@ -99,7 +99,7 @@ npm install m3-json-schema
 | draft-07 | All tests passing | All tests passing |
 | draft 2019-09 | All tests passing | All tests passing |
 | draft 2020-12 | All tests passing | All tests passing |
-| draft-next | All tests passing | All tests passing[^1] |
+| draft-v1 (formerly draft-next) | All tests passing | All tests passing[^1] |
 
 A handful of validators cover drafts 3 through 2020-12 (notably Python's `jsonschema` and .NET's `Newtonsoft.Json.Schema`), and several JavaScript validators (Ajv, Hyperjump) run in both Node.js and the browser — but none of them do both. M3 is the only validator that covers all drafts **and** runs portably on backend and frontend from a single codebase.
 
@@ -218,7 +218,7 @@ All JVM languages accept `java.util.Map` and `java.util.List` directly — docum
 | Draft | `:draft :draft7` | `"draft": "draft7"` | JSON Schema draft version |
 | Registry | `:registry {uri schema}` | `"registry": {uri: schema}` | Map of URI to schema for `$ref` resolution |
 
-Supported draft values: `draft3`, `draft4`, `draft6`, `draft7`, `draft2019-09`, `draft2020-12`, `draft-next`, `latest`.
+Supported draft values: `draft3`, `draft4`, `draft6`, `draft7`, `draft2019-09`, `draft2020-12`, `draft-v1`, `latest`.
 
 Use `latest` (`:latest` in Clojure) as an alias for the most recent stable draft (currently `draft2020-12`).
 
@@ -286,7 +286,7 @@ Internally, two context maps thread through validation:
 git clone --recursive git@github.com:JulesGosnell/m3.git
 cd m3
 
-# Run Clojure tests (9,968 test-suite assertions)
+# Run Clojure tests (10,780 test-suite assertions)
 lein test
 
 # Run ClojureScript tests
@@ -308,6 +308,6 @@ Copyright 2025 Julian Gosnell. [Apache License, Version 2.0](https://www.apache.
 
 ---
 
-[^1]: One test is excluded on JavaScript: `zeroTerminatedFloats.json` — "a float is not an integer even without fractional part". JavaScript has no integer/float distinction (`JSON.parse("1.0") === JSON.parse("1")`), making this test impossible to pass at the language level. On the JVM, all 9,968 test-suite assertions pass without exception.
+[^1]: One test is excluded as a language-level limitation: `zeroTerminatedFloats.json` — "a float is not an integer even without fractional part". Neither JavaScript (`JSON.parse("1.0") === JSON.parse("1")`) nor Clojure's reader distinguishes `1.0` from `1` at the value level, making this test impossible to pass without runtime parser-level numeric introspection. Two `propertyDependencies` proposal tests are also excluded — that keyword is a v1 proposal M3 hasn't implemented yet.
 
 [test-suite]: https://github.com/json-schema-org/JSON-Schema-Test-Suite

@@ -203,6 +203,27 @@
 
 ;; $ref resolution logic.
 ;; Resolution is LAZY (inside f1) to handle recursive schemas.
+(defn- has-unevaluated? [m]
+  (and (map? m)
+       (or (contains? m "unevaluatedProperties")
+           (contains? m "unevaluatedItems"))))
+
+(defn- push-dynamic-scope [c1 sid]
+  ;; Functional push — the new chain only persists into the deeper call,
+  ;; naturally restoring when validation returns to the caller.
+  (if (and sid (not= sid (peek (:$dynamic-scope-chain c1))))
+    (update c1 :$dynamic-scope-chain (fnil conj []) sid)
+    c1))
+
+(defn- late-bound-resolution-c2
+  "Use the late-bound c2 for resolution: after compile-m2 finishes, the
+   final c2 with stash entries from ALL property compilations is stored in
+   c1 under [:$compile-scopes scope-id].  Falls back to the closed-over c2."
+  [c1 c2]
+  (if-let [scope-c2 (some-> c2 :scope-id (#(get-in c1 [:$compile-scopes %])))]
+    (assoc c2 :uri->path (:uri->path scope-c2) :path->uri (:path->uri scope-c2))
+    c2))
+
 (defn make-check-property-$ref [{:keys [meld-fn ref-replaces-siblings? ref-scope-isolation?]}]
   (fn [_property {id-uri :id-uri id-key :id-key :as c2} p2 m2 v2]
     (let [schema-p2 (vec (butlast p2))
@@ -225,18 +246,10 @@
        m2
        ;; f1: resolve and compile LAZILY at runtime
        (fn [c1 p1 m1]
-         (if (present? m1)
+         (if-not (present? m1)
+           [c1 m1 nil]
            (let [check-schema-fn (get-check-schema)
-                 ;; Use late-bound c2 for resolution: after compile-m2 finishes,
-                 ;; the final c2 with stash entries from ALL property compilations
-                 ;; is stored in c1 under [:$compile-scopes scope-id].
-                 resolution-c2 (if-let [sid (:scope-id effective-c2)]
-                                 (if-let [scope-c2 (get-in c1 [:$compile-scopes sid])]
-                                   (assoc effective-c2
-                                          :uri->path (:uri->path scope-c2)
-                                          :path->uri (:path->uri scope-c2))
-                                   effective-c2)
-                                 effective-c2)
+                 resolution-c2 (late-bound-resolution-c2 c1 effective-c2)
                  ;; Cross-resource fallback: when the current root is a sub-schema
                  ;; (e.g. from $recursiveRef dynamic resolution), the uri->path stash
                  ;; may contain paths relative to the original root that don't exist
@@ -245,7 +258,10 @@
                                 (when-let [cr-root (:cross-resource-root resolution-c2)]
                                   (resolve-uri (assoc resolution-c2 :root cr-root)
                                                schema-p2 ref-uri v2)))]
-             (if resolution
+             (if-not resolution
+               ;; Resolution failed - compile schema without $ref
+               (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc effective-c2 :scope-id) schema-p2 m2-no-ref)]
+                 (compiled-f1 c1 p1 m1))
                (let [[new-c _new-p resolved-m] resolution
                      melded (meld-fn effective-c2 m2-no-ref resolved-m)
                      same-root? (identical? (:root effective-c2) (:root new-c))
@@ -253,15 +269,10 @@
                      ;; When unevaluated* keywords are involved (in either the
                      ;; ref'd schema or siblings), compile the ref'd schema alone
                      ;; so annotations don't leak across scope boundaries.
-                     ;; Siblings are evaluated separately by compile-m2.
                      ;; For pre-2019 drafts, $ref replaces siblings — always meld.
-                     needs-scope-isolation?
-                     (and ref-scope-isolation?
-                          (or (and (map? resolved-m)
-                                   (or (contains? resolved-m "unevaluatedProperties")
-                                       (contains? resolved-m "unevaluatedItems")))
-                              (contains? m2-no-ref "unevaluatedProperties")
-                              (contains? m2-no-ref "unevaluatedItems")))
+                     needs-scope-isolation? (and ref-scope-isolation?
+                                                 (or (has-unevaluated? resolved-m)
+                                                     (has-unevaluated? m2-no-ref)))
                      ;; When scope-isolating, place resolved-m (not melded) in the
                      ;; root so that nested $refs (e.g. "#") see the ref'd schema,
                      ;; not the meld which would re-introduce parent keywords.
@@ -280,21 +291,8 @@
                               (assoc effective-c2 :id-uri (:id-uri new-c))
                               :else new-c)
                      compile-schema (if needs-scope-isolation? resolved-m melded)
-                     [resolved-c2 _m2 compiled-f1] (check-schema-fn (dissoc ref-c2 :scope-id) schema-p2 compile-schema)
-                     ;; Push the resolved scope onto the dynamic-scope chain
-                     ;; so $dynamicRef can search the outermost-first traversal
-                     ;; order.  Functional c1 means this push only persists
-                     ;; into the deeper call, not back to the caller.
-                     new-sid (:scope-id resolved-c2)
-                     c1 (if (and new-sid
-                                 (not= new-sid (peek (:$dynamic-scope-chain c1))))
-                          (update c1 :$dynamic-scope-chain (fnil conj []) new-sid)
-                          c1)]
-                 (compiled-f1 c1 p1 m1))
-               ;; Resolution failed - compile schema without $ref
-               (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc effective-c2 :scope-id) schema-p2 m2-no-ref)]
-                 (compiled-f1 c1 p1 m1))))
-           [c1 m1 nil]))])))
+                     [resolved-c2 _m2 compiled-f1] (check-schema-fn (dissoc ref-c2 :scope-id) schema-p2 compile-schema)]
+                 (compiled-f1 (push-dynamic-scope c1 (:scope-id resolved-c2)) p1 m1))))))])))
 
 ;; check-property-$schema lives in m3.vocabulary to avoid deref/resolve circularity.
 ;; It needs make-dialect and draft->default-dialect which are defined there.
@@ -424,7 +422,7 @@
      (when-let [root-c2 (get-in c1 [:$compile-scopes root-sid])]
        (find-anchor-in-scope root-c2 root-sid anchor-name)))))
 
-(defn make-check-property-$dynamicRef [dynamic-ref-requires-bookend?]
+(defn make-check-property-$dynamicRef [{:keys [requires-bookend?]}]
   (fn [_property {id-uri :id-uri :as c2} p2 m2 v2]
     (let [schema-p2 (vec (butlast p2))
           uri (inherit-uri id-uri (parse-uri v2))
@@ -434,7 +432,7 @@
           anchor-name (let [f (:fragment (parse-uri v2))]
                         (when (and f (not (starts-with? f "/")))
                           f))
-          needs-bookend? dynamic-ref-requires-bookend?]
+          needs-bookend? requires-bookend?]
       [c2
        m2
      ;; f1: resolve LAZILY at runtime
@@ -681,13 +679,13 @@
                 (> (json-length m1) v2))
            [(make-error "maxLength: string too long" p2 m2 p1 m1)])]))]))
 
-(defn make-check-property-format [default-strict? format->checker]
-  (fn [_property {cfs :check-format force-strict? :format-assertion? :or {cfs {}} :as c2} p2 m2 v2]
-    ;; default-strict? is what the dialect/vocabulary chose at registration
-    ;; time (annotation vs assertion vocab).  c2's :format-assertion?, if
-    ;; set, overrides — used by the JSON-Schema-Test-Suite runner for tests
-    ;; under optional/format/, per the suite README.
-    (let [strict? (if (some? force-strict?) force-strict? default-strict?)
+(defn make-check-property-format [dialect-strict? format->checker]
+  ;; dialect-strict? is what the vocabulary chose at registration time
+  ;; (assertion vocab => true; annotation vocab => false).  c2's
+  ;; :format-assertion?, if set, overrides — used by the test runner and
+  ;; embedders that want format-assertion regardless of dialect.
+  (fn [_property {cfs :check-format override :format-assertion? :or {cfs {}} :as c2} p2 m2 v2]
+    (let [strict? (if (some? override) override dialect-strict?)
           f (if strict?
               (fn [f2] (make-type-checker json-string? (fn [c1 p1 m1] [c1 m1 (f2 c1 p1 m1)])))
               (fn [f2] (make-type-checker json-string?

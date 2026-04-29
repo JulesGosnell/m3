@@ -31,7 +31,11 @@
 ;; Helper functions
 
 (defn match [format pattern _c2 p2 m2 p1 m1]
-  (when-not (re-find pattern m1)
+  ;; re-matches requires the WHOLE string to match the pattern — re-find
+  ;; would accept "valid hostname\n" because Java's $ matches before a
+  ;; trailing newline.  re-matches also avoids the \z portability problem
+  ;; (JS regex doesn't recognise \z, treating it as literal 'z').
+  (when-not (re-matches pattern m1)
     [(make-error (str "format: not a valid " format) p2 m2 p1 m1)]))
 
 (defn check-pattern [pattern format c2 p2 m2]

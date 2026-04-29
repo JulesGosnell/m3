@@ -158,8 +158,8 @@
 (def check-property-$ref-old (make-check-property-$ref old-ref-config))
 (def check-property-$ref-new (make-check-property-$ref new-ref-config))
 
-(def check-property-$dynamicRef-bookend (make-check-property-$dynamicRef true))
-(def check-property-$dynamicRef-no-bookend (make-check-property-$dynamicRef false))
+(def check-property-$dynamicRef-bookend (make-check-property-$dynamicRef {:requires-bookend? true}))
+(def check-property-$dynamicRef-no-bookend (make-check-property-$dynamicRef {:requires-bookend? false}))
 
 (def check-property-type-draft3 (make-check-property-type draft3-type->checker))
 (def check-property-type-draft4 (make-check-property-type draft4-type->checker))

@@ -130,7 +130,7 @@
                    (reduce merge-entry (or m1 {}) (seq m2)))]
       (reduce merge2 maps))))
 
-(defn deep-meld [_ctx & maps]
+(defn deep-meld [& maps]
   ;; Used to meld a $ref's siblings (parent) with the resolved schema (latter).
   ;; The latter wins on every key — including $id, because the ref jumps the
   ;; current scope into the resolved schema, and that schema's $id is the
@@ -147,8 +147,8 @@
       acc m))
    maps))
 
-(defn meld-replace    [ctx parent reffed] (if reffed reffed false))
-(defn meld-deep-over  [ctx parent reffed] (if (and (map? reffed)(map? parent)) (deep-meld ctx parent reffed) reffed))
+(defn meld-replace    [_ctx _parent reffed] (if reffed reffed false))
+(defn meld-deep-over  [_ctx parent reffed]  (if (and (map? reffed) (map? parent)) (deep-meld parent reffed) reffed))
 
 ;;------------------------------------------------------------------------------
 
