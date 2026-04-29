@@ -73,9 +73,6 @@
     #?@(:cljs
         [["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]])
     ;; Known M3 limitations against the c7257e9 suite — tracked in #55.
-    ;; ICU4J's CHECK_BIDI doesn't reject this Punycode whose decode
-    ;; contains a right-to-left disallowed char.
-    ["hostname.json" "validation of A-label (punycode) host names" "Exceptions that are DISALLOWED, right-to-left chars"]
     ;; $id-then-$ref ordering on nested schemas — M3 currently picks the
     ;; wrong canonical URI for the inner $ref.
     ["ref.json" "order of evaluation: $id and $ref on nested schema" "data is invalid against nested sibling"]

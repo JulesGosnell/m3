@@ -87,9 +87,16 @@
 ;; Per-label validation
 
 (defn- to-unicode-label
-  "Decode an ACE (xn--) label to Unicode, or return the label as-is."
+  "Decode an ACE (xn--) label to Unicode, or return the label as-is.
+   On JVM we use ICU's UTS46 nameToUnicode (more permissive than
+   java.net.IDN/toUnicode, which silently returns the input on inputs
+   it considers invalid — masking decoded characters that downstream
+   IDNA2008 disallowed-exception checks need to see)."
   [^String label]
-  #?(:clj (java.net.IDN/toUnicode label)
+  #?(:clj (let [sb (StringBuilder.)
+                info (com.ibm.icu.text.IDNA$Info.)
+                _ (.nameToUnicode idna label sb info)]
+            (.toString sb))
      :cljs (if (str/starts-with? (str/lower-case label) "xn--")
              (when-let [result (tr46/toUnicode label #js {})]
                (.-domain result))
