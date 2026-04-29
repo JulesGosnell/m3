@@ -143,16 +143,24 @@
 (defn check-format-date-time [_c2 p2 m2]
   (let [normal-check (check-parse offset-date-time-parse "date-time" _c2 p2 m2)]
     (fn [_c1 p1 m1]
-      (if-let [[_ date-part time-part] (re-find date-time-split-re m1)]
-        (case (valid-leap-second-time? time-part)
-          true (try
-                 (local-date-parse date-part)
-                 nil
-                 (catch #?(:cljs js/Error :clj Exception) e
-                   [(make-error (str "format: not a valid date-time: " (ex-message e)) p2 m2 p1 m1)]))
-          false [(make-error "format: not a valid date-time" p2 m2 p1 m1)]
-          (normal-check _c1 p1 m1))
-        (normal-check _c1 p1 m1)))))
+      (cond
+        (not (string? m1)) nil
+        ;; RFC 3339 requires a four-digit year — reject ISO 8601 extended-year
+        ;; formats like "+11963-06-19T08:30:06Z" that Java's OffsetDateTime
+        ;; parser accepts.
+        (not (re-find #"^\d{4}-\d{2}-\d{2}[Tt]" m1))
+        [(make-error "format: not a valid date-time (year must be four digits)" p2 m2 p1 m1)]
+        :else
+        (if-let [[_ date-part time-part] (re-find date-time-split-re m1)]
+          (case (valid-leap-second-time? time-part)
+            true (try
+                   (local-date-parse date-part)
+                   nil
+                   (catch #?(:cljs js/Error :clj Exception) e
+                     [(make-error (str "format: not a valid date-time: " (ex-message e)) p2 m2 p1 m1)]))
+            false [(make-error "format: not a valid date-time" p2 m2 p1 m1)]
+            (normal-check _c1 p1 m1))
+          (normal-check _c1 p1 m1))))))
 
 (defn check-format-date [_c2 p2 m2]
   (check-parse local-date-parse "date" _c2 p2 m2))
