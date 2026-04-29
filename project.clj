@@ -60,6 +60,13 @@
   ;; from the published jar. The .clj source alone is not callable from Java.
   :aot [m3.JsonSchema]
 
+  ;; Stress tests (deftests with ^:stress metadata, e.g. schemastore-stress-test
+  ;; which compiles ~80k corpus schemas) take many minutes and would derail every
+  ;; CI run.  Default test runs exclude them; "lein test :stress" opts in.
+  :test-selectors {:default (complement :stress)
+                   :stress  :stress
+                   :all     (constantly true)}
+
   :shadow-cljs {:builds {:test
                          {:target :node-test
                           :output-dir "target/shadow"

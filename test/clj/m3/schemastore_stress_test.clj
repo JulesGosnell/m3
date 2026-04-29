@@ -66,7 +66,7 @@
 (def ^:private schemastore-dir "test-resources/schemastore/src/schemas/json")
 (def ^:private corpus-dir "test-resources/json-schema-corpus/json_schema_corpus")
 
-(deftest schemastore-compile-test
+(deftest ^:stress schemastore-compile-test
   (let [dir (io/file schemastore-dir)]
     (if-not (.isDirectory dir)
       (println "SKIP: SchemaStore submodule not initialised — run: git submodule update --init")
@@ -74,7 +74,7 @@
         (is (pos? ok) "At least some SchemaStore schemas should compile")
         (is (zero? errors) "All SchemaStore schemas should compile")))))
 
-(deftest corpus-compile-test
+(deftest ^:stress corpus-compile-test
   (let [dir (io/file corpus-dir)]
     (if-not (.isDirectory dir)
       (println "SKIP: json-schema-corpus submodule not initialised — run: git submodule update --init")
