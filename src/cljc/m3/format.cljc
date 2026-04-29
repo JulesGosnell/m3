@@ -47,12 +47,10 @@
         [(make-error (str "format: not a valid " f ": " (ex-message e)) p2 m2 p1 m1)]))))
 
 (defn json-duration? [s]
-  (boolean
-   (when-let [[_p-t-or-w _ymdthms-or-w ymd _y _m _d thms _h _m _s w] (re-find json-duration-pattern s)]
-     (not
-      (or
-       (and (empty? ymd) (empty? thms) (empty? w))
-       (= "T" thms))))))
+  ;; The RFC 3339 grammar baked into json-duration-pattern already enforces
+  ;; ordering, intermediate-component requirements, and that "P" / "PT" alone
+  ;; do not match — so a successful regex match is sufficient.
+  (boolean (re-find json-duration-pattern s)))
 
 (defn ^:private parse-int [s]
   #?(:clj (Integer/parseInt s) :cljs (js/parseInt s 10)))
@@ -122,22 +120,47 @@
 (defn check-format-ipv6 [_c2 p2 m2]
   (check-pattern ipv6-pattern "ipv6" _c2 p2 m2))
 
+(def ^:private ace-label-prefix-re #"(?i)^xn--")
+
 (defn check-format-hostname [_c2 p2 m2]
-  (check-pattern hostname-pattern "hostname" _c2 p2 m2))
+  ;; Plain hostname must be ASCII (RFC 1123).  Validate:
+  ;;   - structural regex (label characters, hyphen position, label length ≤ 63)
+  ;;   - total length ≤ 253 (RFC 1035 §2.3.4 / §3.1)
+  ;;   - any A-label (xn-- prefix) is Punycode-decodable per RFC 5891
+  ;; Non-ACE labels with consecutive hyphens (e.g. "ab--cd") are valid per
+  ;; RFC 1123 — only ACE labels get full IDNA validation.
+  (fn [_c1 p1 m1]
+    (when (string? m1)
+      (or (when-not (re-find hostname-pattern m1)
+            [(make-error "format: hostname has invalid structure" p2 m2 p1 m1)])
+          (when (> (count m1) 253)
+            [(make-error "format: hostname exceeds 253 characters" p2 m2 p1 m1)])
+          (let [labels (str/split m1 #"\.")]
+            (when (and (some #(re-find ace-label-prefix-re %) labels)
+                       (not (json-idn-hostname? m1)))
+              [(make-error "format: hostname A-label fails IDNA Punycode validation" p2 m2 p1 m1)]))))))
 
 (defn check-format-date-time [_c2 p2 m2]
   (let [normal-check (check-parse offset-date-time-parse "date-time" _c2 p2 m2)]
     (fn [_c1 p1 m1]
-      (if-let [[_ date-part time-part] (re-find date-time-split-re m1)]
-        (case (valid-leap-second-time? time-part)
-          true (try
-                 (local-date-parse date-part)
-                 nil
-                 (catch #?(:cljs js/Error :clj Exception) e
-                   [(make-error (str "format: not a valid date-time: " (ex-message e)) p2 m2 p1 m1)]))
-          false [(make-error "format: not a valid date-time" p2 m2 p1 m1)]
-          (normal-check _c1 p1 m1))
-        (normal-check _c1 p1 m1)))))
+      (cond
+        (not (string? m1)) nil
+        ;; RFC 3339 requires a four-digit year — reject ISO 8601 extended-year
+        ;; formats like "+11963-06-19T08:30:06Z" that Java's OffsetDateTime
+        ;; parser accepts.
+        (not (re-find #"^\d{4}-\d{2}-\d{2}[Tt]" m1))
+        [(make-error "format: not a valid date-time (year must be four digits)" p2 m2 p1 m1)]
+        :else
+        (if-let [[_ date-part time-part] (re-find date-time-split-re m1)]
+          (case (valid-leap-second-time? time-part)
+            true (try
+                   (local-date-parse date-part)
+                   nil
+                   (catch #?(:cljs js/Error :clj Exception) e
+                     [(make-error (str "format: not a valid date-time: " (ex-message e)) p2 m2 p1 m1)]))
+            false [(make-error "format: not a valid date-time" p2 m2 p1 m1)]
+            (normal-check _c1 p1 m1))
+          (normal-check _c1 p1 m1))))))
 
 (defn check-format-date [_c2 p2 m2]
   (check-parse local-date-parse "date" _c2 p2 m2))
@@ -159,8 +182,27 @@
 (defn check-format-relative-json-pointer [_c2 p2 m2]
   (check-pattern relative-pointer-pattern "relative-json-pointer" _c2 p2 m2))
 
+;; If a URI has an authority (scheme://...), reject "[" / "]" outside an IPv6
+;; literal and require any port to be all digits.  These are the structural
+;; rules the character-set regex can't catch.
+(def ^:private uri-authority-re
+  ;; Captures: 1=userinfo (with trailing @ stripped), 2=host, 3=port (digits or empty)
+  #"^[A-Za-z][A-Za-z0-9+.\-]*://(?:([^/?\#@]*)@)?(\[[A-Fa-f0-9:.]+\]|[^:/?\#]*)(?::([^/?\#]*))?(?:[/?\#].*)?$")
+
 (defn check-format-uri [_c2 p2 m2]
-  (check-pattern uri-pattern "uri" _c2 p2 m2))
+  (let [base-check (check-pattern uri-pattern "uri" _c2 p2 m2)]
+    (fn [_c1 p1 m1]
+      (or (base-check _c1 p1 m1)
+          ;; Authority structure: only applies when scheme://... is present.
+          (when (and (string? m1)
+                     (re-find #"^[A-Za-z][A-Za-z0-9+.\-]*://" m1))
+            (if-let [[_ userinfo _host port] (re-find uri-authority-re m1)]
+              (or (when (and userinfo
+                             (re-find #"[\[\]]" userinfo))
+                    [(make-error "format: uri userinfo contains invalid '[' or ']'" p2 m2 p1 m1)])
+                  (when (and port (not (re-matches #"\d*" port)))
+                    [(make-error "format: uri port must be numeric" p2 m2 p1 m1)]))
+              [(make-error "format: uri authority section is malformed" p2 m2 p1 m1)]))))))
 
 (defn check-format-uri-reference [_c2 p2 m2]
   (check-pattern uri-reference-pattern "uri-reference" _c2 p2 m2))

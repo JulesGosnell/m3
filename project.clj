@@ -24,7 +24,6 @@
    [com.ibm.icu/icu4j "78.2"] ;; https://github.com/unicode-org/icu — IDNA2008 hostname validation
    ;; clj
    [org.clojure/clojure "1.12.4"] ;; https://clojure.org/releases/downloads
-   [org.clojure/tools.logging "1.3.1"] ;; https://github.com/clojure/tools.logging
    [org.clojure/data.json "2.5.2"] ;; https://github.com/clojure/data.json
    ;; cljs
    [thheller/shadow-cljs "3.3.5"] ;; https://github.com/thheller/shadow-cljs
@@ -56,6 +55,10 @@
   :source-paths ["src/clj" "src/cljc" "src/cljs"]
   :test-paths ["test/clj" "test/cljc" "test/cljs"]
   :resource-paths ["resources" "target/cljsbuild"]
+
+  ;; AOT the gen-class Java facade so consumers can resolve m3.JsonSchema
+  ;; from the published jar. The .clj source alone is not callable from Java.
+  :aot [m3.JsonSchema]
 
   :shadow-cljs {:builds {:test
                          {:target :node-test

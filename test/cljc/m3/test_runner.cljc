@@ -41,7 +41,7 @@
                       [:draft7 "draft7"]
                       [:draft2019-09 "draft2019-09"]
                       [:draft2020-12 "draft2020-12"]
-                      [:draft-next "draft-next"]]
+                      [:draft-v1 "draft-next"]]
         ;; Run in parallel
         results (doall
                  (pmap (fn [[draft dir]]

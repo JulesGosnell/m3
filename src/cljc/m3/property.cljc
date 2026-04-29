@@ -16,11 +16,10 @@
   (:require
    #?(:cljs [goog.string.format])
    [clojure.string :refer [starts-with? replace] :rename {replace string-replace}]
-   [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.platform :refer [pformat json-decode big-zero? big-mod pbigdec]]
-   [m3.util :refer [absent present? concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure get-check-schema third]]
+   [m3.util :refer [absent present? concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure add-warning add-info get-check-schema third]]
    [m3.ecma :refer [ecma-pattern ecma-match]]
-   [m3.uri :refer [parse-uri inherit-uri]]
+   [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.ref :refer [resolve-uri try-path]]
    [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker json-=]]
    [m3.format :as format]))
@@ -197,19 +196,15 @@
                            (or existing {:schema anchor-schema :scope-id anchor-scope-id}))))
           m1 nil]))]))
 
-(defn check-property-$comment [_property {quiet? :quiet? :as c2} _p2 m2 v2]
-  [c2
+(defn check-property-$comment [_property c2 p2 m2 v2]
+  [(add-info c2 p2 (str "$comment: " v2) m2)
    m2
-   (if quiet?
-     (fn [c1 _p1 m1] [c1 m1 nil])
-     (fn [c1 _p1 m1]
-       (log/info (str "$comment: " v2))
-       [c1 m1 nil]))])
+   (fn [c1 _p1 m1] [c1 m1 nil])])
 
 ;; $ref resolution logic.
 ;; Resolution is LAZY (inside f1) to handle recursive schemas.
 (defn make-check-property-$ref [{:keys [meld-fn ref-replaces-siblings? ref-scope-isolation?]}]
-  (fn [_property {id-uri :id-uri :as c2} p2 m2 v2]
+  (fn [_property {id-uri :id-uri id-key :id-key :as c2} p2 m2 v2]
     (let [schema-p2 (vec (butlast p2))
           ;; For draft <= draft7, $ref ignores sibling $id.
           ;; Use schema-parent-id-uri saved by compile-m2 at entry — this is
@@ -218,7 +213,10 @@
                              (or (:schema-parent-id-uri c2) id-uri)
                              id-uri)
           ref-uri (inherit-uri effective-id-uri (parse-uri v2))
-          m2-no-ref (dissoc m2 "$ref")
+          ;; Drop $ref and the parent's id-key from the sibling map before
+          ;; melding into the resolved schema.  Parent's $id belongs to the
+          ;; outer scope; pulling it into the inner compile pollutes id-uri.
+          m2-no-ref (dissoc m2 "$ref" id-key)
           effective-c2 (assoc c2 :id-uri effective-id-uri)]
       [(if ref-replaces-siblings?
          ;; For old drafts, $ref overrides siblings — tell compile-m2 to skip them
@@ -282,7 +280,16 @@
                               (assoc effective-c2 :id-uri (:id-uri new-c))
                               :else new-c)
                      compile-schema (if needs-scope-isolation? resolved-m melded)
-                     [_c2 _m2 compiled-f1] (check-schema-fn (dissoc ref-c2 :scope-id) schema-p2 compile-schema)]
+                     [resolved-c2 _m2 compiled-f1] (check-schema-fn (dissoc ref-c2 :scope-id) schema-p2 compile-schema)
+                     ;; Push the resolved scope onto the dynamic-scope chain
+                     ;; so $dynamicRef can search the outermost-first traversal
+                     ;; order.  Functional c1 means this push only persists
+                     ;; into the deeper call, not back to the caller.
+                     new-sid (:scope-id resolved-c2)
+                     c1 (if (and new-sid
+                                 (not= new-sid (peek (:$dynamic-scope-chain c1))))
+                          (update c1 :$dynamic-scope-chain (fnil conj []) new-sid)
+                          c1)]
                  (compiled-f1 c1 p1 m1))
                ;; Resolution failed - compile schema without $ref
                (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc effective-c2 :scope-id) schema-p2 m2-no-ref)]
@@ -296,12 +303,15 @@
 
 (defn check-property-$recursiveRef [_property {id-uri :id-uri :as c2} p2 m2 v2]
   (let [schema-p2 (vec (butlast p2))]
-    [c2
-     m2
-     ;; f1: resolve LAZILY at runtime
-     (fn [c1 p1 m1]
-       (if (present? m1)
-         (if (= "#" v2)
+    (if-not (= "#" v2)
+      [(add-warning c2 p2 (str "$recursiveRef: unexpected value: " (pr-str v2)) m2)
+       m2
+       (fn [c1 _p1 m1] [c1 m1 nil])]
+      [c2
+       m2
+       ;; f1: resolve LAZILY at runtime
+       (fn [c1 p1 m1]
+         (if (present? m1)
            (let [check-schema-fn (get-check-schema)
                  m2-no-ref (dissoc m2 "$recursiveRef")
                  ;; Step 1: resolve "#" via c2 to find the initial target.
@@ -373,26 +383,46 @@
                  [c1b m1 (concatv es-a es-b)])
                (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc c2 :scope-id) schema-p2 m2-no-ref)]
                  (compiled-f1 c1 p1 m1))))
-           (do (log/warn "$recursiveRef: unexpected value:" (pr-str v2))
-               [c1 m1 nil]))
-         [c1 m1 nil]))]))
+           [c1 m1 nil]))])))
+
+
+(defn- find-anchor-in-scope
+  "If c2 has a $dynamicAnchor entry whose fragment matches anchor-name AND
+   whose URI base matches c2's own :id-uri base (i.e. the anchor lives in
+   the same resource as this scope), return {:schema ... :scope-id ...}.
+   This filter is what makes outermost-first chain walking find the right
+   anchor: a scope's c2 typically inherits anchors from sub-resources via
+   $defs, but we only want this scope to claim its own resource's anchors."
+  [c2 scope-id anchor-name]
+  (let [scope-base (some-> (:id-uri c2) uri-base)]
+    (when-let [da (:$dynamic-anchor c2)]
+      (some (fn [[uri path]]
+              (when (and (= (:fragment uri) anchor-name)
+                         (or (nil? scope-base)
+                             (= scope-base (uri-base uri))))
+                (let [schema (get-in (:root c2) path)]
+                  (when (and (map? schema)
+                             (= (get schema "$dynamicAnchor") anchor-name))
+                    {:schema schema :scope-id scope-id}))))
+            da))))
 
 (defn- resolve-dynamic-anchor-from-root-c2
-  "Fall back to the root schema's compile-time $dynamic-anchor map.
-  Used when the $dynamicAnchor was in $defs (whose f1 is a no-op at runtime)
-  so the anchor never made it into c1."
+  "Walk the dynamic-scope chain (outermost first) for a matching $dynamicAnchor.
+   Each $ref jump pushes the resolved scope-id onto :$dynamic-scope-chain in
+   c1; the outermost scope (first in the chain) whose c2 has the anchor wins.
+   Falls back to :$root-scope-id for anchors stashed by check-schema's $defs
+   pre-stash that never propagated into the chain."
   [c1 anchor-name]
-  (when-let [root-sid (:$root-scope-id c1)]
-    (let [root-c2 (get-in c1 [:$compile-scopes root-sid])
-          da (:$dynamic-anchor root-c2)]
-      (when da
-        (some (fn [[uri path]]
-                (when (= (:fragment uri) anchor-name)
-                  (let [schema (get-in (:root root-c2) path)]
-                    (when (and (map? schema)
-                               (= (get schema "$dynamicAnchor") anchor-name))
-                      {:schema schema :scope-id root-sid}))))
-              da)))))
+  (or
+   ;; Outermost scope in the dynamic-scope chain wins
+   (some (fn [sid]
+           (when-let [c2 (get-in c1 [:$compile-scopes sid])]
+             (find-anchor-in-scope c2 sid anchor-name)))
+         (:$dynamic-scope-chain c1))
+   ;; Fall back to root scope for $defs-bound anchors
+   (when-let [root-sid (:$root-scope-id c1)]
+     (when-let [root-c2 (get-in c1 [:$compile-scopes root-sid])]
+       (find-anchor-in-scope root-c2 root-sid anchor-name)))))
 
 (defn make-check-property-$dynamicRef [dynamic-ref-requires-bookend?]
   (fn [_property {id-uri :id-uri :as c2} p2 m2 v2]
@@ -491,14 +521,11 @@
 (def check-property-examples    noop-checker)
 
 
-(defn check-property-deprecated [_property {quiet? :quiet? :as c2} _p2 m2 v2]
+(defn check-property-deprecated [_property c2 p2 m2 v2]
   [c2
    m2
-   (if quiet?
-     (fn [c1 _p1 m1] [c1 m1 nil])
-     (fn [c1 _p1 m1]
-       (log/warn (str "deprecated: " v2))
-       [c1 m1 nil]))])
+   (fn [c1 _p1 m1]
+     [(add-warning c1 p2 (str "deprecated: " v2) m2 [] m1) m1 nil])])
 
 ;; standard number properties
 
@@ -526,12 +553,10 @@
        (when-not (<= v2 m1)
          [(make-error "minimum: value too low" p2 m2 p1 m1)])]))])
 
-(defn check-property-exclusiveMinimum-old [_property c2 _p2 {m "minimum" :as m2} _v2]
-  [c2
+(defn check-property-exclusiveMinimum-old [_property c2 p2 {m "minimum" :as m2} _v2]
+  [(if m c2 (add-warning c2 p2 "exclusiveMinimum: no minimum present to modify" m2))
    m2
-   (fn [c1 _p1 m1]
-     (when-not m (log/warn "exclusiveMinimum: no minimum present to modify"))
-     [c1 m1 []])])
+   (fn [c1 _p1 m1] [c1 m1 []])])
 
 (defn check-property-exclusiveMinimum-new [_property c2 p2 m2 v2]
   [c2
@@ -568,14 +593,10 @@
        (when-not (>= v2 m1)
          [(make-error "maximum: value too high" p2 m2 p1 m1)])]))])
 
-(defn check-property-exclusiveMaximum-old [_property c2 _p2 {m "maximum" :as m2} _v2]
-  [c2
+(defn check-property-exclusiveMaximum-old [_property c2 p2 {m "maximum" :as m2} _v2]
+  [(if m c2 (add-warning c2 p2 "exclusiveMaximum: no maximum present to modify" m2))
    m2
-   (make-type-checker
-    json-number?
-    (fn [c1 _p1 m1]
-      (when-not m (log/warn "exclusiveMaximum: no maximum present to modify"))
-      [c1 m1 []]))])
+   (fn [c1 _p1 m1] [c1 m1 []])])
 
 (defn check-property-exclusiveMaximum-new [_property c2 p2 m2 v2]
   [c2
@@ -660,21 +681,25 @@
                 (> (json-length m1) v2))
            [(make-error "maxLength: string too long" p2 m2 p1 m1)])]))]))
 
-(defn make-check-property-format [strict? format->checker]
-  (fn [_property {cfs :check-format :or {cfs {}} strict-format? :strict-format? :as c2} p2 m2 v2]
-    (let [f (if (or strict? strict-format?)
-              (fn [f2] (make-type-checker json-string? (fn [c p m] [c m (f2 c p m)])))
-              (fn [f2] (make-type-checker json-string? (fn [c p m] (when-let [[{m :message}] (f2 c p m)] [c m (log/warn m)])))))]
-      ;; we do this here so that user may override default format checkers...
-      ;; First check for custom override, then draft-specific checker from closure
+(defn make-check-property-format [default-strict? format->checker]
+  (fn [_property {cfs :check-format force-strict? :format-assertion? :or {cfs {}} :as c2} p2 m2 v2]
+    ;; default-strict? is what the dialect/vocabulary chose at registration
+    ;; time (annotation vs assertion vocab).  c2's :format-assertion?, if
+    ;; set, overrides — used by the JSON-Schema-Test-Suite runner for tests
+    ;; under optional/format/, per the suite README.
+    (let [strict? (if (some? force-strict?) force-strict? default-strict?)
+          f (if strict?
+              (fn [f2] (make-type-checker json-string? (fn [c1 p1 m1] [c1 m1 (f2 c1 p1 m1)])))
+              (fn [f2] (make-type-checker json-string?
+                         (fn [c1 p1 m1]
+                           (if-let [es (seq (f2 c1 p1 m1))]
+                             [(add-warning c1 p2 (:message (first es)) m2 p1 m1) m1 nil]
+                             [c1 m1 nil])))))
+          checker (or (cfs v2) (get format->checker v2))
+          c2 (if checker c2 (add-warning c2 p2 (str "format: not recognised: " (:draft c2) " " (pr-str v2)) m2))]
       [c2
        m2
-       (if-let [checker (or (cfs v2)
-                            (get format->checker v2)
-                            (fn [_ _ _] (fn [_ _ _] (log/warn "format: not recognised:" (:draft c2) (pr-str v2)))))]
-         (f (checker c2 p2 m2))
-        ;; Unknown format - return identity function
-         (f (constantly nil)))])))
+       (f (if checker (checker c2 p2 m2) (constantly nil)))])))
 
 (defn make-check-property-pattern [format->checker]
   (let [format-checker (make-check-property-format false format->checker)]
@@ -726,17 +751,14 @@
        (make-type-checker
         json-string?
         (fn [c1 p1 old-m1]
-          (let [[new-m1 es]
+          (let [[new-m1 es c1]
                 (try
-                  [(ce-decoder old-m1) nil]
+                  [(ce-decoder old-m1) nil c1]
                   (catch #?(:cljs js/Error :clj Exception) e
-                    [nil
-                     (let [m (str "contentEncoding: could not " v2 " decode: " (pr-str old-m1) " - " (ex-message e))]
-                       (if strict?
-                         [(make-error m p2 m2 p1 old-m1)]
-                         (do
-                           (log/warn (string-replace m #"\n" " - "))
-                           [])))]))]
+                    (let [m (str "contentEncoding: could not " v2 " decode: " (pr-str old-m1) " - " (ex-message e))]
+                      (if strict?
+                        [nil [(make-error m p2 m2 p1 old-m1)] c1]
+                        [nil [] (add-warning c1 p2 (string-replace m #"\n" " - ") m2 p1 old-m1)]))))]
             (if new-m1
               [(update c1 :content assoc pp2 new-m1) new-m1 nil]
               [c1 old-m1 es]))))])))
@@ -752,17 +774,14 @@
         json-string?
         (fn [c1 p1 m1]
           (let [old-m1 (or (get (get c1 :content) pp2) m1)
-                [new-m1 es]
+                [new-m1 es c1]
                 (try
-                  [(cmt-decoder old-m1) nil]
+                  [(cmt-decoder old-m1) nil c1]
                   (catch #?(:cljs js/Error :clj Exception) e
-                    [nil
-                     (let [m (str "contentMediaType: could not " v2 " decode: " (pr-str old-m1) " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
-                       (if strict?
-                         [(make-error m p2 m2 p1 old-m1)]
-                         (do
-                           (log/warn (string-replace m #"\n" " - "))
-                           [])))]))]
+                    (let [m (str "contentMediaType: could not " v2 " decode: " (pr-str old-m1) " - " (string-replace (ex-message e) #"\n" " \\\\n "))]
+                      (if strict?
+                        [nil [(make-error m p2 m2 p1 old-m1)] c1]
+                        [nil [] (add-warning c1 p2 (string-replace m #"\n" " - ") m2 p1 old-m1)]))))]
 
             (if new-m1
               [(update c1 :content assoc pp2 new-m1) new-m1 nil]
@@ -775,18 +794,22 @@
       [c2
        m2
        (fn [c1 p1 m1]
-         (let [old-m1 (or (get (get c1 :content) pp2) m1)
-               old-m1 (if cmt old-m1 (json-decode old-m1))] ;; TODO: error handling
-           (try
-             (let [[c1 _m1 es] (f1 c1 p1 old-m1)]
-               [c1
-                m1
-                (when (seq es)
-                  (if strict?
-                    es
-                    (do (log/warn "contentSchema: failed validation - " (pr-str es)) nil)))])
-             (catch #?(:cljs js/Error :clj Exception) e
-               [c1 m1 (:errors (ex-data e))]))))])))
+         (try
+           (let [stash (get (get c1 :content) pp2)
+                 old-m1 (or stash
+                            ;; No contentMediaType => assume JSON content.
+                            ;; Decode failures are caught below and treated
+                            ;; as validation failures rather than escaping.
+                            (when (nil? cmt) (json-decode m1))
+                            m1)
+                 [c1 _m1 es] (f1 c1 p1 old-m1)
+                 [c1 es] (cond
+                           (empty? es) [c1 nil]
+                           strict?     [c1 es]
+                           :else       [(add-warning c1 p2 (str "contentSchema: failed validation - " (pr-str es)) m2 p1 old-m1) nil])]
+             [c1 m1 es])
+           (catch #?(:cljs js/Error :clj Exception) e
+             [c1 m1 (:errors (ex-data e))])))])))
 
 (defn check-property-dependencies [_property c2 p2 m2 v2]
   (let [[c2 property->checker]

@@ -33,7 +33,7 @@
        (v {}))          ;; => {:valid? false, :errors [...]}
 
    Supported drafts: :draft3, :draft4, :draft6, :draft7,
-                     :draft2019-09, :draft2020-12, :draft-next, :latest
+                     :draft2019-09, :draft2020-12, :draft-v1, :latest
    Default: :latest (currently :draft2020-12)
 
    Error shape:
@@ -42,13 +42,20 @@
       :message       \"...\"           ;; human-readable description
       :document      ...              ;; the failing document fragment
       :schema        ...              ;; the relevant schema fragment
-      :errors        [...]            ;; nested sub-errors (if applicable)}"
+      :errors        [...]            ;; nested sub-errors (if applicable)}
+
+   Warning/info shape (when present):
+     {:schema-path   [\"format\"]       ;; path into the schema
+      :document-path [\"email\"]       ;; path into the document
+      :message       \"...\"            ;; human-readable description
+      :document      \"not-email\"      ;; the failing value
+      :schema        {...}}             ;; the relevant schema"
   (:require
    [m3.platform :refer [json-decode]]
    [m3.uri :refer [parse-uri uri-base]]
    [m3.validate :as v]))
 
-(defn- registry->uri->schema
+(defn- registry->uri->schema*
   "Build a :uri->schema function from a registry map {uri-string -> schema}.
    Falls back to the default file-based resolution."
   [registry]
@@ -65,16 +72,34 @@
           [c2 [] schema])
         (default c p uri)))))
 
-(defn- opts->c2 [{:keys [draft strict-format? strict-integer? quiet? registry]}]
+;; Memoize so that structurally equal registry maps produce the same
+;; function identity.  This is critical because the returned fn ends up
+;; inside c2, and validate-m2 (also memoized) keys on [c2 schema].
+;; Without stable fn identity, c2 is never = across calls and the
+;; compile-time cache never hits.
+(def ^:private registry->uri->schema (memoize registry->uri->schema*))
+
+(defn make-marker-stash
+  "Build a marker stash for a self-referential meta-schema.
+   Takes the $id URI string of the meta-schema.
+   Returns a stash suitable for passing as :marker-stash option to validator/validate."
+  [schema-uri-string]
+  (let [uri (parse-uri schema-uri-string)
+        base (uri-base uri)]
+    {base {:uri->path {base []}
+           :path->uri {[] base}}}))
+
+(defn- opts->c2 [{:keys [draft quiet? registry marker-stash check-format]}]
   (cond-> {:quiet? true :draft (or draft :latest)}
-    strict-format?  (assoc :strict-format? true)
-    strict-integer? (assoc :strict-integer? true)
-    (some? quiet?)  (assoc :quiet? quiet?)
-    registry        (assoc :uri->schema (registry->uri->schema registry))))
+    (some? quiet?)   (assoc :quiet? quiet?)
+    registry         (assoc :uri->schema (registry->uri->schema registry))
+    marker-stash     (assoc :marker-stash marker-stash)
+    check-format     (assoc :check-format check-format)))
 
 (defn validate
   "Validate a document against a JSON Schema.
-   Returns {:valid? bool, :errors [...]}
+   Returns {:valid? bool, :errors [...], :warnings [...]}
+   (:warnings is only present when there are warnings)
 
    Both-strings form: schema and document are both JSON strings.
      (validate \"{\\\"type\\\":\\\"string\\\"}\" \"\\\"hello\\\"\")
@@ -83,11 +108,10 @@
      (validate {\"type\" \"string\"} \"hello\")
 
    opts - optional map:
-     :draft            - :draft3, :draft4, :draft6, :draft7, :draft2019-09, :draft2020-12, :draft-next, :latest
-     :strict-format?   - true to treat format as assertion (default: annotation-only)
-     :strict-integer?  - true to require actual integers (not 1.0 for integer type)
-     :quiet?           - false to enable logging (default: true)
-     :registry         - map of URI string to schema, for $ref resolution"
+     :draft        - :draft3, :draft4, :draft6, :draft7, :draft2019-09, :draft2020-12, :draft-v1, :latest
+     :quiet?       - false to enable $comment printing (default: true)
+     :registry     - map of URI string to schema, for $ref resolution
+     :marker-stash - marker stash for custom self-referential meta-schemas (see make-marker-stash)"
   ([schema document]
    (validate schema document nil))
   ([schema document opts]
@@ -110,7 +134,8 @@
 (defn validator
   "Compile a schema, return a reusable validation function.
    The returned function takes a document (any value) and
-   returns {:valid? bool, :errors [...]}.
+   returns {:valid? bool, :errors [...], :warnings [...]}.
+   (:warnings is only present when there are warnings)
    More efficient for validating many documents against one schema.
 
    schema - map (parsed schema) or JSON string

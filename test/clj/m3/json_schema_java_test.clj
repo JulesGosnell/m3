@@ -56,14 +56,13 @@
     (let [opts (java.util.HashMap. {"draft" "draft7"})
           result (js/-validate "{\"type\":\"string\"}" "\"hi\"" opts)]
       (is (true? (.get ^java.util.Map result "valid")))))
-  (testing "with strictFormat option"
-    (let [opts (java.util.HashMap. {"strictFormat" true})
+  (testing "format annotation produces warning (default draft)"
+    (let [opts (java.util.HashMap. {"draft" "draft2020-12"})
           result (js/-validate "{\"type\":\"string\",\"format\":\"email\"}" "\"not-email\"" opts)]
-      (is (false? (.get ^java.util.Map result "valid")))))
-  (testing "with strictInteger option"
-    (let [opts (java.util.HashMap. {"strictInteger" true})
-          result (js/-validate "{\"type\":\"integer\"}" "1.0" opts)]
-      (is (false? (.get ^java.util.Map result "valid"))))))
+      (is (true? (.get ^java.util.Map result "valid")))
+      (let [warnings (.get ^java.util.Map result "warnings")]
+        (is (instance? java.util.List warnings))
+        (is (pos? (.size ^java.util.List warnings)))))))
 
 ;;------------------------------------------------------------------------------
 ;; (Map, Object, Map) overload

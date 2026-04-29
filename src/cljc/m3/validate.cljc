@@ -16,9 +16,8 @@
   (:require
    [clojure.string :refer [ends-with? starts-with?]]
    #?(:clj [clojure.java.io :as io])
-   [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
    [m3.platform :refer [json-decode]]
-   [m3.util :refer [present? concatv make-error make-error-on-failure]]
+   [m3.util :refer [present? concatv make-error make-error-on-failure add-warning]]
    [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.type :refer [json-object?]]
    [m3.draft :refer [draft->$schema $schema->draft $schema-uri->draft]]
@@ -43,9 +42,16 @@
 ;; Both contexts are threaded functionally — each checker receives and returns
 ;; its context, accumulating state as compilation/validation progresses.
 
-#?(:cljs (def fs (js/require "fs")))
+;; Use js* to avoid shadow-cljs compile-time module resolution.
+;; In Node.js (no window), require('fs') works normally.
+;; In browser (has window), skip entirely — returns null.
+#?(:cljs (def ^:private fs
+  (js* "(function(){if(typeof window!=='undefined')return null;try{return require('fs')}catch(e){return null}})()")))
 
-#?(:cljs (defn slurp [path] (.readFileSync fs path "utf8")))
+#?(:cljs (defn slurp [path]
+  (if fs
+    (.readFileSync fs path "utf8")
+    (throw (js/Error. (str "File system not available: " path))))))
 
 ;;------------------------------------------------------------------------------
 
@@ -294,16 +300,19 @@
      :id-uri (or (:id-uri c2) (when sid (parse-uri sid))) ;; should be receiver uri - but seems to default to id/$id - yeugh
      :uri->path (or (:uri->path c2) {})
      :path->uri (or (:path->uri c2) {})
+     :warnings (or (:warnings c2) [])
+     :infos (or (:infos c2) [])
      :original-root m2
      :recursive-anchor []
      :root m2
-     :strict-integer? (let [f? (get c2 :strict-integer?)] (if (nil? f?) false f?)) ;; pull this out into some default fn
      )))
 
 ;; TODO: rename :root to ?:expanded?
 (defn validate* [c2 schema]
   (let [{draft :draft id-key :id-key :as c2} (make-context c2 schema)
-        [c2 m2 cs] (check-schema c2 [] schema)]
+        [c2 m2 cs] (check-schema c2 [] schema)
+        compile-warnings (:warnings c2)
+        compile-infos (:infos c2)]
     (fn [c1 {did id-key _dsid "$schema" :as document}]
       (let [c1 (assoc
                 c1
@@ -313,6 +322,9 @@
                 :recursive-anchor []
                 :root document
                 :draft draft
+                ;; Inject compile-time warnings/infos into c1 so they surface in results.
+                :warnings (or compile-warnings [])
+                :infos (or compile-infos [])
                 ;; Store root compilation scope-id for $dynamicRef resolution.
                 ;; Remote schemas' $dynamicRef can fall back to the root c2
                 ;; to find $dynamicAnchors that are in $defs (whose f1 is
@@ -344,12 +356,12 @@
     (if-let [{$vocabulary "$vocabulary" :as m2} ($schema->m2 c2 s)]
       (if (= m2 m1)
         ;; we are at the top
-        (let [draft ($schema->draft s)
+        (let [draft (or ($schema->draft s) (:draft c2))
               c2 (assoc c2
                         :dialect (if $vocabulary (make-dialect draft $vocabulary) (draft->default-dialect draft))) ;; handle drafts that are too early to know about $vocabulary
               uri (parse-uri s) ;; duplicate work
-              stash (uri->marker-stash uri)
-              _ (when-not stash (log/warn "no stash for:" s))
+              stash (or (uri->marker-stash uri) (get (:marker-stash c2) (uri-base uri)))
+              c2 (if stash c2 (add-warning c2 [] (str "no stash for: " s) m2))
               ;; initialise c2`
               ;; only a meta-schema defines a dialect;; this is inherited by its instances
               c2 (assoc
@@ -371,7 +383,7 @@
         ;; We can't use the dialect from the metaschema's runtime context (c1) because
         ;; make-dialect selects checker instances from the draft's vocab table — using
         ;; the metaschema's draft (e.g. :draft2020-12) would pick the wrong instances
-        ;; for a schema whose draft differs (e.g. :draft-next).
+        ;; for a schema whose draft differs (e.g. :draft-v1).
         (let [[{u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)
               schema-draft (or ($schema->draft s) draft)
               dialect (if $vocabulary
@@ -383,15 +395,22 @@
                                :path->uri (or p->u {})
                                :dialect dialect) m1)
             (constantly r))))
-      (constantly [c2 [(str "could not resolve $schema: " s)]]))))
+      ;; Meta-schema not available (e.g. browser without filesystem).
+      ;; Fall back to compiling with the default dialect for the draft.
+      ;; This skips meta-schema validation but allows the schema to work.
+      (let [schema-draft (or ($schema->draft s) draft)
+            dialect (draft->default-dialect schema-draft)]
+        (validate* (assoc c2 :dialect dialect) m1)))))
 
 ;; Unbounded memoization: cache grows with distinct [c2, schema] pairs.
 ;; In practice bounded by the number of unique schemas validated (not documents).
 ;; Replace with LRU cache if memory pressure is observed in long-running processes.
 (def validate-m2 (memoize validate-m2-impl))
 
-(defn reformat [[_ es]]
-  {:valid? (empty? es) :errors es})
+(defn reformat [[c1 es]]
+  (cond-> {:valid? (empty? es) :errors es}
+    (seq (:warnings c1)) (assoc :warnings (:warnings c1))
+    (seq (:infos c1)) (assoc :infos (:infos c1))))
 
 (defn validate
   ([c2 m2 c1 m1]

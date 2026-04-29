@@ -14,8 +14,7 @@
 
 (ns m3.vocabulary
   (:require
-   [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
-   [m3.util :refer [map-values topo-sort-by make-stable-sort-by third fourth]]
+   [m3.util :refer [map-values topo-sort-by make-stable-sort-by third fourth add-warning]]
    [m3.uri :refer [parse-uri]]
    [m3.draft :refer [$schema-uri->draft]]
    [m3.ref :refer [meld-replace meld-deep-over]]
@@ -105,20 +104,20 @@
 
 (declare draft->config make-dialect draft->default-dialect)
 
-(defn check-property-$schema [_property c2 _p2 m2 v2]
+(defn check-property-$schema [_property c2 p2 m2 v2]
   ;; Dialect switching: parse $schema to determine draft, load metaschema
   ;; for $vocabulary, build dialect, return updated c2 for compile-m2's loop.
   (let [uri (parse-uri v2)
         draft (or ($schema-uri->draft uri)
                   (:draft c2))
         uri->schema (:uri->schema c2)
-        metaschema (when uri->schema
-                     (try
-                       (let [[_ _ ms] (uri->schema c2 [] uri)]
-                         ms)
-                       (catch #?(:clj Exception :cljs js/Error) e
-                         (log/info (str "Could not load metaschema: " v2 " - " #?(:clj (.getMessage e) :cljs (.-message e))))
-                         nil)))
+        [metaschema c2] (if uri->schema
+                          (try
+                            (let [[_ _ ms] (uri->schema c2 [] uri)]
+                              [ms c2])
+                            (catch #?(:clj Exception :cljs js/Error) e
+                              [nil (add-warning c2 p2 (str "Could not load metaschema: " v2 " - " #?(:clj (.getMessage e) :cljs (.-message e))) m2)]))
+                          [nil c2])
         vocab-map (get metaschema "$vocabulary")
         new-dialect (if vocab-map
                       (make-dialect draft vocab-map)
@@ -148,7 +147,7 @@
    :draft7       {:id-key "$id"}
    :draft2019-09 {:id-key "$id"}
    :draft2020-12 {:id-key "$id"}
-   :draft-next   {:id-key "$id"}
+   :draft-v1   {:id-key "$id"}
    :latest       {:id-key "$id"}})
 
 ;; Pre-built ref configs
@@ -498,7 +497,7 @@
    ;; metaschema's $vocabulary declares 2020-12 URIs (the spec isn't finalized).
    ;; Where draft-next behavior differs (e.g. $dynamicRef bookending), the
    ;; checker instances are draft-next-specific.
-   :draft-next
+   :draft-v1
    (sort-vocab
     [["https://json-schema.org/draft/2020-12/vocab/applicator"        "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
      ["https://json-schema.org/draft/2020-12/vocab/applicator"        "additionalProperties"   check-property-additionalProperties                      #{"$schema" "properties" "patternProperties"}]
@@ -586,7 +585,7 @@
     v->b))
 
 (defn make-dialect-2 [d v->b]
-  (let [effective-v->b (if (= d :draft-next) (normalize-draft-next-vocab-uris v->b) v->b)
+  (let [effective-v->b (if (= d :draft-v1) (normalize-draft-next-vocab-uris v->b) v->b)
         uri-set (into #{} (keys effective-v->b))
         entries (filter (comp uri-set first) (draft->vocab d))]
     (partial
@@ -597,9 +596,20 @@
 (def make-dialect (memoize make-dialect-2))
 
 (def draft->default-dialect
+  ;; Per JSON Schema spec, the default dialect for drafts that split format
+  ;; into annotation/assertion (2020-12+) is format-ANNOTATION only —
+  ;; assertion is strictly opt-in.  Including the assertion vocab here
+  ;; would silently flip the default to assert via make-stable-sort-by's
+  ;; last-write-wins index.
   (map-values
    (fn [k v]
-     (make-dialect k (into {} (map (fn [v] [v true])) (distinct (map first v)))))
+     (make-dialect k (into {}
+                           (comp
+                            (map first)
+                            (distinct)
+                            (remove #(clojure.string/ends-with? % "/format-assertion"))
+                            (map (fn [u] [u true])))
+                           v)))
    draft->vocab))
 
 

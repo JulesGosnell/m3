@@ -17,7 +17,8 @@
 (def email-pattern #"^(?:[^\s@\"\.](?:(?:(?!\.\.)[^\s@\"])*[^\s@\"\.])?|\"(?:[^\r\n\\\"]|\\[\s\S])+\")@(?:[a-zA-Z0-9\-]+(?:\.[a-zA-Z0-9\-]+)*|\[IPv6:[a-fA-F0-9:]+\]|\[(?:(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)\])$")
 
 ;; https://howtodoinjava.com/java/regex/java-regex-validate-email-address/
-(def ipv4-pattern #"^(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(\.(?!$)|$)){4}$")
+;; \z (end-of-input, not end-of-line) so a trailing \n is rejected.
+(def ipv4-pattern #"^(([0-9]|[1-9][0-9]|1[0-9][0-9]|2[0-4][0-9]|25[0-5])(\.(?!\z)|\z)){4}\z")
 
 ;; adapted from: https://github.com/ajv-validator/ajv-formats/blob/master/src/formats.ts
 (def ipv6-pattern #"(?i)^((([0-9a-f]{1,4}:){7}([0-9a-f]{1,4}|:))|(([0-9a-f]{1,4}:){6}(:[0-9a-f]{1,4}|((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-f]{1,4}:){5}(((:[0-9a-f]{1,4}){1,2})|:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3})|:))|(([0-9a-f]{1,4}:){4}(((:[0-9a-f]{1,4}){1,3})|((:[0-9a-f]{1,4})?:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){3}(((:[0-9a-f]{1,4}){1,4})|((:[0-9a-f]{1,4}){0,2}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){2}(((:[0-9a-f]{1,4}){1,5})|((:[0-9a-f]{1,4}){0,3}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(([0-9a-f]{1,4}:){1}(((:[0-9a-f]{1,4}){1,6})|((:[0-9a-f]{1,4}){0,4}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:))|(:(((:[0-9a-f]{1,4}){1,7})|((:[0-9a-f]{1,4}){0,5}:((25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)){3}))|:)))$")
@@ -31,9 +32,19 @@
 
 ;; TODO: this should be shared with uri.cljc
 
-(def uri-pattern #"^(?:[A-Za-z][A-Za-z0-9+.\-]*:[^\s]*|#(?:[^\s]*)?)$")
+;; RFC 3986 URI: scheme then only allowed ASCII chars, with valid percent-encoding.
+;; Allowed chars: unreserved (A-Z a-z 0-9 - . _ ~), sub-delims (!$&'()*+,;=),
+;; gen-delims (:/?#[]@), and %HH percent-encoded triplets.  Disallows: spaces,
+;; backslash, " < > { } ^ ` |, raw % without two hex digits, raw non-ASCII.
+;; Also accepts a bare fragment-only form (e.g. "#" or "#foo") so that
+;; meta-schema $refs that self-reference don't fail self-validation.
+(def uri-pattern
+  #"^(?:[A-Za-z][A-Za-z0-9+.\-]*:(?:[A-Za-z0-9\-._~!$&'()*+,;=:/?\#\[\]@]|%[0-9A-Fa-f]{2})*|\#(?:[A-Za-z0-9\-._~!$&'()*+,;=:/?\#\[\]@]|%[0-9A-Fa-f]{2})*)$")
 
-(def uri-reference-pattern #"^[^\s\\]*$")
+;; URI-reference: like uri-pattern but scheme is optional.  Same allowed chars:
+;; unreserved | sub-delims | gen-delims | %HH percent-encoded triplets.
+(def uri-reference-pattern
+  #"^(?:[A-Za-z][A-Za-z0-9+.\-]*:)?(?:[A-Za-z0-9\-._~!$&'()*+,;=:/?\#\[\]@]|%[0-9A-Fa-f]{2})*$")
 
 (def uri-template-pattern #"^(?:[^\s{}]|(?:\{[^\s{}]*\}))*$")
 
@@ -46,35 +57,23 @@
 ;; https://www.jvt.me/posts/2022/01/14/java-uuid-regex/
 (def uuid-pattern #"^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$")
 
-;; ISO 8601 duration
-;; https://en.wikipedia.org/wiki/ISO_8601#Durations
-;; TODO:
-;; - allow more than 4 numbers before each letter
-;; - allow a single decimal point in each number group ?
-;; - allow a general date-time format ?
+;; RFC 3339 Appendix A (ABNF for duration):
+;;   duration   = "P" (dur-date [dur-time] / dur-time / dur-week)
+;;   dur-date   = dur-day / dur-month dur-day? / dur-year dur-month? dur-day?
+;;   dur-time   = "T" (dur-hour / dur-minute / dur-second)
+;;   dur-hour   = 1*DIGIT "H" [dur-minute]
+;;   dur-minute = 1*DIGIT "M" [dur-second]
+;;   dur-second = 1*DIGIT "S"
+;;   dur-day    = 1*DIGIT "D"
+;;   dur-month  = 1*DIGIT "M" [dur-day]
+;;   dur-year   = 1*DIGIT "Y" [dur-month [dur-day]]
+;;   dur-week   = 1*DIGIT "W"
+;; Note that components must appear in order and intermediate components
+;; cannot be omitted, e.g. "P1Y2D" (year+day, no month) is invalid.
 (def json-duration-pattern
-  (re-pattern
-   (str
-    "^"
-    "P"
-    "("
-    "("
-    "([0-9]{1,4}Y|)"
-    "([0-9]{1,4}M|)"
-    "([0-9]{1,4}D|)"
-    ")"
-    "("
-    "T"
-    "([0-9]{1,4}H|)"
-    "([0-9]{1,4}M|)"
-    "([0-9]{1,4}S|)"
-    "|"
-    ")"
-    "|"
-    "([0-9]{1,4}W|)"    
-    ")"
-    "$"    
-    )))
+  (let [date "(?:\\d+Y(?:\\d+M(?:\\d+D)?)?|\\d+M(?:\\d+D)?|\\d+D)"
+        time "T(?:\\d+H(?:\\d+M(?:\\d+S)?)?|\\d+M(?:\\d+S)?|\\d+S)"]
+    (re-pattern (str "^P(?:" date "(?:" time ")?|" time "|\\d+W)$"))))
 
 ;; see: https://github.com/juxt/jinx/blob/master/src/juxt/jinx/alpha/patterns.clj
 

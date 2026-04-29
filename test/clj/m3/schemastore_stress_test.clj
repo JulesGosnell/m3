@@ -3,9 +3,9 @@
 ;; Usage:
 ;;   lein test m3.schemastore-stress-test
 ;;
-;; Prerequisites (auto-cloned if missing):
-;;   /tmp/schemastore          — https://github.com/SchemaStore/schemastore
-;;   /tmp/json-schema-corpus   — https://github.com/sdbs-uni-p/json-schema-corpus
+;; Prerequisites (git submodules — run `git submodule update --init`):
+;;   test-resources/schemastore         — https://github.com/SchemaStore/schemastore
+;;   test-resources/json-schema-corpus  — https://github.com/sdbs-uni-p/json-schema-corpus
 
 (ns m3.schemastore-stress-test
   (:require [clojure.test :refer [deftest testing is]]
@@ -13,18 +13,6 @@
             [clojure.java.io :as io]
             [m3.json-schema :as m3])
   (:import [java.io File]))
-
-(defn- ensure-cloned
-  "Clone a git repo to target-dir if it doesn't exist. Returns the File."
-  ^File [repo-url ^String target-dir]
-  (let [dir (io/file target-dir)]
-    (when-not (.isDirectory dir)
-      (println (format "Cloning %s → %s ..." repo-url target-dir))
-      (let [p (.start (ProcessBuilder.
-                       ["git" "clone" "--depth" "1" repo-url target-dir]))]
-        (when-not (zero? (.waitFor p))
-          (throw (ex-info "git clone failed" {:repo repo-url :dir target-dir})))))
-    dir))
 
 (defn- json-files
   "List all .json files under dir (non-recursive)."
@@ -75,21 +63,22 @@
 
 ;;------------------------------------------------------------------------------
 
+(def ^:private schemastore-dir "test-resources/schemastore/src/schemas/json")
+(def ^:private corpus-dir "test-resources/json-schema-corpus/json_schema_corpus")
+
 (deftest schemastore-compile-test
-  (let [dir (ensure-cloned "https://github.com/SchemaStore/schemastore" "/tmp/schemastore")
-        schema-dir (io/file dir "src/schemas/json")]
-    (if-not (.isDirectory schema-dir)
-      (println "SKIP: SchemaStore schemas not found")
-      (let [{:keys [ok errors]} (run-collection schema-dir "SchemaStore")]
+  (let [dir (io/file schemastore-dir)]
+    (if-not (.isDirectory dir)
+      (println "SKIP: SchemaStore submodule not initialised — run: git submodule update --init")
+      (let [{:keys [ok errors]} (run-collection dir "SchemaStore")]
         (is (pos? ok) "At least some SchemaStore schemas should compile")
         (is (zero? errors) "All SchemaStore schemas should compile")))))
 
 (deftest corpus-compile-test
-  (let [dir (ensure-cloned "https://github.com/sdbs-uni-p/json-schema-corpus" "/tmp/json-schema-corpus")
-        schema-dir (io/file dir "json_schema_corpus")]
-    (if-not (.isDirectory schema-dir)
-      (println "SKIP: json-schema-corpus not found")
-      (let [{:keys [ok errors]} (run-collection schema-dir "json-schema-corpus")]
+  (let [dir (io/file corpus-dir)]
+    (if-not (.isDirectory dir)
+      (println "SKIP: json-schema-corpus submodule not initialised — run: git submodule update --init")
+      (let [{:keys [ok errors]} (run-collection dir "json-schema-corpus")]
         (is (pos? ok) "At least some corpus schemas should compile")
         ;; Don't assert zero errors — wild schemas may use non-standard features
         (println (format "\nCorpus: %d/%d successful (%.1f%%)"

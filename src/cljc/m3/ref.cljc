@@ -14,8 +14,7 @@
 
 (ns m3.ref
   (:require
-   [clojure.string :refer [split replace] :rename {replace string-replace}] 
-   [#?(:clj clojure.tools.logging :cljs m3.log) :as log]
+   [clojure.string :refer [split replace] :rename {replace string-replace}]
    [m3.util :refer [present? absent]]
    [m3.uri :refer [uri-base uri-fragment inherit-uri]]))
 
@@ -113,8 +112,7 @@
     (when-let [[c p _m] (and uri->schema (uri->schema ctx path uri))]
       (resolve-uri c p (uri-fragment uri) (str "#" (:fragment uri)) quiet?))
 
-    (when-not quiet?
-      (log/warn "$ref: could not resolve:" (pr-str $ref) (pr-str uri))))))
+    )))
 
 ;;------------------------------------------------------------------------------
 ;; expanding $refs
@@ -132,14 +130,20 @@
                    (reduce merge-entry (or m1 {}) (seq m2)))]
       (reduce merge2 maps))))
 
-(defn deep-meld [{id-key :id-key} & maps]
+(defn deep-meld [_ctx & maps]
+  ;; Used to meld a $ref's siblings (parent) with the resolved schema (latter).
+  ;; The latter wins on every key — including $id, because the ref jumps the
+  ;; current scope into the resolved schema, and that schema's $id is the
+  ;; right base URI for any $refs nested inside it.  Keeping the parent's $id
+  ;; here makes nested relative $refs resolve against the wrong base URI
+  ;; (see "order of evaluation: $id and $ref on nested schema").
   (reduce
    (fn [acc m]
      (meld-with
-      (fn choose-val [k val-in-result val-in-latter]
+      (fn choose-val [_k val-in-result val-in-latter]
         (if (and (map? val-in-result) (map? val-in-latter))
           (meld-with choose-val val-in-result val-in-latter)
-          (if (= id-key k) val-in-result val-in-latter)))
+          val-in-latter))
       acc m))
    maps))
 

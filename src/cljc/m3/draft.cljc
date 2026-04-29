@@ -24,7 +24,7 @@
    :draft2019-09 "https://json-schema.org/draft/2019-09/schema"
    :draft2020-12 "https://json-schema.org/draft/2020-12/schema"
    :latest       "https://json-schema.org/draft/2020-12/schema"
-   :draft-next   "https://json-schema.org/draft/next/schema"})
+   :draft-v1   "https://json-schema.org/draft/next/schema"})
 
 
 (def $schema->draft
