@@ -122,8 +122,25 @@
 (defn check-format-ipv6 [_c2 p2 m2]
   (check-pattern ipv6-pattern "ipv6" _c2 p2 m2))
 
+(def ^:private ace-label-prefix-re #"(?i)^xn--")
+
 (defn check-format-hostname [_c2 p2 m2]
-  (check-pattern hostname-pattern "hostname" _c2 p2 m2))
+  ;; Plain hostname must be ASCII (RFC 1123).  Validate:
+  ;;   - structural regex (label characters, hyphen position, label length ≤ 63)
+  ;;   - total length ≤ 253 (RFC 1035 §2.3.4 / §3.1)
+  ;;   - any A-label (xn-- prefix) is Punycode-decodable per RFC 5891
+  ;; Non-ACE labels with consecutive hyphens (e.g. "ab--cd") are valid per
+  ;; RFC 1123 — only ACE labels get full IDNA validation.
+  (fn [_c1 p1 m1]
+    (when (string? m1)
+      (or (when-not (re-find hostname-pattern m1)
+            [(make-error "format: hostname has invalid structure" p2 m2 p1 m1)])
+          (when (> (count m1) 253)
+            [(make-error "format: hostname exceeds 253 characters" p2 m2 p1 m1)])
+          (let [labels (str/split m1 #"\.")]
+            (when (and (some #(re-find ace-label-prefix-re %) labels)
+                       (not (json-idn-hostname? m1)))
+              [(make-error "format: hostname A-label fails IDNA Punycode validation" p2 m2 p1 m1)]))))))
 
 (defn check-format-date-time [_c2 p2 m2]
   (let [normal-check (check-parse offset-date-time-parse "date-time" _c2 p2 m2)]
