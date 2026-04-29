@@ -130,25 +130,27 @@
 (defn test-file [f draft]
   (let [feature (file-name f)
         dir (directory-name f)
-        ;; Skip optional/format tests for drafts where format is annotation-only per spec.
-        ;; These tests expect format as assertion; annotation drafts can't pass them.
-        skip-format? (and (format-annotation-draft? draft)
-                          (clojure.string/includes? (str dir) "optional/format"))]
-    (when-not skip-format?
-      (testing feature
-        (doseq [{d1 "description" m2 "schema" ts "tests"} (json-decode (slurp f))]
-          (testing d1
-            (doseq [{d2 "description" m1 "data" v? "valid"} ts]
-              (testing d2
-                (when-not (exclude-test? [feature d1 d2])
-                  (let [c2 {:draft draft
-                            :uri->schema test-uri->schema
-                            :quiet? true}
-                        c1 {:draft draft}]
-                    (try
-                      (is-validated c2 m2 c1 m1 v?)
-                      (catch Throwable e
-                        (prn [feature d1 d2] e)))))))))))))
+        ;; Per JSON-Schema-Test-Suite README, tests under optional/format/
+        ;; expect format to be ASSERTED, even on drafts where format is
+        ;; annotation-only by default (draft3, 2020-12, draft-next).  We
+        ;; flip M3 into format-assertion mode for these tests via the
+        ;; :format-assertion? c2 override.
+        format-test? (clojure.string/includes? (str dir) "optional/format")]
+    (testing feature
+      (doseq [{d1 "description" m2 "schema" ts "tests"} (json-decode (slurp f))]
+        (testing d1
+          (doseq [{d2 "description" m1 "data" v? "valid"} ts]
+            (testing d2
+              (when-not (exclude-test? [feature d1 d2])
+                (let [c2 (cond-> {:draft draft
+                                  :uri->schema test-uri->schema
+                                  :quiet? true}
+                           format-test? (assoc :format-assertion? true))
+                      c1 {:draft draft}]
+                  (try
+                    (is-validated c2 m2 c1 m1 v?)
+                    (catch Throwable e
+                      (prn [feature d1 d2] e))))))))))))
 
 (defn test-directory [d draft]
   (testing (file-name d)
