@@ -31,7 +31,14 @@
 
 ;; TODO: this should be shared with uri.cljc
 
-(def uri-pattern #"^(?:[A-Za-z][A-Za-z0-9+.\-]*:[^\s]*|#(?:[^\s]*)?)$")
+;; RFC 3986 URI: scheme then only allowed ASCII chars, with valid percent-encoding.
+;; Allowed chars: unreserved (A-Z a-z 0-9 - . _ ~), sub-delims (!$&'()*+,;=),
+;; gen-delims (:/?#[]@), and %HH percent-encoded triplets.  Disallows: spaces,
+;; backslash, " < > { } ^ ` |, raw % without two hex digits, raw non-ASCII.
+;; Also accepts a bare fragment-only form (e.g. "#" or "#foo") so that
+;; meta-schema $refs that self-reference don't fail self-validation.
+(def uri-pattern
+  #"^(?:[A-Za-z][A-Za-z0-9+.\-]*:(?:[A-Za-z0-9\-._~!$&'()*+,;=:/?\#\[\]@]|%[0-9A-Fa-f]{2})*|\#(?:[A-Za-z0-9\-._~!$&'()*+,;=:/?\#\[\]@]|%[0-9A-Fa-f]{2})*)$")
 
 (def uri-reference-pattern #"^[^\s\\]*$")
 
