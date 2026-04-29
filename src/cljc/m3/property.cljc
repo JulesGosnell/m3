@@ -19,7 +19,7 @@
    [m3.platform :refer [pformat json-decode big-zero? big-mod pbigdec]]
    [m3.util :refer [absent present? concatv into-set conj-set seq-contains? make-error make-error-on make-error-on-failure add-warning add-info get-check-schema third]]
    [m3.ecma :refer [ecma-pattern ecma-match]]
-   [m3.uri :refer [parse-uri inherit-uri]]
+   [m3.uri :refer [parse-uri inherit-uri uri-base]]
    [m3.ref :refer [resolve-uri try-path]]
    [m3.type :refer [json-number? json-string? json-array? json-object? check-type make-type-checker json-=]]
    [m3.format :as format]))
@@ -204,7 +204,7 @@
 ;; $ref resolution logic.
 ;; Resolution is LAZY (inside f1) to handle recursive schemas.
 (defn make-check-property-$ref [{:keys [meld-fn ref-replaces-siblings? ref-scope-isolation?]}]
-  (fn [_property {id-uri :id-uri :as c2} p2 m2 v2]
+  (fn [_property {id-uri :id-uri id-key :id-key :as c2} p2 m2 v2]
     (let [schema-p2 (vec (butlast p2))
           ;; For draft <= draft7, $ref ignores sibling $id.
           ;; Use schema-parent-id-uri saved by compile-m2 at entry — this is
@@ -213,7 +213,10 @@
                              (or (:schema-parent-id-uri c2) id-uri)
                              id-uri)
           ref-uri (inherit-uri effective-id-uri (parse-uri v2))
-          m2-no-ref (dissoc m2 "$ref")
+          ;; Drop $ref and the parent's id-key from the sibling map before
+          ;; melding into the resolved schema.  Parent's $id belongs to the
+          ;; outer scope; pulling it into the inner compile pollutes id-uri.
+          m2-no-ref (dissoc m2 "$ref" id-key)
           effective-c2 (assoc c2 :id-uri effective-id-uri)]
       [(if ref-replaces-siblings?
          ;; For old drafts, $ref overrides siblings — tell compile-m2 to skip them
@@ -277,7 +280,16 @@
                               (assoc effective-c2 :id-uri (:id-uri new-c))
                               :else new-c)
                      compile-schema (if needs-scope-isolation? resolved-m melded)
-                     [_c2 _m2 compiled-f1] (check-schema-fn (dissoc ref-c2 :scope-id) schema-p2 compile-schema)]
+                     [resolved-c2 _m2 compiled-f1] (check-schema-fn (dissoc ref-c2 :scope-id) schema-p2 compile-schema)
+                     ;; Push the resolved scope onto the dynamic-scope chain
+                     ;; so $dynamicRef can search the outermost-first traversal
+                     ;; order.  Functional c1 means this push only persists
+                     ;; into the deeper call, not back to the caller.
+                     new-sid (:scope-id resolved-c2)
+                     c1 (if (and new-sid
+                                 (not= new-sid (peek (:$dynamic-scope-chain c1))))
+                          (update c1 :$dynamic-scope-chain (fnil conj []) new-sid)
+                          c1)]
                  (compiled-f1 c1 p1 m1))
                ;; Resolution failed - compile schema without $ref
                (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc effective-c2 :scope-id) schema-p2 m2-no-ref)]
@@ -374,22 +386,43 @@
            [c1 m1 nil]))])))
 
 
+(defn- find-anchor-in-scope
+  "If c2 has a $dynamicAnchor entry whose fragment matches anchor-name AND
+   whose URI base matches c2's own :id-uri base (i.e. the anchor lives in
+   the same resource as this scope), return {:schema ... :scope-id ...}.
+   This filter is what makes outermost-first chain walking find the right
+   anchor: a scope's c2 typically inherits anchors from sub-resources via
+   $defs, but we only want this scope to claim its own resource's anchors."
+  [c2 scope-id anchor-name]
+  (let [scope-base (some-> (:id-uri c2) uri-base)]
+    (when-let [da (:$dynamic-anchor c2)]
+      (some (fn [[uri path]]
+              (when (and (= (:fragment uri) anchor-name)
+                         (or (nil? scope-base)
+                             (= scope-base (uri-base uri))))
+                (let [schema (get-in (:root c2) path)]
+                  (when (and (map? schema)
+                             (= (get schema "$dynamicAnchor") anchor-name))
+                    {:schema schema :scope-id scope-id}))))
+            da))))
+
 (defn- resolve-dynamic-anchor-from-root-c2
-  "Fall back to the root schema's compile-time $dynamic-anchor map.
-  Used when the $dynamicAnchor was in $defs (whose f1 is a no-op at runtime)
-  so the anchor never made it into c1."
+  "Walk the dynamic-scope chain (outermost first) for a matching $dynamicAnchor.
+   Each $ref jump pushes the resolved scope-id onto :$dynamic-scope-chain in
+   c1; the outermost scope (first in the chain) whose c2 has the anchor wins.
+   Falls back to :$root-scope-id for anchors stashed by check-schema's $defs
+   pre-stash that never propagated into the chain."
   [c1 anchor-name]
-  (when-let [root-sid (:$root-scope-id c1)]
-    (let [root-c2 (get-in c1 [:$compile-scopes root-sid])
-          da (:$dynamic-anchor root-c2)]
-      (when da
-        (some (fn [[uri path]]
-                (when (= (:fragment uri) anchor-name)
-                  (let [schema (get-in (:root root-c2) path)]
-                    (when (and (map? schema)
-                               (= (get schema "$dynamicAnchor") anchor-name))
-                      {:schema schema :scope-id root-sid}))))
-              da)))))
+  (or
+   ;; Outermost scope in the dynamic-scope chain wins
+   (some (fn [sid]
+           (when-let [c2 (get-in c1 [:$compile-scopes sid])]
+             (find-anchor-in-scope c2 sid anchor-name)))
+         (:$dynamic-scope-chain c1))
+   ;; Fall back to root scope for $defs-bound anchors
+   (when-let [root-sid (:$root-scope-id c1)]
+     (when-let [root-c2 (get-in c1 [:$compile-scopes root-sid])]
+       (find-anchor-in-scope root-c2 root-sid anchor-name)))))
 
 (defn make-check-property-$dynamicRef [dynamic-ref-requires-bookend?]
   (fn [_property {id-uri :id-uri :as c2} p2 m2 v2]

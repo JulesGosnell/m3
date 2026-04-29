@@ -72,10 +72,7 @@
     ;; CLJS: JS has no integer/float distinction — JSON.parse("1.0") === JSON.parse("1")
     #?@(:cljs
         [["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]])
-    ;; Known M3 limitations against the c7257e9 suite — tracked in #55.
-    ;; $dynamicRef scope-registration edge case — second#/$defs/length
-    ;; isn't applied as the deeper $dynamicAnchor.
-    ["dynamicRef.json" "$dynamicRef avoids the root of each schema, but scopes are still registered" "data is not sufficient for schema at second#/$defs/length"]})
+    })
 
 ;; Drafts where format is annotation-only by vocabulary.
 ;; draft3: metaschema uses "format":"uri" on $ref — relative refs fail assertion.
@@ -117,7 +114,7 @@
 (def expected-info-counts
   {:draft7       16
    :draft2019-09 41
-   :draft2020-12 68})
+   :draft2020-12 69})
 
 ;;------------------------------------------------------------------------------
 
