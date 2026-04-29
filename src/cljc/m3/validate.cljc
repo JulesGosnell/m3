@@ -356,11 +356,11 @@
     (if-let [{$vocabulary "$vocabulary" :as m2} ($schema->m2 c2 s)]
       (if (= m2 m1)
         ;; we are at the top
-        (let [draft ($schema->draft s)
+        (let [draft (or ($schema->draft s) (:draft c2))
               c2 (assoc c2
                         :dialect (if $vocabulary (make-dialect draft $vocabulary) (draft->default-dialect draft))) ;; handle drafts that are too early to know about $vocabulary
               uri (parse-uri s) ;; duplicate work
-              stash (uri->marker-stash uri)
+              stash (or (uri->marker-stash uri) (get (:marker-stash c2) (uri-base uri)))
               c2 (if stash c2 (add-warning c2 [] (str "no stash for: " s) m2))
               ;; initialise c2`
               ;; only a meta-schema defines a dialect;; this is inherited by its instances

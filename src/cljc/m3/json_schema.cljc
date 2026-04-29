@@ -55,7 +55,7 @@
    [m3.uri :refer [parse-uri uri-base]]
    [m3.validate :as v]))
 
-(defn- registry->uri->schema
+(defn- registry->uri->schema*
   "Build a :uri->schema function from a registry map {uri-string -> schema}.
    Falls back to the default file-based resolution."
   [registry]
@@ -72,10 +72,29 @@
           [c2 [] schema])
         (default c p uri)))))
 
-(defn- opts->c2 [{:keys [draft quiet? registry]}]
+;; Memoize so that structurally equal registry maps produce the same
+;; function identity.  This is critical because the returned fn ends up
+;; inside c2, and validate-m2 (also memoized) keys on [c2 schema].
+;; Without stable fn identity, c2 is never = across calls and the
+;; compile-time cache never hits.
+(def ^:private registry->uri->schema (memoize registry->uri->schema*))
+
+(defn make-marker-stash
+  "Build a marker stash for a self-referential meta-schema.
+   Takes the $id URI string of the meta-schema.
+   Returns a stash suitable for passing as :marker-stash option to validator/validate."
+  [schema-uri-string]
+  (let [uri (parse-uri schema-uri-string)
+        base (uri-base uri)]
+    {base {:uri->path {base []}
+           :path->uri {[] base}}}))
+
+(defn- opts->c2 [{:keys [draft quiet? registry marker-stash check-format]}]
   (cond-> {:quiet? true :draft (or draft :latest)}
-    (some? quiet?)  (assoc :quiet? quiet?)
-    registry        (assoc :uri->schema (registry->uri->schema registry))))
+    (some? quiet?)   (assoc :quiet? quiet?)
+    registry         (assoc :uri->schema (registry->uri->schema registry))
+    marker-stash     (assoc :marker-stash marker-stash)
+    check-format     (assoc :check-format check-format)))
 
 (defn validate
   "Validate a document against a JSON Schema.
@@ -89,9 +108,10 @@
      (validate {\"type\" \"string\"} \"hello\")
 
    opts - optional map:
-     :draft    - :draft3, :draft4, :draft6, :draft7, :draft2019-09, :draft2020-12, :draft-next, :latest
-     :quiet?   - false to enable $comment printing (default: true)
-     :registry - map of URI string to schema, for $ref resolution"
+     :draft        - :draft3, :draft4, :draft6, :draft7, :draft2019-09, :draft2020-12, :draft-next, :latest
+     :quiet?       - false to enable $comment printing (default: true)
+     :registry     - map of URI string to schema, for $ref resolution
+     :marker-stash - marker stash for custom self-referential meta-schemas (see make-marker-stash)"
   ([schema document]
    (validate schema document nil))
   ([schema document opts]
