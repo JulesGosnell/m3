@@ -182,8 +182,27 @@
 (defn check-format-relative-json-pointer [_c2 p2 m2]
   (check-pattern relative-pointer-pattern "relative-json-pointer" _c2 p2 m2))
 
+;; If a URI has an authority (scheme://...), reject "[" / "]" outside an IPv6
+;; literal and require any port to be all digits.  These are the structural
+;; rules the character-set regex can't catch.
+(def ^:private uri-authority-re
+  ;; Captures: 1=userinfo (with trailing @ stripped), 2=host, 3=port (digits or empty)
+  #"^[A-Za-z][A-Za-z0-9+.\-]*://(?:([^/?\#@]*)@)?(\[[A-Fa-f0-9:.]+\]|[^:/?\#]*)(?::([^/?\#]*))?(?:[/?\#].*)?$")
+
 (defn check-format-uri [_c2 p2 m2]
-  (check-pattern uri-pattern "uri" _c2 p2 m2))
+  (let [base-check (check-pattern uri-pattern "uri" _c2 p2 m2)]
+    (fn [_c1 p1 m1]
+      (or (base-check _c1 p1 m1)
+          ;; Authority structure: only applies when scheme://... is present.
+          (when (and (string? m1)
+                     (re-find #"^[A-Za-z][A-Za-z0-9+.\-]*://" m1))
+            (if-let [[_ userinfo _host port] (re-find uri-authority-re m1)]
+              (or (when (and userinfo
+                             (re-find #"[\[\]]" userinfo))
+                    [(make-error "format: uri userinfo contains invalid '[' or ']'" p2 m2 p1 m1)])
+                  (when (and port (not (re-matches #"\d*" port)))
+                    [(make-error "format: uri port must be numeric" p2 m2 p1 m1)]))
+              [(make-error "format: uri authority section is malformed" p2 m2 p1 m1)]))))))
 
 (defn check-format-uri-reference [_c2 p2 m2]
   (check-pattern uri-reference-pattern "uri-reference" _c2 p2 m2))
