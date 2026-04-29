@@ -89,12 +89,15 @@
     {base {:uri->path {base []}
            :path->uri {[] base}}}))
 
-(defn- opts->c2 [{:keys [draft quiet? registry marker-stash check-format]}]
+(defn- opts->c2
+  [{:keys [draft quiet? registry marker-stash check-format format-assertion?]
+    :as opts}]
   (cond-> {:quiet? true :draft (or draft :latest)}
-    (some? quiet?)   (assoc :quiet? quiet?)
-    registry         (assoc :uri->schema (registry->uri->schema registry))
-    marker-stash     (assoc :marker-stash marker-stash)
-    check-format     (assoc :check-format check-format)))
+    (some? quiet?)            (assoc :quiet? quiet?)
+    registry                  (assoc :uri->schema (registry->uri->schema registry))
+    marker-stash              (assoc :marker-stash marker-stash)
+    check-format              (assoc :check-format check-format)
+    (contains? opts :format-assertion?) (assoc :format-assertion? format-assertion?)))
 
 (defn validate
   "Validate a document against a JSON Schema.

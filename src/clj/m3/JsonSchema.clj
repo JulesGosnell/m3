@@ -72,11 +72,12 @@
 (defn- java-opts->clj-opts [^java.util.Map opts]
   (when opts
     (cond-> {}
-      (.get opts "draft")        (assoc :draft (keyword (.get opts "draft")))
-      (.containsKey opts "check-format") (assoc :check-format (boolean (.get opts "check-format")))
-      (.get opts "registry")     (assoc :registry (into {}
-                                                        (map (fn [[k v]] [k (java->clj v)]))
-                                                        ^java.util.Map (.get opts "registry"))))))
+      (.get opts "draft")                  (assoc :draft (keyword (.get opts "draft")))
+      (.containsKey opts "check-format")   (assoc :check-format (boolean (.get opts "check-format")))
+      (.containsKey opts "format-assertion?") (assoc :format-assertion? (boolean (.get opts "format-assertion?")))
+      (.get opts "registry")               (assoc :registry (into {}
+                                                                  (map (fn [[k v]] [k (java->clj v)]))
+                                                                  ^java.util.Map (.get opts "registry"))))))
 
 (defn- result->java [result]
   (convert-output java-output-fns result))

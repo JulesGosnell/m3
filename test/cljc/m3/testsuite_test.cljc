@@ -66,17 +66,10 @@
 ;; https://github.com/json-schema-org/JSON-Schema-Test-Suite
 
 (def exclude-test?
-  #{;; JSON has no integer/float distinction — 1.0 is a valid integer.
-    ;; This optional test tests language-specific integer semantics, and
-    ;; both CLJ and (especially) CLJS treat 1.0 as a valid integer.
-    ["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]
-    ;; v1 proposes a new "propertyDependencies" keyword (tests/v1/proposals/).
-    ;; Until M3 implements it, the keyword is ignored, so dynamic anchors
-    ;; INSIDE propertyDependencies don't get the chance to apply — these
-    ;; two cases expect the additional property to be accepted via the
-    ;; conditional schema selection.  Tracked in #55.
-    ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected strings - additional property as string is valid"]
-    ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected integers - additional property as integer is valid"]})
+  ;; JSON has no integer/float distinction — 1.0 is a valid integer.
+  ;; This optional test tests language-specific integer semantics, and
+  ;; both CLJ and (especially) CLJS treat 1.0 as a valid integer.
+  #{["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]})
 
 ;; Drafts where format is annotation-only by vocabulary.
 ;; draft3: metaschema uses "format":"uri" on $ref — relative refs fail assertion.

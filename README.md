@@ -308,6 +308,6 @@ Copyright 2025 Julian Gosnell. [Apache License, Version 2.0](https://www.apache.
 
 ---
 
-[^1]: One test is excluded as a language-level limitation: `zeroTerminatedFloats.json` — "a float is not an integer even without fractional part". Neither JavaScript (`JSON.parse("1.0") === JSON.parse("1")`) nor Clojure's reader distinguishes `1.0` from `1` at the value level, making this test impossible to pass without runtime parser-level numeric introspection. Two `propertyDependencies` proposal tests are also excluded — that keyword is a v1 proposal M3 hasn't implemented yet.
+[^1]: One test is excluded as a language-level limitation: `zeroTerminatedFloats.json` — "a float is not an integer even without fractional part". Neither JavaScript (`JSON.parse("1.0") === JSON.parse("1")`) nor Clojure's reader distinguishes `1.0` from `1` at the value level, making this test impossible to pass without runtime parser-level numeric introspection.
 
 [test-suite]: https://github.com/json-schema-org/JSON-Schema-Test-Suite

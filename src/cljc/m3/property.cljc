@@ -874,17 +874,26 @@
 
 (defn check-property-propertyDependencies [_property c2 p2 m2 v2]
   (let [f2 (get-check-schema)
+        parent-id-uri (:id-uri c2)
         [c2 checkers]
         (reduce
          (fn [[c2 acc] [k1 vs]]
            (reduce
             (fn [[c2 acc] [k2 s]]
-              (let [[c2 _m2 f1] (f2 c2 p2 s)]
+              ;; Each conditional sub-schema is its own scope (it can carry
+              ;; its own $id, $defs and $dynamicAnchor).  Reset id-uri to
+              ;; the parent before compiling so a nested $id resolves
+              ;; relative to the propertyDependencies-owner, and use the
+              ;; correct path so $dynamicAnchor entries land at the right
+              ;; uri->path location.
+              (let [sub-p2 (conj p2 k1 k2)
+                    [c2 _m2 f1] (f2 (assoc c2 :id-uri parent-id-uri) sub-p2 s)]
                 [c2 (assoc acc [k1 k2] f1)]))
             [c2 acc]
             vs))
          [c2 {}]
          v2)
+        c2 (assoc c2 :id-uri parent-id-uri)
         ks (keys v2)]
     [c2
      m2
