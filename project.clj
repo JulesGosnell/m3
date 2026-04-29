@@ -56,6 +56,10 @@
   :test-paths ["test/clj" "test/cljc" "test/cljs"]
   :resource-paths ["resources" "target/cljsbuild"]
 
+  ;; AOT the gen-class Java facade so consumers can resolve m3.JsonSchema
+  ;; from the published jar. The .clj source alone is not callable from Java.
+  :aot [m3.JsonSchema]
+
   :shadow-cljs {:builds {:test
                          {:target :node-test
                           :output-dir "target/shadow"

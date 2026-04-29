@@ -34,7 +34,9 @@
    :methods [^:static [validate [String String] java.util.Map]
              ^:static [validate [String String java.util.Map] java.util.Map]
              ^:static [validate [java.util.Map Object] java.util.Map]
-             ^:static [validate [java.util.Map Object java.util.Map] java.util.Map]]))
+             ^:static [validate [java.util.Map Object java.util.Map] java.util.Map]
+             ^:static [prepare [java.util.Map] java.util.function.Function]
+             ^:static [prepare [java.util.Map java.util.Map] java.util.function.Function]]))
 
 (def ^:private java-output-fns
   {:make-map (fn [& kvs]
@@ -48,7 +50,9 @@
 (defn- java-opts->clj-opts [^java.util.Map opts]
   (when opts
     (cond-> {}
-      (.get opts "draft") (assoc :draft (keyword (.get opts "draft"))))))
+      (.get opts "draft")        (assoc :draft (keyword (.get opts "draft")))
+      (.containsKey opts "check-format") (assoc :check-format (boolean (.get opts "check-format")))
+      (.get opts "registry")     (assoc :registry (into {} ^java.util.Map (.get opts "registry"))))))
 
 (defn- result->java [result]
   (convert-output java-output-fns result))
@@ -70,3 +74,16 @@
           (result->java (api/validate schema document (java-opts->clj-opts opts)))
           ;; (Map, Object, Map)
           (result->java (api/validate (into {} schema) document (java-opts->clj-opts opts)))))))
+
+;; Compile a schema once, return a reusable Function<Object, Map>.
+;; Use this when validating many documents against the same schema:
+;;   Function<Object, Map> v = JsonSchema.prepare(schemaMap);
+;;   Map result = v.apply(document);
+(defn -prepare
+  ([schema]
+   (-prepare schema nil))
+  ([schema opts]
+   (let [f (api/validator (into {} schema) (java-opts->clj-opts opts))]
+     (reify java.util.function.Function
+       (apply [_ document]
+         (result->java (f document)))))))
