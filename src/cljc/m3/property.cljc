@@ -761,17 +761,22 @@
       [c2
        m2
        (fn [c1 p1 m1]
-         (let [old-m1 (or (get (get c1 :content) pp2) m1)
-               old-m1 (if cmt old-m1 (json-decode old-m1))] ;; TODO: error handling
-           (try
-             (let [[c1 _m1 es] (f1 c1 p1 old-m1)
-                   [c1 es] (cond
-                             (empty? es) [c1 nil]
-                             strict?     [c1 es]
-                             :else       [(add-warning c1 p2 (str "contentSchema: failed validation - " (pr-str es)) m2 p1 old-m1) nil])]
-               [c1 m1 es])
-             (catch #?(:cljs js/Error :clj Exception) e
-               [c1 m1 (:errors (ex-data e))]))))])))
+         (try
+           (let [stash (get (get c1 :content) pp2)
+                 old-m1 (or stash
+                            ;; No contentMediaType => assume JSON content.
+                            ;; Decode failures are caught below and treated
+                            ;; as validation failures rather than escaping.
+                            (when (nil? cmt) (json-decode m1))
+                            m1)
+                 [c1 _m1 es] (f1 c1 p1 old-m1)
+                 [c1 es] (cond
+                           (empty? es) [c1 nil]
+                           strict?     [c1 es]
+                           :else       [(add-warning c1 p2 (str "contentSchema: failed validation - " (pr-str es)) m2 p1 old-m1) nil])]
+             [c1 m1 es])
+           (catch #?(:cljs js/Error :clj Exception) e
+             [c1 m1 (:errors (ex-data e))])))])))
 
 (defn check-property-dependencies [_property c2 p2 m2 v2]
   (let [[c2 property->checker]
