@@ -66,13 +66,10 @@
 ;; https://github.com/json-schema-org/JSON-Schema-Test-Suite
 
 (def exclude-test?
-  #{;; JSON has no integer/float distinction — 1.0 is a valid integer.
-    ;; This optional test tests language-specific integer semantics.
-    ["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]
-    ;; CLJS: JS has no integer/float distinction — JSON.parse("1.0") === JSON.parse("1")
-    #?@(:cljs
-        [["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]])
-    })
+  ;; JSON has no integer/float distinction — 1.0 is a valid integer.
+  ;; This optional test tests language-specific integer semantics, and
+  ;; both CLJ and (especially) CLJS treat 1.0 as a valid integer.
+  #{["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]})
 
 ;; Drafts where format is annotation-only by vocabulary.
 ;; draft3: metaschema uses "format":"uri" on $ref — relative refs fail assertion.
@@ -170,7 +167,7 @@
 
 ;; The upstream suite renamed draft-next/ to v1/ in commit 51f8464.  The
 ;; v1/ tree is the experimental "next-next" — exercising it as :draft-next
-;; brings in tests M3 hasn't been hardened against yet.  Skip it for now;
+;; brings in tests M3 hasn't been hardened against yet.  Skip for now;
 ;; track separately in #55.
 (def dir-name->draft
   {"draft3" :draft3, "draft4" :draft4, "draft6" :draft6, "draft7" :draft7
