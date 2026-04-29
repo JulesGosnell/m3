@@ -33,10 +33,11 @@
    :name m3.JsonSchema
    :methods [^:static [validate [String String] java.util.Map]
              ^:static [validate [String String java.util.Map] java.util.Map]
-             ^:static [validate [java.util.Map Object] java.util.Map]
-             ^:static [validate [java.util.Map Object java.util.Map] java.util.Map]
-             ^:static [prepare [java.util.Map] java.util.function.Function]
-             ^:static [prepare [java.util.Map java.util.Map] java.util.function.Function]]))
+             ;; Object schema covers java.util.Map and Boolean (true/false root schemas).
+             ^:static [validate [Object Object] java.util.Map]
+             ^:static [validate [Object Object java.util.Map] java.util.Map]
+             ^:static [prepare [Object] java.util.function.Function]
+             ^:static [prepare [Object java.util.Map] java.util.function.Function]]))
 
 (def ^:private java-output-fns
   {:make-map (fn [& kvs]
@@ -47,12 +48,35 @@
    :make-vec (fn [coll] (java.util.ArrayList. ^java.util.Collection coll))
    :make-kw  identity})
 
+(defn- java->clj
+  "Recursively convert java.util.Map -> persistent map and java.util.List ->
+   persistent vector.  Schemas in particular must be Clojure persistent
+   structures: M3's compile-time walker uses sequence ops that succeed on
+   java.util.Map but silently traverse no entries, producing a 'valid'
+   verdict for every document.  Documents are tolerated as Java
+   collections at runtime, but converting them is cheap insurance."
+  [v]
+  (cond
+    (map? v)                       v
+    (instance? java.util.Map v)    (persistent!
+                                    (reduce (fn [acc e]
+                                              (assoc! acc
+                                                      (.getKey ^java.util.Map$Entry e)
+                                                      (java->clj (.getValue ^java.util.Map$Entry e))))
+                                            (transient {})
+                                            (.entrySet ^java.util.Map v)))
+    (vector? v)                    v
+    (instance? java.util.List v)   (mapv java->clj v)
+    :else                          v))
+
 (defn- java-opts->clj-opts [^java.util.Map opts]
   (when opts
     (cond-> {}
       (.get opts "draft")        (assoc :draft (keyword (.get opts "draft")))
       (.containsKey opts "check-format") (assoc :check-format (boolean (.get opts "check-format")))
-      (.get opts "registry")     (assoc :registry (into {} ^java.util.Map (.get opts "registry"))))))
+      (.get opts "registry")     (assoc :registry (into {}
+                                                        (map (fn [[k v]] [k (java->clj v)]))
+                                                        ^java.util.Map (.get opts "registry"))))))
 
 (defn- result->java [result]
   (convert-output java-output-fns result))
@@ -67,13 +91,13 @@
           ;; (String, String)
           (result->java (api/validate schema document))
           ;; (Map, Object)
-          (result->java (api/validate (into {} schema) document))))
+          (result->java (api/validate (java->clj schema) document))))
     3 (let [[schema document opts] args]
         (if (string? schema)
           ;; (String, String, Map)
           (result->java (api/validate schema document (java-opts->clj-opts opts)))
           ;; (Map, Object, Map)
-          (result->java (api/validate (into {} schema) document (java-opts->clj-opts opts)))))))
+          (result->java (api/validate (java->clj schema) document (java-opts->clj-opts opts)))))))
 
 ;; Compile a schema once, return a reusable Function<Object, Map>.
 ;; Use this when validating many documents against the same schema:
@@ -83,7 +107,7 @@
   ([schema]
    (-prepare schema nil))
   ([schema opts]
-   (let [f (api/validator (into {} schema) (java-opts->clj-opts opts))]
+   (let [f (api/validator (java->clj schema) (java-opts->clj-opts opts))]
      (reify java.util.function.Function
        (apply [_ document]
          (result->java (f document)))))))
