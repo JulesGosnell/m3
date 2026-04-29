@@ -596,9 +596,20 @@
 (def make-dialect (memoize make-dialect-2))
 
 (def draft->default-dialect
+  ;; Per JSON Schema spec, the default dialect for drafts that split format
+  ;; into annotation/assertion (2020-12+) is format-ANNOTATION only —
+  ;; assertion is strictly opt-in.  Including the assertion vocab here
+  ;; would silently flip the default to assert via make-stable-sort-by's
+  ;; last-write-wins index.
   (map-values
    (fn [k v]
-     (make-dialect k (into {} (map (fn [v] [v true])) (distinct (map first v)))))
+     (make-dialect k (into {}
+                           (comp
+                            (map first)
+                            (distinct)
+                            (remove #(clojure.string/ends-with? % "/format-assertion"))
+                            (map (fn [u] [u true])))
+                           v)))
    draft->vocab))
 
 

@@ -66,10 +66,17 @@
 ;; https://github.com/json-schema-org/JSON-Schema-Test-Suite
 
 (def exclude-test?
-  ;; JSON has no integer/float distinction — 1.0 is a valid integer.
-  ;; This optional test tests language-specific integer semantics, and
-  ;; both CLJ and (especially) CLJS treat 1.0 as a valid integer.
-  #{["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]})
+  #{;; JSON has no integer/float distinction — 1.0 is a valid integer.
+    ;; This optional test tests language-specific integer semantics, and
+    ;; both CLJ and (especially) CLJS treat 1.0 as a valid integer.
+    ["zeroTerminatedFloats.json" "some languages do not distinguish between different types of numeric value" "a float is not an integer even without fractional part"]
+    ;; v1 proposes a new "propertyDependencies" keyword (tests/v1/proposals/).
+    ;; Until M3 implements it, the keyword is ignored, so dynamic anchors
+    ;; INSIDE propertyDependencies don't get the chance to apply — these
+    ;; two cases expect the additional property to be accepted via the
+    ;; conditional schema selection.  Tracked in #55.
+    ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected strings - additional property as string is valid"]
+    ["dynamicRef.json" "$dynamicAnchor inside propertyDependencies" "expected integers - additional property as integer is valid"]})
 
 ;; Drafts where format is annotation-only by vocabulary.
 ;; draft3: metaschema uses "format":"uri" on $ref — relative refs fail assertion.
@@ -129,11 +136,13 @@
   (let [feature (file-name f)
         dir (directory-name f)
         ;; Per JSON-Schema-Test-Suite README, tests under optional/format/
-        ;; expect format to be ASSERTED, even on drafts where format is
-        ;; annotation-only by default (draft3, 2020-12, draft-next).  We
-        ;; flip M3 into format-assertion mode for these tests via the
-        ;; :format-assertion? c2 override.
-        format-test? (clojure.string/includes? (str dir) "optional/format")]
+        ;; (and v1/format/) expect format to be ASSERTED.  We flip M3 into
+        ;; format-assertion mode via the :format-assertion? c2 override.
+        ;; v1/optional/format-annotation.json deliberately tests the
+        ;; annotation default — it does NOT match these patterns.
+        dir-str (str dir)
+        format-test? (or (clojure.string/ends-with? dir-str "/optional/format")
+                         (clojure.string/ends-with? dir-str "/v1/format"))]
     (testing feature
       (doseq [{d1 "description" m2 "schema" ts "tests"} (json-decode (slurp f))]
         (testing d1
@@ -165,14 +174,12 @@
 
 (def json-schema-test-suite-root "test-resources/JSON-Schema-Test-Suite/tests/")
 
-;; The upstream suite renamed draft-next/ to v1/ in commit 51f8464.  The
-;; v1/ tree is the experimental "next-next" — exercising it as :draft-next
-;; brings in tests M3 hasn't been hardened against yet.  Skip for now;
-;; track separately in #55.
+;; The upstream suite renamed draft-next/ to v1/ in commit 51f8464.
+;; Map both names to :draft-next so we exercise the new tree.
 (def dir-name->draft
   {"draft3" :draft3, "draft4" :draft4, "draft6" :draft6, "draft7" :draft7
    "draft2019-09" :draft2019-09, "draft2020-12" :draft2020-12
-   "draft-next" :draft-next})
+   "draft-next" :draft-next, "v1" :draft-next})
 
 (deftest json-schema-test-suite
   (reset! warning-counts {})
