@@ -47,12 +47,10 @@
         [(make-error (str "format: not a valid " f ": " (ex-message e)) p2 m2 p1 m1)]))))
 
 (defn json-duration? [s]
-  (boolean
-   (when-let [[_p-t-or-w _ymdthms-or-w ymd _y _m _d thms _h _m _s w] (re-find json-duration-pattern s)]
-     (not
-      (or
-       (and (empty? ymd) (empty? thms) (empty? w))
-       (= "T" thms))))))
+  ;; The RFC 3339 grammar baked into json-duration-pattern already enforces
+  ;; ordering, intermediate-component requirements, and that "P" / "PT" alone
+  ;; do not match — so a successful regex match is sufficient.
+  (boolean (re-find json-duration-pattern s)))
 
 (defn ^:private parse-int [s]
   #?(:clj (Integer/parseInt s) :cljs (js/parseInt s 10)))
