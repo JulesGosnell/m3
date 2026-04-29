@@ -83,7 +83,7 @@
 ;; draft2020-12/draft-next/latest: format is annotation per spec.
 ;; The optional/format test suite tests format as assertion, so skip for these.
 (def format-annotation-draft?
-  #{:draft3 :draft2020-12 :draft-next :latest})
+  #{:draft3 :draft2020-12 :draft-v1 :latest})
 
 (def uri-base->dir
   {"http://json-schema.org" "resources/schemas"
@@ -175,11 +175,11 @@
 (def json-schema-test-suite-root "test-resources/JSON-Schema-Test-Suite/tests/")
 
 ;; The upstream suite renamed draft-next/ to v1/ in commit 51f8464.
-;; Map both names to :draft-next so we exercise the new tree.
+;; Map both names to :draft-v1 so we exercise the new tree.
 (def dir-name->draft
   {"draft3" :draft3, "draft4" :draft4, "draft6" :draft6, "draft7" :draft7
    "draft2019-09" :draft2019-09, "draft2020-12" :draft2020-12
-   "draft-next" :draft-next, "v1" :draft-next})
+   "draft-next" :draft-v1, "v1" :draft-v1})
 
 (deftest json-schema-test-suite
   (reset! warning-counts {})

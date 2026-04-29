@@ -147,7 +147,7 @@
    :draft7       {:id-key "$id"}
    :draft2019-09 {:id-key "$id"}
    :draft2020-12 {:id-key "$id"}
-   :draft-next   {:id-key "$id"}
+   :draft-v1   {:id-key "$id"}
    :latest       {:id-key "$id"}})
 
 ;; Pre-built ref configs
@@ -497,7 +497,7 @@
    ;; metaschema's $vocabulary declares 2020-12 URIs (the spec isn't finalized).
    ;; Where draft-next behavior differs (e.g. $dynamicRef bookending), the
    ;; checker instances are draft-next-specific.
-   :draft-next
+   :draft-v1
    (sort-vocab
     [["https://json-schema.org/draft/2020-12/vocab/applicator"        "additionalItems"        check-property-additionalItems                           #{"$schema" "items"}]
      ["https://json-schema.org/draft/2020-12/vocab/applicator"        "additionalProperties"   check-property-additionalProperties                      #{"$schema" "properties" "patternProperties"}]
@@ -585,7 +585,7 @@
     v->b))
 
 (defn make-dialect-2 [d v->b]
-  (let [effective-v->b (if (= d :draft-next) (normalize-draft-next-vocab-uris v->b) v->b)
+  (let [effective-v->b (if (= d :draft-v1) (normalize-draft-next-vocab-uris v->b) v->b)
         uri-set (into #{} (keys effective-v->b))
         entries (filter (comp uri-set first) (draft->vocab d))]
     (partial

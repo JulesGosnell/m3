@@ -33,7 +33,7 @@
        (v {}))          ;; => {:valid? false, :errors [...]}
 
    Supported drafts: :draft3, :draft4, :draft6, :draft7,
-                     :draft2019-09, :draft2020-12, :draft-next, :latest
+                     :draft2019-09, :draft2020-12, :draft-v1, :latest
    Default: :latest (currently :draft2020-12)
 
    Error shape:
@@ -108,7 +108,7 @@
      (validate {\"type\" \"string\"} \"hello\")
 
    opts - optional map:
-     :draft        - :draft3, :draft4, :draft6, :draft7, :draft2019-09, :draft2020-12, :draft-next, :latest
+     :draft        - :draft3, :draft4, :draft6, :draft7, :draft2019-09, :draft2020-12, :draft-v1, :latest
      :quiet?       - false to enable $comment printing (default: true)
      :registry     - map of URI string to schema, for $ref resolution
      :marker-stash - marker stash for custom self-referential meta-schemas (see make-marker-stash)"

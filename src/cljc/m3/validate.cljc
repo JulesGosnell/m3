@@ -383,7 +383,7 @@
         ;; We can't use the dialect from the metaschema's runtime context (c1) because
         ;; make-dialect selects checker instances from the draft's vocab table — using
         ;; the metaschema's draft (e.g. :draft2020-12) would pick the wrong instances
-        ;; for a schema whose draft differs (e.g. :draft-next).
+        ;; for a schema whose draft differs (e.g. :draft-v1).
         (let [[{u->p :uri->path p->u :path->uri} es :as r] ((validate-m2 c2 m2) {} m1)
               schema-draft (or ($schema->draft s) draft)
               dialect (if $vocabulary

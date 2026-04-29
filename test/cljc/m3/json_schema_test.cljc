@@ -63,7 +63,7 @@
 
 (deftest test-validate-drafts
   (testing "explicit draft selection"
-    (doseq [draft [:draft3 :draft4 :draft6 :draft7 :draft2019-09 :draft2020-12 :draft-next]]
+    (doseq [draft [:draft3 :draft4 :draft6 :draft7 :draft2019-09 :draft2020-12 :draft-v1]]
       (is (:valid? (m3/validate {"type" "string"} "hello" {:draft draft}))
           (str "should validate with " draft)))))
 
