@@ -130,14 +130,20 @@
                    (reduce merge-entry (or m1 {}) (seq m2)))]
       (reduce merge2 maps))))
 
-(defn deep-meld [{id-key :id-key} & maps]
+(defn deep-meld [_ctx & maps]
+  ;; Used to meld a $ref's siblings (parent) with the resolved schema (latter).
+  ;; The latter wins on every key — including $id, because the ref jumps the
+  ;; current scope into the resolved schema, and that schema's $id is the
+  ;; right base URI for any $refs nested inside it.  Keeping the parent's $id
+  ;; here makes nested relative $refs resolve against the wrong base URI
+  ;; (see "order of evaluation: $id and $ref on nested schema").
   (reduce
    (fn [acc m]
      (meld-with
-      (fn choose-val [k val-in-result val-in-latter]
+      (fn choose-val [_k val-in-result val-in-latter]
         (if (and (map? val-in-result) (map? val-in-latter))
           (meld-with choose-val val-in-result val-in-latter)
-          (if (= id-key k) val-in-result val-in-latter)))
+          val-in-latter))
       acc m))
    maps))
 
