@@ -37,7 +37,10 @@
              ^:static [validate [Object Object] java.util.Map]
              ^:static [validate [Object Object java.util.Map] java.util.Map]
              ^:static [prepare [Object] java.util.function.Function]
-             ^:static [prepare [Object java.util.Map] java.util.function.Function]]))
+             ^:static [prepare [Object java.util.Map] java.util.function.Function]
+             ;; Fast valid/invalid-only path; skips building the result map.
+             ^:static [prepareValid [Object] java.util.function.Predicate]
+             ^:static [prepareValid [Object java.util.Map] java.util.function.Predicate]]))
 
 (def ^:private java-output-fns
   {:make-map (fn [& kvs]
@@ -112,3 +115,15 @@
      (reify java.util.function.Function
        (apply [_ document]
          (result->java (f document)))))))
+
+;; Like prepare, but the returned Predicate returns just true / false
+;; without building a result map.  Use when the caller only needs to
+;; know valid/invalid (e.g. throw-on-fail style).
+(defn -prepareValid
+  ([schema]
+   (-prepareValid schema nil))
+  ([schema opts]
+   (let [f (api/predicate (java->clj schema) (java-opts->clj-opts opts))]
+     (reify java.util.function.Predicate
+       (test [_ document]
+         (boolean (f document)))))))

@@ -187,3 +187,22 @@
                       :document-path []
                       :document document
                       :schema schema}]}))))))
+
+(defn predicate
+  "Compile a schema, return a fast Boolean-only validation function.
+   Like `validator` but the returned function returns true / false instead
+   of building a full result map — useful in tight loops where errors are
+   only signalled (e.g. by throwing) and not introspected.
+
+   schema - map (parsed schema) or JSON string
+   opts   - same as validate."
+  ([schema]
+   (predicate schema nil))
+  ([schema opts]
+   (let [schema (if (string? schema) (json-decode schema) schema)
+         c2     (opts->c2 (or opts {}))
+         f      (v/validate-m2 c2 schema)]
+     (fn [document]
+       (try
+         (empty? (second (f {} document)))
+         (catch #?(:clj StackOverflowError :cljs :default) _ false))))))
