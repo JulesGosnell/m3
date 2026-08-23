@@ -259,9 +259,12 @@
                                   (resolve-uri (assoc resolution-c2 :root cr-root)
                                                schema-p2 ref-uri v2)))]
              (if-not resolution
-               ;; Resolution failed - compile schema without $ref
-               (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc effective-c2 :scope-id) schema-p2 m2-no-ref)]
-                 (compiled-f1 c1 p1 m1))
+               ;; Resolution failed - a $ref that does not resolve is an error,
+               ;; not a vacuously satisfied schema (2020-12 §8.2.3.1). Compile
+               ;; the siblings anyway so their errors are reported alongside.
+               (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc effective-c2 :scope-id) schema-p2 m2-no-ref)
+                     [c1 m1 es] (compiled-f1 c1 p1 m1)]
+                 [c1 m1 (concatv [(make-error (str "$ref: unresolvable: " (pr-str v2)) p2 m2 p1 m1)] es)])
                (let [[new-c _new-p resolved-m] resolution
                      melded (meld-fn effective-c2 m2-no-ref resolved-m)
                      same-root? (identical? (:root effective-c2) (:root new-c))

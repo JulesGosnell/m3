@@ -86,6 +86,44 @@
                        42))))))
 
 ;;------------------------------------------------------------------------------
+;; Regression: a $ref that does not resolve is an error, not a vacuously
+;; satisfied schema — it used to fail open and report every document valid.
+
+(deftest test-unresolvable-$ref
+  (testing "a $ref to a location that does not exist is invalid"
+    (doseq [$ref ["#/nope" "#/a/b/c" "#/definitions/missing"]]
+      (doseq [document [42 "str" {} nil]]
+        (is (not (:valid? (m3/validate {"$ref" $ref} document)))
+            (str $ref " should not validate " (pr-str document))))))
+  (testing "the error names the unresolved $ref"
+    (let [error (first (:errors (first (:errors (m3/validate {"$ref" "#/nope"} 42)))))]
+      (is (= ["$ref"] (:schema-path error)))
+      (is (= "$ref: unresolvable: \"#/nope\" - 42" (:message error)))))
+  (testing "a sibling constraint still reports its own error"
+    (is (not (:valid? (m3/validate {"$ref" "#/nope" "type" "string"} 42)))))
+  (testing "a $ref that does resolve is unaffected"
+    (is (:valid? (m3/validate {"$defs" {"a" {"type" "integer"}} "$ref" "#/$defs/a"} 42)))
+    (is (not (:valid? (m3/validate {"$defs" {"a" {"type" "integer"}} "$ref" "#/$defs/a"} "str"))))))
+
+;;------------------------------------------------------------------------------
+;; Regression: an all-digit pointer segment is a member name when the parent is
+;; an object (RFC 6901 §4) — e.g. OpenAPI keys responses by HTTP status code.
+;; It stays an array index when the parent is an array.
+
+(deftest test-numeric-pointer-segments
+  (let [defs {"definitions" {"400" {"type" "integer"}
+                             "a"   {"type" "integer"}}}]
+    (testing "non-numeric definition key resolves"
+      (is (not (:valid? (m3/validate (assoc defs "$ref" "#/definitions/a") "str")))))
+    (testing "all-digit definition key resolves against the object"
+      (is (not (:valid? (m3/validate (assoc defs "$ref" "#/definitions/400") "str"))))
+      (is (:valid? (m3/validate (assoc defs "$ref" "#/definitions/400") 42)))))
+  (let [items {"prefixItems" [{"type" "integer"} {"type" "string"}]}]
+    (testing "all-digit segment is still an index when the parent is an array"
+      (is (not (:valid? (m3/validate (assoc items "$ref" "#/prefixItems/0") "str"))))
+      (is (:valid? (m3/validate (assoc items "$ref" "#/prefixItems/1") "str"))))))
+
+;;------------------------------------------------------------------------------
 
 (deftest test-meld-deep
   (testing "latest wins — including $id, since $ref jumps the scope into the resolved schema"
