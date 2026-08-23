@@ -64,8 +64,24 @@
       (or (path->uri p)
           (recur (vec (butlast p)))))))
 
+(defn realise-path
+  "RFC 6901 §4: a pointer segment is evaluated against the PARENT's type — a
+  member name for an object, an index for an array.  canonicalise cannot know
+  the parent's type, so it turns every all-digit segment into an int.  Walk
+  root and put the string form back wherever the parent is an object (e.g.
+  \"#/properties/400\", common in OpenAPI, where responses are keyed by status
+  code).  Returns the corrected path, or nil if it does not exist in root."
+  [root p]
+  (loop [m root acc [] [k & ks :as remaining] (seq p)]
+    (if-not remaining
+      acc
+      (let [k (if (and (integer? k) (map? m) (not (contains? m k))) (str k) k)
+            v (get m k absent)]
+        (when (present? v)
+          (recur v (conj acc k) ks))))))
+
 (defn try-path [{path->uri :path->uri id-uri :id-uri :as ctx} path p root]
-  (when p
+  (when-let [p (and p (realise-path root p))]
     (let [m (get-in root p absent)]
       (when (present? m)
         [;; Find the correct base URI for the resolved path.
