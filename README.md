@@ -31,7 +31,7 @@ Full support for every keyword: `$ref`, `$dynamicRef`, `$recursiveRef`, `unevalu
 
 ```clojure
 [org.clojars.jules_gosnell/m3
- "1.0.0-beta3"]
+ "1.0.0-beta4"]
 ```
 
 </td>
@@ -39,7 +39,7 @@ Full support for every keyword: `$ref`, `$dynamicRef`, `$recursiveRef`, `unevalu
 
 ```clojure
 org.clojars.jules_gosnell/m3
-{:mvn/version "1.0.0-beta3"}
+{:mvn/version "1.0.0-beta4"}
 ```
 
 </td>
@@ -49,7 +49,7 @@ org.clojars.jules_gosnell/m3
 <dependency>
   <groupId>org.clojars.jules_gosnell</groupId>
   <artifactId>m3</artifactId>
-  <version>1.0.0-beta3</version>
+  <version>1.0.0-beta4</version>
 </dependency>
 ```
 
@@ -58,7 +58,7 @@ org.clojars.jules_gosnell/m3
 
 ```groovy
 implementation
-  'org.clojars.jules_gosnell:m3:1.0.0-beta3'
+  'org.clojars.jules_gosnell:m3:1.0.0-beta4'
 ```
 
 </td>
@@ -87,7 +87,7 @@ npm install m3-json-schema
 > maven { url 'https://repo.clojars.org' }
 > ```
 
-The examples use the latest published Clojars release, `1.0.0-beta3`. The source checkout is currently `1.0.0-beta4-SNAPSHOT` and has not been published.
+The examples use the latest Clojars release, `1.0.0-beta4`.
 
 ---
 

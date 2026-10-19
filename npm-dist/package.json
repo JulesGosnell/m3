@@ -1,7 +1,7 @@
 {
   "name": "m3-json-schema",
-  "version": "1.0.0-beta1",
-  "description": "The most complete JSON Schema validator. All drafts (3, 4, 6, 7, 2019-09, 2020-12, draft-next). Format validation, $ref, $dynamicRef, unevaluatedProperties, unevaluatedItems.",
+  "version": "1.0.0-beta4",
+  "description": "A JSON Schema validator supporting drafts 3, 4, 6, 7, 2019-09, 2020-12, and draft-v1, with format validation, $ref, $dynamicRef, unevaluatedProperties, and unevaluatedItems.",
   "main": "m3.js.js",
   "types": "index.d.ts",
   "files": ["*.js", "*.js.map", "index.d.ts", "schemas/"],
@@ -17,7 +17,7 @@
     "draft-07",
     "draft-2019-09",
     "draft-2020-12",
-    "draft-next",
+    "draft-v1",
     "jsonschema",
     "format",
     "unevaluatedProperties",
