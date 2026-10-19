@@ -1,5 +1,5 @@
-(def polyglot-version "24.2.2")
-(def jackson-version "2.20.0")
+(def polyglot-version "25.4.4.1.1")
+(def jackson-version "2.22.4")
 
 (defproject org.clojars.jules_gosnell/m3 "1.0.0-beta4-SNAPSHOT"
   :description "A pure Clojure/ClojureScript JSON validator"
@@ -9,8 +9,8 @@
 
   :dependencies
   [;; java
-   [org.slf4j/slf4j-simple "2.1.0-alpha1"] ;; https://github.com/qos-ch/slf4j
-   ;; https://www.graalvm.org/jdk24/reference-manual/js/RunOnJDK/
+   [org.slf4j/slf4j-simple "2.0.20"] ;; https://github.com/qos-ch/slf4j
+   ;; https://www.graalvm.org/jdk25/reference-manual/js/RunOnJDK/
    ;; TODO: it would be nice to get JIT compilation going - although do we need it ?
    [org.graalvm.polyglot/polyglot ~polyglot-version] ;; https://github.com/oracle/graal
    [org.graalvm.polyglot/js ~polyglot-version :extension "pom"] ;; https://github.com/oracle/graal
@@ -21,9 +21,9 @@
    [com.fasterxml.jackson.core/jackson-core ~jackson-version] ;; https://github.com/FasterXML/jackson-core
    [com.fasterxml.jackson.dataformat/jackson-dataformat-cbor ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
    [com.fasterxml.jackson.dataformat/jackson-dataformat-smile ~jackson-version :exclusions [[com.fasterxml.jackson.core/jackson-databind]]]
-   [com.ibm.icu/icu4j "78.2"] ;; https://github.com/unicode-org/icu — IDNA2008 hostname validation
+   [com.ibm.icu/icu4j "78.3"] ;; https://github.com/unicode-org/icu — IDNA2008 hostname validation
    ;; clj
-   [org.clojure/clojure "1.12.4"] ;; https://clojure.org/releases/downloads
+   [org.clojure/clojure "1.12.6"] ;; https://clojure.org/releases/downloads
    [org.clojure/data.json "2.5.2"] ;; https://github.com/clojure/data.json
    ;; cljs
    [thheller/shadow-cljs "3.3.5"] ;; https://github.com/thheller/shadow-cljs
@@ -48,7 +48,7 @@
 ;;             "--upgrade-module-path=/home/jules/.m2/repository/org/graalvm/compiler/compiler/24.2.2/compiler-24.2.2.jar:/home/jules/.m2/repository/org/graalvm/compiler/compiler-management/24.2.2/compiler-management-24.2.2.jar:/home/jules/.m2/repository/org/graalvm/sdk/graal-sdk/24.2.2/graal-sdk-24.2.2.jar"
              ]
 
-  :min-lein-version "2.5.0"
+  :min-lein-version "2.13.0"
   :uberjar-name "m3.jar"
   :clean-targets ^{:protect false} [:target-path "target/shadow" ".shadow-cljs"]
 
@@ -87,17 +87,17 @@
   :profiles {:dev
              {:repl-options {;;:init-ns m3.repl
                              }
-              :dependencies [[cider/piggieback "0.6.1"]
+              :dependencies [[cider/piggieback "0.7.1"]
                              [binaryage/devtools "1.0.7"]
                              [prone "2021-04-23"]
-                             [nrepl "1.5.2"]
+                             [nrepl "1.7.0"]
                              [pjstadig/humane-test-output "0.11.0"]
                              [com.fasterxml.jackson.core/jackson-databind ~jackson-version]
                              [com.google.code.gson/gson "2.13.2"]]
 
-              :plugins [[cider/cider-nrepl "0.57.0"]
+              :plugins [[cider/cider-nrepl "0.63.0"]
                         [org.clojure/tools.namespace "1.5.0" :exclusions [org.clojure/tools.reader]]
-                        [refactor-nrepl "3.11.0" :exclusions [org.clojure/clojure3]]]
+                        [refactor-nrepl "3.14.0" :exclusions [org.clojure/clojure3]]]
 
               :injections [(require 'pjstadig.humane-test-output)
                            (pjstadig.humane-test-output/activate!)]
