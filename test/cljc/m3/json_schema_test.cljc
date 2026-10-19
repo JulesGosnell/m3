@@ -146,6 +146,81 @@
       (is (:valid? (m3/validate schema {"child" {"child" {}}})))
       (is (not (:valid? (m3/validate schema {"child" "not-object"})))))))
 
+(deftest test-empty-ref-resolves-to-current-resource-root
+  (let [schema {"type" "object"
+                "properties" {"child" {"$ref" ""}}}
+        validate (m3/validator schema)]
+    (is (:valid? (validate {"child" {"child" {}}})))
+    (is (not (:valid? (validate {"child" 42}))))))
+
+(deftest test-json-pointer-numeric-object-key
+  (let [schema {"$schema" "http://json-schema.org/draft-07/schema#"
+                "definitions" {"0" {"type" "string"}}
+                "$ref" "#/definitions/0"}]
+    (is (:valid? (m3/validate schema "text")))
+    (is (not (:valid? (m3/validate schema 42)))))
+  (let [schema {"allOf" [{"type" "string"}]
+                "$ref" "#/allOf/0"}]
+    (is (:valid? (m3/validate schema "text")))
+    (is (not (:valid? (m3/validate schema 42))))))
+
+(deftest test-unresolvable-ref-fails-closed
+  (testing "missing local pointers fail for all document types"
+    (doseq [ref ["#/nope" "#/a/b/c" "#/definitions/missing"]
+            document [42 "str" {} nil]]
+      (is (not (:valid? (m3/validate {"$ref" ref} document)))
+          (str ref " should not validate " (pr-str document)))))
+  (let [result (m3/validate {"$ref" "https://example.com/not-in-registry"} "anything")]
+    (is (not (:valid? result)))
+    (is (some #(re-find #"\$ref: unable to resolve" (:message %))
+              (tree-seq #(and (map? %) (seq (:errors %)))
+                        :errors
+                        (first (:errors result))))))
+  (let [result (m3/validate {"$ref" "https://example.com/not-in-registry"
+                             "properties" {"known" {"type" "string"}}
+                             "unevaluatedProperties" false}
+                            {"known" "ok"})
+        messages (map :message
+                      (tree-seq #(and (map? %) (seq (:errors %)))
+                                :errors
+                                (first (:errors result))))]
+    (is (some #(re-find #"\$ref: unable to resolve" %) messages))
+    (is (not-any? #(re-find #"unevaluatedProperties" %) messages)))
+  (testing "new drafts apply sibling assertions when the reference is unresolved"
+    (let [result (m3/validate {"$ref" "#/missing" "type" "string"} 42)
+          messages (map :message
+                        (tree-seq #(and (map? %) (seq (:errors %)))
+                                  :errors
+                                  (first (:errors result))))]
+      (is (some #(re-find #"\$ref: unable to resolve" %) messages))
+      (is (some #(re-find #"type:" %) messages))))
+  (testing "draft 7 still ignores $ref siblings"
+    (let [result (m3/validate {"$schema" "http://json-schema.org/draft-07/schema#"
+                               "$ref" "#/missing"
+                               "type" "string"}
+                              42)
+          messages (map :message
+                        (tree-seq #(and (map? %) (seq (:errors %)))
+                                  :errors
+                                  (first (:errors result))))]
+      (is (some #(re-find #"\$ref: unable to resolve" %) messages))
+      (is (not-any? #(re-find #"type:" %) messages))))
+  (doseq [ref ["#/$defs/bad%" "#/$defs/bad~2"]]
+    (is (not (:valid? (m3/validate {"$defs" {"bad~2" {"type" "string"}}
+                                    "$ref" ref}
+                                   "anything")))
+        (str "invalid pointer reference should fail: " ref))))
+
+(deftest test-invalid-subschema-fails-closed-without-a-known-metaschema
+  (let [result (m3/validate {"$schema" "https://example.com/custom-schema"
+                             "properties" {"value" "not-a-schema"}}
+                            {"value" "anything"})]
+    (is (not (:valid? result)))
+    (is (some #(re-find #"expected an object or boolean" (:message %))
+              (tree-seq #(and (map? %) (seq (:errors %)))
+                        :errors
+                        (first (:errors result)))))))
+
 ;;------------------------------------------------------------------------------
 ;; validate/validator — :registry option for $ref resolution
 

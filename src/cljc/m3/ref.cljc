@@ -14,7 +14,7 @@
 
 (ns m3.ref
   (:require
-   [clojure.string :refer [split replace] :rename {replace string-replace}]
+   [clojure.string :refer [split replace starts-with?] :rename {replace string-replace}]
    [m3.util :refer [present? absent]]
    [m3.uri :refer [uri-base uri-fragment inherit-uri]]))
 
@@ -31,7 +31,8 @@
 (defn uri-decode
   "URI-decodes a percent-encoded string."
   [^String s]
-  #?(:clj  (java.net.URLDecoder/decode s "UTF-8")
+  ;; URLDecoder uses form encoding, where + means space. URI fragments do not.
+  #?(:clj  (java.net.URLDecoder/decode (string-replace s "+" "%2B") "UTF-8")
      :cljs (try
              (js/decodeURIComponent s)
              (catch :default e
@@ -39,21 +40,74 @@
 
 (defn unescape [s]
   (-> s
-      (string-replace "~0" "~")
-      (string-replace "~1" "/")))
+      (string-replace "~1" "/")
+      (string-replace "~0" "~")))
 
-;; or should we just walk the data structure...
-(defn canonicalise [path $ref]
-  (reduce
-   (fn [acc r]
-     (let [r (unescape (uri-decode r))]
-       (case r
-         "" (if (= acc path) [] (conj acc ""))
-         "." acc
-         ".." (vec (take (dec (count acc)) acc))
-         (conj acc (->int-or-string r)))))
-   path
-   (or (seq (if (= $ref "/") [""] (split $ref #"/" -1))) [""]))) ;; N.B.: -1 prevents trailing ""s being removed
+(defn- valid-pointer-token? [token]
+  (not (re-find #"~(?:[^01]|$)" token)))
+
+(defn canonicalise
+  "Append a JSON Pointer fragment to its resource path. Tokens remain strings
+   until traversal can distinguish object keys from array indexes."
+  [resource-path pointer]
+  (let [resource-path (vec resource-path)]
+    (cond
+      (empty? pointer) resource-path
+      (not (starts-with? pointer "/")) nil
+      :else
+      (let [encoded-tokens (if (= pointer "/") [""] (split (subs pointer 1) #"/" -1))
+            tokens (mapv uri-decode encoded-tokens)]
+        (when (every? valid-pointer-token? tokens)
+          (into resource-path
+                (map unescape)
+                tokens))))))
+
+(defn- object-node? [value]
+  (or (map? value)
+      #?(:clj (instance? java.util.Map value) :cljs false)))
+
+(defn- array-node? [value]
+  (or (vector? value)
+      #?(:clj (instance? java.util.List value) :cljs false)))
+
+(defn- array-index [segment]
+  (when (and (string? segment)
+             (re-matches #"(?:0|[1-9][0-9]*)" segment))
+    (try
+      (parse-int segment)
+      (catch #?(:clj NumberFormatException :cljs :default) _ nil))))
+
+(defn- child-at [node segment]
+  (cond
+    (object-node? node)
+    (get node (if (integer? segment) (str segment) segment) absent)
+
+    (array-node? node)
+    (when-let [index (or (when (integer? segment) segment)
+                         (array-index segment))]
+      (nth node index absent))
+
+    :else absent))
+
+(defn- lookup-path [root path]
+  (loop [node root, segments (seq path), resolved []]
+    (if (seq segments)
+      (let [segment (first segments)
+            child (child-at node segment)]
+        (if (present? child)
+          (recur child
+                 (next segments)
+                 (conj resolved
+                       (cond
+                         (and (array-node? node) (string? segment))
+                         (array-index segment)
+
+                         (and (object-node? node) (integer? segment))
+                         (str segment)
+
+                         :else segment)))
+          [absent resolved]))
+      [node resolved])))
 
 (defn nearest-uri
   "Walk up the path hierarchy to find the nearest ancestor with a path->uri entry.
@@ -66,7 +120,7 @@
 
 (defn try-path [{path->uri :path->uri id-uri :id-uri :as ctx} path p root]
   (when p
-    (let [m (get-in root p absent)]
+    (let [[m p] (lookup-path root p)]
       (when (present? m)
         [;; Find the correct base URI for the resolved path.
          ;; If the path has its own $id (i.e. is in path->uri), walk up to
@@ -100,13 +154,15 @@
          (try-path ctx path (concat path2 (canonicalise [] f)) m2))
         (try-path ctx path path2 m2)))
 
-    ;; it's just a fragment — try as anchor first, then JSON pointer
+    ;; A fragment is relative to the current resource. Anchors use the URI
+    ;; stash; JSON Pointers start at that resource's root (or the document root
+    ;; when no resource $id has been declared).
     (and (= t :fragment)
-         (or
-          ;; anchor: resolve fragment against current base URI to find $anchor entry
-          (try-path ctx path (uri->path (inherit-uri (:id-uri ctx) uri)) m2)
-          ;; JSON pointer
-          (try-path ctx path (canonicalise path (or f "")) m2)))
+         (let [resource-path (or (when-let [id-uri (:id-uri ctx)]
+                                   (uri->path (uri-base id-uri)))
+                                 [])]
+           (or (try-path ctx path (uri->path (inherit-uri (:id-uri ctx) uri)) m2)
+               (try-path ctx path (canonicalise resource-path (or f "")) m2))))
 
     ;; did it match a remote schema
     (when-let [[c p _m] (and uri->schema (uri->schema ctx path uri))]

@@ -16,7 +16,7 @@
   (:require 
    #?(:clj  [clojure.test :refer [deftest testing is]]
       :cljs [cljs.test :refer-macros [deftest testing is]])
-   [m3.ref :refer [resolve-uri deep-meld ->int-or-string]]
+   [m3.ref :refer [resolve-uri deep-meld ->int-or-string canonicalise uri-decode unescape]]
    [m3.json-schema :as m3]))
 
 ;;------------------------------------------------------------------------------
@@ -84,6 +84,30 @@
                         "definitions" {"9bffe" {"type" "string"}}
                         "$ref" "#/definitions/9bffe"}
                        42))))))
+
+(deftest test-json-pointer-path-segments
+  (testing "numeric object keys remain strings"
+    (let [ctx {:root {"definitions" {"0" {:type "string"}}}
+               :uri->path {} :path->uri {}}
+          resolution (resolve-uri ctx []
+                                  {:type :fragment :fragment "/definitions/0"}
+                                  "#/definitions/0")]
+      (is (= {:type "string"} (nth resolution 2)))))
+  (testing "numeric array tokens become indexes during traversal"
+    (let [ctx {:root {"allOf" [{:type "string"}]}
+               :uri->path {} :path->uri {}}
+          resolution (resolve-uri ctx []
+                                  {:type :fragment :fragment "/allOf/0"}
+                                  "#/allOf/0")]
+      (is (= {:type "string"} (nth resolution 2)))))
+  (testing "pointer tokens follow JSON Pointer and URI fragment decoding"
+    (is (= [""] (canonicalise [] "/")))
+    (is (= ["a/b" "~1" "a+b"]
+           (canonicalise [] "/a~1b/~01/a+b")))
+    (is (nil? (canonicalise [] "/bad~2")))
+    (is (nil? (canonicalise [] "/bad%7E2")))
+    (is (= "+" (uri-decode "+")))
+    (is (= "~1" (unescape "~01")))))
 
 ;;------------------------------------------------------------------------------
 

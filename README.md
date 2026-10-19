@@ -1,4 +1,4 @@
-# M3 — JSON Schema validator for JVM and browser
+# M3 — JSON Schema validator for JVM and JavaScript
 
 [![CI](https://github.com/JulesGosnell/m3/actions/workflows/ci.yml/badge.svg)](https://github.com/JulesGosnell/m3/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/JulesGosnell/m3/branch/main/graph/badge.svg)](https://codecov.io/gh/JulesGosnell/m3)
@@ -6,11 +6,11 @@
 [![npm](https://img.shields.io/npm/v/m3-json-schema.svg)](https://www.npmjs.com/package/m3-json-schema)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 
-**Every draft. Every keyword. Same code, same answers — backend and frontend.**
+**One codebase. JVM and JavaScript. Draft-03 through draft-v1.**
 
-M3 passes **every test**[^1] in the official [JSON Schema Test Suite][test-suite] across **every draft** from draft-03 through draft-v1 (formerly draft-next) — **10,780 assertions** with zero failures.
+M3 passes the applicable tests in the official [JSON Schema Test Suite][test-suite] across drafts from draft-03 through draft-v1 (formerly draft-next). The JVM and JavaScript implementations share the same Clojure/ClojureScript codebase.
 
-Written in Clojure/ClojureScript, M3 compiles to both JVM bytecode and JavaScript from a single codebase — the only JSON Schema validator that delivers identical results on the server and in the browser across all drafts. Use it from **Clojure**, **Java**, **Kotlin**, **Scala**, **JavaScript**, or **Node.js**.
+Written in Clojure/ClojureScript, M3 compiles to JVM bytecode and JavaScript. Use it from **Clojure**, **Java**, **Kotlin**, **Scala**, **JavaScript**, or **Node.js**.
 
 Full support for every keyword: `$ref`, `$dynamicRef`, `$recursiveRef`, `unevaluatedProperties`, `unevaluatedItems`, `$vocabulary`, `$anchor`, `$dynamicAnchor`, `if`/`then`/`else`, `dependentSchemas`, `prefixItems`, `contentMediaType`, `contentEncoding`, and all format validators.
 
@@ -31,7 +31,7 @@ Full support for every keyword: `$ref`, `$dynamicRef`, `$recursiveRef`, `unevalu
 
 ```clojure
 [org.clojars.jules_gosnell/m3
- "1.0.0-beta2"]
+ "1.0.0-beta3"]
 ```
 
 </td>
@@ -39,7 +39,7 @@ Full support for every keyword: `$ref`, `$dynamicRef`, `$recursiveRef`, `unevalu
 
 ```clojure
 org.clojars.jules_gosnell/m3
-{:mvn/version "1.0.0-beta2"}
+{:mvn/version "1.0.0-beta3"}
 ```
 
 </td>
@@ -49,7 +49,7 @@ org.clojars.jules_gosnell/m3
 <dependency>
   <groupId>org.clojars.jules_gosnell</groupId>
   <artifactId>m3</artifactId>
-  <version>1.0.0-beta2</version>
+  <version>1.0.0-beta3</version>
 </dependency>
 ```
 
@@ -58,7 +58,7 @@ org.clojars.jules_gosnell/m3
 
 ```groovy
 implementation
-  'org.clojars.jules_gosnell:m3:1.0.0-beta2'
+  'org.clojars.jules_gosnell:m3:1.0.0-beta3'
 ```
 
 </td>
@@ -87,21 +87,23 @@ npm install m3-json-schema
 > maven { url 'https://repo.clojars.org' }
 > ```
 
+The examples use the latest published Clojars release, `1.0.0-beta3`. The source checkout is currently `1.0.0-beta4-SNAPSHOT` and has not been published.
+
 ---
 
 ## [Test Suite][test-suite] Compliance
 
 | Draft | JVM | JavaScript |
 |-------|-----|------------|
-| draft-03 | All tests passing | All tests passing |
-| draft-04 | All tests passing | All tests passing |
-| draft-06 | All tests passing | All tests passing |
-| draft-07 | All tests passing | All tests passing |
-| draft 2019-09 | All tests passing | All tests passing |
-| draft 2020-12 | All tests passing | All tests passing |
-| draft-v1 (formerly draft-next) | All tests passing | All tests passing[^1] |
+| draft-03 | All applicable tests passing | All applicable tests passing |
+| draft-04 | All applicable tests passing | All applicable tests passing |
+| draft-06 | All applicable tests passing | All applicable tests passing |
+| draft-07 | All applicable tests passing | All applicable tests passing |
+| draft 2019-09 | All applicable tests passing | All applicable tests passing |
+| draft 2020-12 | All applicable tests passing | All applicable tests passing |
+| draft-v1 (formerly draft-next) | All applicable tests passing | All applicable tests passing |
 
-A handful of validators cover drafts 3 through 2020-12 (notably Python's `jsonschema` and .NET's `Newtonsoft.Json.Schema`), and several JavaScript validators (Ajv, Hyperjump) run in both Node.js and the browser — but none of them do both. M3 is the only validator that covers all drafts **and** runs portably on backend and frontend from a single codebase.
+The JavaScript run excludes the `zeroTerminatedFloats.json` case "a float is not an integer even without fractional part." JavaScript parses `1.0` and `1` to the same Number value, so the validator cannot distinguish their source notation. The JVM run preserves that distinction and passes the case.
 
 Default draft: `latest` (currently `draft2020-12`)
 
@@ -141,7 +143,7 @@ Map result = JsonSchema.validate("{\"type\":\"string\"}", "\"hello\"");
 boolean valid = (boolean) result.get("valid");   // true
 List errors = (List) result.get("errors");        // null
 
-// Zero-copy from Jackson — no conversion needed
+// Pass Jackson values directly — no caller-side conversion needed
 ObjectMapper mapper = new ObjectMapper();
 Map schema = mapper.readValue(schemaJson, LinkedHashMap.class);
 Object document = mapper.readValue(docJson, Object.class);
@@ -207,7 +209,7 @@ v({});            // { valid: false, errors: [...] }
 validate({ type: 'string' }, 'hello', { draft: 'draft7' });
 ```
 
-All JVM languages accept `java.util.Map` and `java.util.List` directly — documents from Jackson, Gson, or any JSON library work with zero conversion.
+The Java facade accepts `java.util.Map` and `java.util.List` directly, so Java, Kotlin, and Scala callers can pass values from Jackson, Gson, or other JSON libraries without converting them first. The Clojure API uses Clojure maps and vectors.
 
 ---
 
@@ -221,6 +223,10 @@ All JVM languages accept `java.util.Map` and `java.util.List` directly — docum
 Supported draft values: `draft3`, `draft4`, `draft6`, `draft7`, `draft2019-09`, `draft2020-12`, `draft-v1`, `latest`.
 
 Use `latest` (`:latest` in Clojure) as an alias for the most recent stable draft (currently `draft2020-12`).
+
+### References
+
+`$ref` supports registered schemas and references within the current schema resource, including URI fragments, anchors, and JSON Pointers. An empty reference (`"$ref": ""`) refers to the current resource. JSON Pointer tokens are decoded as strings, so a token such as `"0"` can address an object property; when traversal reaches an array, numeric tokens are interpreted as array indexes. A reference that cannot be resolved produces a validation error.
 
 ---
 
@@ -286,7 +292,7 @@ Internally, two context maps thread through validation:
 git clone --recursive git@github.com:JulesGosnell/m3.git
 cd m3
 
-# Run Clojure tests (10,780 test-suite assertions)
+# Run Clojure unit and JSON Schema Test Suite tests
 lein test
 
 # Run ClojureScript tests
@@ -307,7 +313,5 @@ lein clean-all
 Copyright 2025 Julian Gosnell. [Apache License, Version 2.0](https://www.apache.org/licenses/LICENSE-2.0).
 
 ---
-
-[^1]: One test is excluded as a language-level limitation: `zeroTerminatedFloats.json` — "a float is not an integer even without fractional part". Neither JavaScript (`JSON.parse("1.0") === JSON.parse("1")`) nor Clojure's reader distinguishes `1.0` from `1` at the value level, making this test impossible to pass without runtime parser-level numeric introspection.
 
 [test-suite]: https://github.com/json-schema-org/JSON-Schema-Test-Suite

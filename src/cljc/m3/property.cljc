@@ -254,14 +254,27 @@
                  ;; (e.g. from $recursiveRef dynamic resolution), the uri->path stash
                  ;; may contain paths relative to the original root that don't exist
                  ;; in the current root. Retry against the cross-resource-root.
-                 resolution (or (resolve-uri resolution-c2 schema-p2 ref-uri v2 true)
-                                (when-let [cr-root (:cross-resource-root resolution-c2)]
-                                  (resolve-uri (assoc resolution-c2 :root cr-root)
-                                               schema-p2 ref-uri v2)))]
+                 resolution (try
+                              (or (resolve-uri resolution-c2 schema-p2 ref-uri v2 true)
+                                  (when-let [cr-root (:cross-resource-root resolution-c2)]
+                                    (resolve-uri (assoc resolution-c2 :root cr-root)
+                                                 schema-p2 ref-uri v2)))
+                              (catch #?(:clj IllegalArgumentException :cljs :default) _
+                                nil))]
              (if-not resolution
-               ;; Resolution failed - compile schema without $ref
-               (let [[_c2 _m2 compiled-f1] (check-schema-fn (dissoc effective-c2 :scope-id) schema-p2 m2-no-ref)]
-                 (compiled-f1 c1 p1 m1))
+               ;; A missing reference must not silently turn into an empty
+               ;; schema. New drafts still apply sibling keywords, so retain
+               ;; those checks alongside the unresolved-reference error.
+               (let [[sibling-c1 sibling-m1 sibling-errors]
+                     (if ref-replaces-siblings?
+                       [c1 m1 nil]
+                       (let [[_c2 _m2 compiled-f1]
+                             (check-schema-fn (dissoc effective-c2 :scope-id) schema-p2 m2-no-ref)]
+                         (compiled-f1 c1 p1 m1)))
+                     unresolved-error
+                     (make-error (str "$ref: unable to resolve " (pr-str v2))
+                                 p2 m2 p1 m1)]
+                 [sibling-c1 sibling-m1 (into [unresolved-error] sibling-errors)])
                (let [[new-c _new-p resolved-m] resolution
                      melded (meld-fn effective-c2 m2-no-ref resolved-m)
                      same-root? (identical? (:root effective-c2) (:root new-c))
@@ -994,21 +1007,23 @@
     [c2
      m2
      (fn [c1 p1 m1 k-and-css message]
-       (let [[c1 es]
-             (reduce
-              (fn [[c old-es] [[k cs] sub-document]]
-                (let [[c m new-es] (cs c (conj p1 k) sub-document)]
-                  [c (concatv old-es new-es)]))
-              [c1 []]
-              (mapv (fn [[k :as k-and-cs]] [k-and-cs (get m1 k)]) k-and-css))]
-         [(let [ks (mapv first k-and-css)]
-            (-> c1
-           ;; TODO: only record matched if additonalProperties needed later ?
-                (update :matched update pp2 into-set ks)
-           ;; TODO: only record evaluated if unevaluatedProperties needed later ?
-                (update :evaluated update p1 into-set ks)))
-          m1
-          (make-error-on-failure message p2 m2 p1 m1 es)]))]))
+       (loop [remaining (seq k-and-css), c1 c1, errors [], matched #{}]
+         (if (seq remaining)
+           (let [[[k checker] & more] remaining
+                 [c1 _sub-document new-errors]
+                 (checker c1 (conj p1 k) (get m1 k))]
+             (recur more
+                    c1
+                    (if (seq new-errors) (into errors new-errors) errors)
+                    (conj matched k)))
+           (let [c1 (if (seq matched)
+                      (-> c1
+                          (update :matched update pp2 into-set matched)
+                          (update :evaluated update p1 into-set matched))
+                      c1)]
+             [c1
+              m1
+              (make-error-on-failure message p2 m2 p1 m1 errors)]))))]))
 
 (defn check-property-properties [_property c2 p2 m2 ps]
   (let [[c2 k-and-css] (compile-sub-schemas c2 p2 ps)

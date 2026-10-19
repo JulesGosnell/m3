@@ -170,9 +170,12 @@
               (when (present? m1)
                 [(make-error "schema is false: nothing will match" p2 m2 p1 m1)])])]
 
-    (not (map? m2))
-    ;; Non-map, non-boolean schemas are invalid; treat as no-op to avoid crashes
-    [c2 m2 (fn [c1 _p1 m1] [c1 m1 nil])]
+    (not (json-object? m2))
+    ;; Schemas are objects or booleans. Fail closed when a schema-bearing
+    ;; keyword contains some other JSON value instead of silently accepting it.
+    [c2 m2 (fn [c1 p1 m1]
+             [c1 m1
+              [(make-error "schema: expected an object or boolean" p2 m2 p1 m1)]])]
 
     :else
     (let [scope-id (or (:scope-id c2) (gensym "scope-"))

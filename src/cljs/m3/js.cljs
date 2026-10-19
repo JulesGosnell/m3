@@ -1,6 +1,6 @@
 (ns m3.js
   "JavaScript entry point for M3 JSON Schema Validator.
-   Exports validate function for use from Node.js/browser."
+   Exports validate function for use from Node.js."
   (:require
    [m3.platform :refer [deep-js->clj]]
    [m3.validate :as v]))

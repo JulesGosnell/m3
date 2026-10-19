@@ -189,10 +189,9 @@
                       :schema schema}]}))))))
 
 (defn predicate
-  "Compile a schema, return a fast Boolean-only validation function.
-   Like `validator` but the returned function returns true / false instead
-   of building a full result map — useful in tight loops where errors are
-   only signalled (e.g. by throwing) and not introspected.
+  "Compile a schema, return a Boolean-only validation function.
+   Like `validator`, but the returned function returns true / false instead
+   of a full result map. Useful when callers only need a pass/fail result.
 
    schema - map (parsed schema) or JSON string
    opts   - same as validate."

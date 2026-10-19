@@ -21,7 +21,7 @@
      Map result = JsonSchema.validate(\"{\\\"type\\\":\\\"string\\\"}\", \"\\\"hello\\\"\");
      boolean valid = (boolean) result.get(\"valid\");
 
-   Zero-copy from Jackson:
+   Direct input from Jackson:
      ObjectMapper mapper = new ObjectMapper();
      Map schema = mapper.readValue(schemaJson, LinkedHashMap.class);
      Object document = mapper.readValue(docJson, Object.class);
@@ -38,7 +38,7 @@
              ^:static [validate [Object Object java.util.Map] java.util.Map]
              ^:static [prepare [Object] java.util.function.Function]
              ^:static [prepare [Object java.util.Map] java.util.function.Function]
-             ;; Fast valid/invalid-only path; skips building the result map.
+             ;; Boolean valid/invalid-only path; skips formatting the result map.
              ^:static [prepareValid [Object] java.util.function.Predicate]
              ^:static [prepareValid [Object java.util.Map] java.util.function.Predicate]]))
 
