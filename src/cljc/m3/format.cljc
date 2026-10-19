@@ -15,8 +15,6 @@
 (ns m3.format
   (:require
    [cljc.java-time.local-date :refer [parse] :rename {parse local-date-parse}]
-   [cljc.java-time.offset-date-time :refer [parse] :rename {parse offset-date-time-parse}]
-   [cljc.java-time.offset-time :refer [parse] :rename {parse offset-time-parse}]
    [clojure.string :as str]
    [m3.util :refer [make-error]]
    [m3.ecma :refer [ecma-pattern]]
@@ -54,7 +52,7 @@
   ;; The RFC 3339 grammar baked into json-duration-pattern already enforces
   ;; ordering, intermediate-component requirements, and that "P" / "PT" alone
   ;; do not match — so a successful regex match is sufficient.
-  (boolean (re-find json-duration-pattern s)))
+  (boolean (re-matches json-duration-pattern s)))
 
 (defn ^:private parse-int [s]
   #?(:clj (Integer/parseInt s) :cljs (js/parseInt s 10)))
@@ -81,8 +79,6 @@
                           off-min (* (if (= tz-sign "+") 1 -1) (+ (* oh 60) om))
                           utc-min (mod (- local-min off-min) 1440)]
                       (= utc-min 1439)))))))))
-
-(def ^:private date-time-split-re #"(?i)^(\d{4}-\d{2}-\d{2})t(.+)$")
 
 ;;------------------------------------------------------------------------------
 ;; Individual format checker functions
@@ -135,7 +131,7 @@
   ;; RFC 1123 — only ACE labels get full IDNA validation.
   (fn [_c1 p1 m1]
     (when (string? m1)
-      (or (when-not (re-find hostname-pattern m1)
+      (or (when-not (re-matches hostname-pattern m1)
             [(make-error "format: hostname has invalid structure" p2 m2 p1 m1)])
           (when (> (count m1) 253)
             [(make-error "format: hostname exceeds 253 characters" p2 m2 p1 m1)])
@@ -144,41 +140,56 @@
                        (not (json-idn-hostname? m1)))
               [(make-error "format: hostname A-label fails IDNA Punycode validation" p2 m2 p1 m1)]))))))
 
+(def ^:private date-time-format-re
+  #"^(\d{4}-\d{2}-\d{2})[Tt](\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?([Zz]|[+-]\d{2}:\d{2})$")
+
+(defn- valid-clock-fields? [hh mm ss]
+  (let [h (parse-int hh) m (parse-int mm) s (parse-int ss)]
+    (and (<= 0 h 23) (<= 0 m 59) (<= 0 s 60))))
+
+(defn- valid-time-offset? [tz]
+  (or (re-matches #"[Zz]" tz)
+      (when-let [[_ hh mm] (re-matches #"[+-](\d{2}):(\d{2})" tz)]
+        (and (<= 0 (parse-int hh) 23) (<= 0 (parse-int mm) 59)))))
+
 (defn check-format-date-time [_c2 p2 m2]
-  (let [normal-check (check-parse offset-date-time-parse "date-time" _c2 p2 m2)]
-    (fn [_c1 p1 m1]
-      (cond
-        (not (string? m1)) nil
-        ;; RFC 3339 requires a four-digit year — reject ISO 8601 extended-year
-        ;; formats like "+11963-06-19T08:30:06Z" that Java's OffsetDateTime
-        ;; parser accepts.
-        (not (re-find #"^\d{4}-\d{2}-\d{2}[Tt]" m1))
-        [(make-error "format: not a valid date-time (year must be four digits)" p2 m2 p1 m1)]
-        :else
-        (if-let [[_ date-part time-part] (re-find date-time-split-re m1)]
-          (case (valid-leap-second-time? time-part)
-            true (try
-                   (local-date-parse date-part)
-                   nil
-                   (catch #?(:cljs js/Error :clj Exception) e
-                     [(make-error (str "format: not a valid date-time: " (ex-message e)) p2 m2 p1 m1)]))
-            false [(make-error "format: not a valid date-time" p2 m2 p1 m1)]
-            (normal-check _c1 p1 m1))
-          (normal-check _c1 p1 m1))))))
+  (fn [_c1 p1 m1]
+    (when (string? m1)
+      (let [[_ date hh mm ss _fraction tz] (re-matches date-time-format-re m1)]
+        (when-not
+         (and date
+              (valid-clock-fields? hh mm ss)
+              (valid-time-offset? tz)
+              (or (not= ss "60") (valid-leap-second-time? (str hh ":" mm ":" ss tz)))
+              (try (local-date-parse date) true
+                   (catch #?(:cljs js/Error :clj Exception) _ false)))
+          [(make-error "format: not a valid date-time" p2 m2 p1 m1)])))))
 
 (defn check-format-date [_c2 p2 m2]
-  (check-parse local-date-parse "date" _c2 p2 m2))
+  (let [parse-check (check-parse local-date-parse "date" _c2 p2 m2)]
+    (fn [_c1 p1 m1]
+      (when (string? m1)
+        (if (re-matches #"\d{4}-\d{2}-\d{2}" m1)
+          (parse-check _c2 p1 m1)
+          [(make-error "format: not a valid date (year must be four digits)" p2 m2 p1 m1)])))))
 
 (defn check-format-time-pattern [c2 p2 m2]
   (check-pattern time-pattern "time" c2 p2 m2))
 
-(defn check-format-time-parse [_c2 p2 m2]
-  (let [normal-check (check-parse offset-time-parse "time" _c2 p2 m2)]
-    (fn [_c1 p1 m1]
-      (case (valid-leap-second-time? m1)
-        true nil
-        false [(make-error "format: not a valid time" p2 m2 p1 m1)]
-        (normal-check _c1 p1 m1)))))
+(defn check-format-time-parse [c2 p2 m2]
+  (fn [_c1 p1 m1]
+    (when (string? m1)
+      (when-not
+       (if-let [[_ hh mm ss _fraction tz]
+                (re-matches #"^(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?([Zz]|[+-]\d{2}:\d{2})$" m1)]
+         (and (valid-clock-fields? hh mm ss)
+              (if (= ss "60")
+                (and (not= :draft-v1 (:draft c2))
+                     (valid-leap-second-time? m1))
+                true)
+              (valid-time-offset? tz))
+         false)
+        [(make-error "format: not a valid time" p2 m2 p1 m1)]))))
 
 (defn check-format-json-pointer [_c2 p2 m2]
   (check-pattern json-pointer-pattern "json-pointer" _c2 p2 m2))
@@ -189,33 +200,87 @@
 ;; If a URI has an authority (scheme://...), reject "[" / "]" outside an IPv6
 ;; literal and require any port to be all digits.  These are the structural
 ;; rules the character-set regex can't catch.
-(def ^:private uri-authority-re
-  ;; Captures: 1=userinfo (with trailing @ stripped), 2=host, 3=port (digits or empty)
-  #"^[A-Za-z][A-Za-z0-9+.\-]*://(?:([^/?\#@]*)@)?(\[[A-Fa-f0-9:.]+\]|[^:/?\#]*)(?::([^/?\#]*))?(?:[/?\#].*)?$")
+(def ^:private authority-prefix-re #"^(?:[A-Za-z][A-Za-z0-9+.\-]*:)?//")
+(def ^:private scheme-prefix-re #"^[A-Za-z][A-Za-z0-9+.\-]*:")
+(def ^:private ipvfuture-pattern #"(?i)^v[0-9a-f]+\.[a-z0-9\-._~!$&'()*+,;=:]+$")
+
+(defn- valid-port? [port]
+  (or (nil? port) (re-matches #"\d*" port)))
+
+(defn- valid-ip-literal? [host]
+  (or (re-matches ipv6-pattern host)
+      (re-matches ipvfuture-pattern host)))
+
+(defn- valid-authority? [authority]
+  (let [at-count (count (re-seq #"@" authority))]
+    (when (<= at-count 1)
+      (let [[userinfo host-port] (if (= at-count 1)
+                                   (str/split authority #"@" 2)
+                                   [nil authority])]
+        (and (not (and userinfo (re-find #"[\[\]]" userinfo)))
+             (if (str/starts-with? host-port "[")
+               (when-let [[_ host suffix] (re-matches #"\[([^\]]+)\](:.*)?" host-port)]
+                 (and (valid-ip-literal? host)
+                      (or (nil? suffix) (valid-port? (subs suffix 1)))
+                      (or (not (str/includes? host "."))
+                          (and (re-matches ipv6-pattern host)
+                               (let [embedded-ipv4 (last (str/split host #":"))]
+                                 (or (not (str/includes? embedded-ipv4 "."))
+                                     (re-matches ipv4-pattern embedded-ipv4)))))))
+               (let [parts (str/split host-port #":" -1)]
+                 (and (<= (count parts) 2)
+                      (not (str/includes? (first parts) "["))
+                      (not (str/includes? (first parts) "]"))
+                      (or (= 1 (count parts)) (valid-port? (second parts)))))))))))
+
+(defn- authority-end [s start]
+  (or (some (fn [i]
+              (when (#{\/ \? \#} (nth s i)) i))
+            (range start (count s)))
+      (count s)))
+
+(defn- valid-uri-structure? [s]
+  (let [authority-start (when-let [m (re-find authority-prefix-re s)] (count m))
+        has-scheme (boolean (re-find scheme-prefix-re s))]
+    (if authority-start
+      (let [end (authority-end s authority-start)
+            authority (subs s authority-start end)
+            remainder (subs s end)]
+        (and (valid-authority? authority)
+             (not (re-find #"[\[\]]" remainder))))
+      (and (not (re-find #"[\[\]]" s))
+           (or has-scheme
+               (let [path (first (str/split s #"[?#]" 2))
+                     first-segment (first (str/split path #"/" 2))]
+                 (not (str/includes? first-segment ":"))))))))
+
+(defn- valid-percent-encoding? [s]
+  (not (re-find #"%(?![0-9A-Fa-f]{2})" s)))
 
 (defn check-format-uri [_c2 p2 m2]
   (let [base-check (check-pattern uri-pattern "uri" _c2 p2 m2)]
     (fn [_c1 p1 m1]
       (or (base-check _c1 p1 m1)
           ;; Authority structure: only applies when scheme://... is present.
-          (when (and (string? m1)
-                     (re-find #"^[A-Za-z][A-Za-z0-9+.\-]*://" m1))
-            (if-let [[_ userinfo _host port] (re-find uri-authority-re m1)]
-              (or (when (and userinfo
-                             (re-find #"[\[\]]" userinfo))
-                    [(make-error "format: uri userinfo contains invalid '[' or ']'" p2 m2 p1 m1)])
-                  (when (and port (not (re-matches #"\d*" port)))
-                    [(make-error "format: uri port must be numeric" p2 m2 p1 m1)]))
-              [(make-error "format: uri authority section is malformed" p2 m2 p1 m1)]))))))
+          (when (and (string? m1) (not (valid-uri-structure? m1)))
+            [(make-error "format: uri authority or path structure is malformed" p2 m2 p1 m1)])))))
 
 (defn check-format-uri-reference [_c2 p2 m2]
-  (check-pattern uri-reference-pattern "uri-reference" _c2 p2 m2))
+  (let [base-check (check-pattern uri-reference-pattern "uri-reference" _c2 p2 m2)]
+    (fn [_c1 p1 m1]
+      (or (base-check _c1 p1 m1)
+          (when (and (string? m1) (not (valid-uri-structure? m1)))
+            [(make-error "format: uri-reference authority or path structure is malformed" p2 m2 p1 m1)])))))
 
 (defn check-format-uri-template [_c2 p2 m2]
   (check-pattern uri-template-pattern "uri-template" _c2 p2 m2))
 
 (defn check-format-idn-email [_c2 p2 m2]
-  (check-pattern idn-email-pattern "idn-email" _c2 p2 m2))
+  (fn [_c1 p1 m1]
+    (when (string? m1)
+      (let [[_ _local domain] (re-matches idn-email-pattern m1)]
+        (when-not (and domain (json-idn-hostname? domain))
+          [(make-error "format: not a valid idn-email" p2 m2 p1 m1)])))))
 
 (defn check-format-idn-hostname [_c2 p2 m2]
   (fn [_c1 p1 m1]
@@ -223,10 +288,22 @@
       [(make-error "format: not a valid idn-hostname:" p2 m2 p1 m1)])))
 
 (defn check-format-iri [_c2 p2 m2]
-  (check-pattern iri-pattern "iri" _c2 p2 m2))
+  (let [base-check (check-pattern iri-pattern "iri" _c2 p2 m2)]
+    (fn [_c1 p1 m1]
+      (or (base-check _c1 p1 m1)
+          (when (and (string? m1)
+                     (or (not (valid-percent-encoding? m1))
+                         (not (valid-uri-structure? m1))))
+            [(make-error "format: not a valid iri" p2 m2 p1 m1)])))))
 
 (defn check-format-iri-reference [_c2 p2 m2]
-  (check-pattern iri-reference-pattern "iri-reference" _c2 p2 m2))
+  (let [base-check (check-pattern iri-reference-pattern "iri-reference" _c2 p2 m2)]
+    (fn [_c1 p1 m1]
+      (or (base-check _c1 p1 m1)
+          (when (and (string? m1)
+                     (or (not (valid-percent-encoding? m1))
+                         (not (valid-uri-structure? m1))))
+            [(make-error "format: not a valid iri-reference" p2 m2 p1 m1)])))))
 
 (defn check-format-uuid [_c2 p2 m2]
   (check-pattern uuid-pattern "uuid" _c2 p2 m2))
@@ -238,15 +315,6 @@
 
 (defn check-format-regex [_c2 p2 m2]
   (check-parse ecma-pattern "regex" _c2 p2 m2))
-
-(def ^:private lookbehind-re #"\(\?<[=!]")
-
-(defn check-format-regex-draft3 [_c2 p2 m2]
-  (let [base-check (check-format-regex _c2 p2 m2)]
-    (fn [_c1 p1 m1]
-      (if (re-find lookbehind-re m1)
-        [(make-error "format: not a valid regex (lookbehind not supported)" p2 m2 p1 m1)]
-        (base-check _c1 p1 m1)))))
 
 (defn check-format-unknown [_c2 _p2 _m2]
   (constantly nil))
@@ -262,7 +330,7 @@
    "ip-address"   check-format-ip-address   ; renamed to "ipv4" in draft-04
    "ipv6"         check-format-ipv6
    "phone"        check-format-phone        ; dropped in draft-04
-   "regex"        check-format-regex-draft3
+   "regex"        check-format-regex
    "style"        check-format-style        ; dropped in draft-04
    "time"         check-format-time-pattern ; uses pattern check in draft-03
    "uri"          check-format-uri
@@ -283,6 +351,7 @@
       (assoc
        "hostname" check-format-hostname
        "ipv4"     check-format-ipv4
+       "regex"   check-format-regex
        "unknown"  check-format-unknown)))
 
 (def draft6-format->checker

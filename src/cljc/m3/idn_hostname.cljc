@@ -83,6 +83,52 @@
                    (recur (+ i (if (> cp 0xffff) 2 1)))))
                false))))
 
+(defn- has-idna-control?
+  "Reject an A-label that decodes to a Unicode control character."
+  [^String s]
+  #?(:clj (let [stream (.codePoints s)]
+            (.. stream (anyMatch (reify java.util.function.IntPredicate
+                                   (test [_ cp] (Character/isISOControl cp))))))
+     :cljs (boolean (.test (js/RegExp. "[\\u0000-\\u001F\\u007F-\\u009F]" "u") s))))
+
+(defn- has-non-pvalid-category?
+  "Reject Unicode categories outside IDNA2008 PVALID (after mapping)."
+  [^String s]
+  #?(:clj (let [stream (.codePoints s)
+                valid-types #{Character/UPPERCASE_LETTER Character/LOWERCASE_LETTER
+                              Character/TITLECASE_LETTER Character/MODIFIER_LETTER
+                              Character/OTHER_LETTER Character/NON_SPACING_MARK
+                              Character/COMBINING_SPACING_MARK Character/DECIMAL_DIGIT_NUMBER}]
+            (.. stream (anyMatch (reify java.util.function.IntPredicate
+                                   (test [_ cp]
+                                     (not (or (= cp 0x2d)
+                                              (#{0x00b7 0x0375 0x05f3 0x05f4 0x06fd
+                                                 0x06fe 0x0f0b 0x3007 0x30fb
+                                                 0x200c 0x200d} cp)
+                                              (contains? valid-types (Character/getType cp)))))))))
+     :cljs (loop [i 0]
+             (if (< i (count s))
+               (let [cp (.codePointAt s i)
+                     ch (js/String.fromCodePoint cp)
+                     valid? (or (= cp 0x2d)
+                                (#{0x00b7 0x0375 0x05f3 0x05f4 0x06fd 0x06fe
+                                   0x0f0b 0x3007 0x30fb 0x200c 0x200d} cp)
+                                (.test (js/RegExp. "^[\\p{L}\\p{M}\\p{Nd}]$" "u") ch))]
+                 (if valid?
+                   (recur (+ i (if (> cp 0xffff) 2 1)))
+                   true))
+               false))))
+
+(defn- contains-non-ascii? [^String s]
+  #?(:clj (let [stream (.codePoints s)]
+            (.. stream (anyMatch (reify java.util.function.IntPredicate
+                                   (test [_ cp] (> cp 0x7f))))))
+     :cljs (loop [i 0]
+             (if (< i (count s))
+               (let [cp (.codePointAt s i)]
+                 (if (> cp 0x7f) true (recur (+ i 1))))
+               false))))
+
 ;;------------------------------------------------------------------------------
 ;; Per-label validation
 
@@ -185,6 +231,11 @@
              (not (some (fn [label]
                           (let [u-label (or (to-unicode-label label) label)]
                             (or (has-disallowed-exception? u-label)
+                                (has-idna-control? u-label)
+                                (and (str/starts-with? (str/lower-case label) "xn--")
+                                     (or (= label u-label)
+                                         (not (contains-non-ascii? u-label))
+                                         (has-non-pvalid-category? u-label)))
                                 ;; tr46 doesn't check CONTEXTO rules; ICU4J does
                                 #?(:clj  false
                                    :cljs (not (check-contexto-label u-label))))))

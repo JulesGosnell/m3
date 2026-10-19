@@ -111,9 +111,10 @@
    :draft2020-12 31})
 
 (def expected-info-counts
-  {:draft7       16
-   :draft2019-09 41
-   :draft2020-12 69})
+  ;; The refreshed upstream suite adds two $comment-bearing cases per draft.
+  {:draft7       18
+   :draft2019-09 43
+   :draft2020-12 71})
 
 ;;------------------------------------------------------------------------------
 

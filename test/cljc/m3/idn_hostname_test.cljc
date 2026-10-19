@@ -36,6 +36,7 @@
   (is (= (json-idn-hostname? "실〮례.테스트") false))
   (is (= (json-idn-hostname? "〮실례.테스트") false))
   (is (= (json-idn-hostname? "h0stn4me") true))
+  (is (= (json-idn-hostname? "xn--7a") false))
   (is (= (json-idn-hostname? "-hello") false))
   (is (= (json-idn-hostname? "-hello-") false))
   (is (= (json-idn-hostname? "҈hello") false))

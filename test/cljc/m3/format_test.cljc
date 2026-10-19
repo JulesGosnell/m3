@@ -16,7 +16,12 @@
   (:require
    #?(:clj [clojure.test :refer [deftest testing is]]
       :cljs [cljs.test :refer-macros [deftest testing is]])
-   [m3.format :refer [check-format-style check-format-phone check-format-utc-millisec]]
+   [m3.format :refer [check-format-style check-format-phone check-format-utc-millisec
+                      check-format-date check-format-date-time check-format-duration
+                      check-format-email check-format-hostname check-format-time-parse
+                      check-format-idn-email check-format-iri check-format-iri-reference
+                      check-format-regex check-format-uri check-format-uri-reference
+                      check-format-uri-template]]
    [m3.pattern :as pat]))
 
 ;; =============================================================================
@@ -87,6 +92,53 @@
   (testing "multi-char local parts"
     (is (re-matches pat/email-pattern "joe.bloggs@example.com"))
     (is (re-matches pat/email-pattern "te~st@example.com"))))
+
+(defn- format-valid?
+  ([checker value] (format-valid? checker value {}))
+  ([checker value c2]
+   (nil? ((checker c2 [] {}) {} [] value))))
+
+(deftest test-refreshed-format-boundaries
+  (testing "email grammar"
+    (is (format-valid? check-format-email "\"\"@iana.org"))
+    (is (format-valid? check-format-email "a@[ipv6:::1]"))
+    (is (not (format-valid? check-format-email "test(comment)@iana.org")))
+    (is (not (format-valid? check-format-email "a@-example.org")))
+    (is (not (format-valid? check-format-email "é@example.org")))
+    (is (not (format-valid? check-format-idn-email "δοκιμή@-example.com")))
+    (is (not (format-valid? check-format-idn-email "δοκιμή@example.com."))))
+  (testing "URI-template expression and percent-encoding grammar"
+    (is (format-valid? check-format-uri-template "https://example.org/{var:9999}"))
+    (is (format-valid? check-format-uri-template "{+path,query}"))
+    (is (not (format-valid? check-format-uri-template "{}")))
+    (is (not (format-valid? check-format-uri-template "{var:0}")))
+    (is (not (format-valid? check-format-uri-template "{var:2*}")))
+    (is (not (format-valid? check-format-uri-template "literal%")))
+    (is (not (format-valid? check-format-uri-template "{var.}"))))
+  (testing "date, time and date-time boundaries"
+    (is (not (format-valid? check-format-date "-2020-01-01")))
+    (is (format-valid? check-format-time-parse "00:59:59.999999999999999Z"))
+    (is (not (format-valid? check-format-time-parse "08:30:06.Z")))
+    (is (not (format-valid? check-format-time-parse "12:00Z")))
+    (is (format-valid? check-format-time-parse "23:59:60Z" {:draft :draft2019-09}))
+    (is (not (format-valid? check-format-time-parse "23:59:60Z" {:draft :draft-v1})))
+    (is (format-valid? check-format-date-time "1985-04-12T00:59:59.999999999999999Z"))
+    (is (format-valid? check-format-date-time "1998-12-31T23:59:60Z"))
+    (is (not (format-valid? check-format-date-time "1985-04-12T23:20Z"))))
+  (testing "URI and IRI structure"
+    (is (format-valid? check-format-iri "urn:example:resource"))
+    (is (format-valid? check-format-iri "file:/etc/hosts"))
+    (is (not (format-valid? check-format-iri "https://example.org/%XZ")))
+    (is (not (format-valid? check-format-iri-reference "prefix%")))
+    (is (not (format-valid? check-format-uri "http:/[::1]")))
+    (is (not (format-valid? check-format-uri-reference "//example.org:abc/p")))
+    (is (not (format-valid? check-format-uri-reference "//a@b@example.org/")))
+    (is (not (format-valid? check-format-uri-reference "1:b"))))
+  (testing "modern ECMAScript regex lookbehind"
+    (is (format-valid? check-format-regex "(?<=a+)b")))
+  (testing "whole-string checks reject trailing newlines"
+    (is (not (format-valid? check-format-duration "P1D\n")))
+    (is (not (format-valid? check-format-hostname "example.org\n")))))
 
 (deftest test-ipv6-pattern
   (testing "uppercase hex (RFC 4291)"
