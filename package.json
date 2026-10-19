@@ -1,7 +1,7 @@
 {
   "name": "org.clojars.jules_gosnell.m3",
   "dependencies": {
-    "@js-joda/core": "3.2.0",
+    "@js-joda/core": "6.1.0",
     "big.js": "^7.0.1",
     "tr46": "^3.0.0"
   },
